@@ -26,7 +26,8 @@ def main(ctx: typer.Context) -> None:
     """A suite of AI-powered tools."""
     if ctx.invoked_subcommand is None:
         console.print("[bold red]No command specified.[/bold red]")
-        console.print("Run with --help for a list of available commands.")
+        console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
+        console.print(ctx.get_help())
 
 
 def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
