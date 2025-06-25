@@ -457,6 +457,7 @@ async def async_main() -> None:
     """Main function."""
     parser = cli.get_base_parser()
     parser.description = __doc__
+    parser.formatter_class = argparse.RawDescriptionHelpFormatter
     args = parser.parse_args()
     cli.setup_logging(args)
     logger = logging.getLogger()
