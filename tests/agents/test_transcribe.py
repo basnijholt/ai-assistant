@@ -35,6 +35,6 @@ async def test_transcribe_main(
     mock_asr.send_audio = AsyncMock()
     mock_asr.pyaudio_context.return_value.__enter__.return_value = MagicMock()
 
-    await transcribe.main()
+    await transcribe.async_main()
 
     mock_pyperclip.copy.assert_called_once_with("hello world")

@@ -453,12 +453,10 @@ async def process_and_update_clipboard(
 # --- Main Application Logic ---
 
 
-async def main() -> None:
+async def async_main() -> None:
     """Main function."""
     parser = cli.get_base_parser()
     parser.description = __doc__
-    # Add script-specific arguments
-    # ...
     args = parser.parse_args()
     cli.setup_logging(args)
     logger = logging.getLogger()
@@ -512,6 +510,11 @@ async def main() -> None:
         )
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Synchronous entry point for CLI."""
     with suppress(KeyboardInterrupt):
-        asyncio.run(main())
+        asyncio.run(async_main())
+
+
+if __name__ == "__main__":
+    main()

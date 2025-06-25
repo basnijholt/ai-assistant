@@ -89,7 +89,7 @@ async def run_transcription(
             console.print_exception(show_locals=True)
 
 
-async def main() -> None:
+async def async_main() -> None:
     """Main entry point."""
     parser = cli.get_base_parser()
     parser.description = __doc__
@@ -106,6 +106,11 @@ async def main() -> None:
         await run_transcription(args, logger, p, console)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Synchronous entry point for CLI."""
     with suppress(KeyboardInterrupt):
-        asyncio.run(main())
+        asyncio.run(async_main())
+
+
+if __name__ == "__main__":
+    main()
