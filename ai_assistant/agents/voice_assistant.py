@@ -339,7 +339,7 @@ async def process_and_update_clipboard(
 
     In quiet mode, only the result is printed to stdout.
     """
-    agent = build_agent(model=args.model, ollama_host=OLLAMA_HOST)
+    agent = build_agent(model=args.model, ollama_host=args.ollama_host)
     try:
         status_cm = (
             Status(
@@ -380,7 +380,7 @@ async def process_and_update_clipboard(
         )
         _print(
             console,
-            f"   Please check your Ollama server at [cyan]{OLLAMA_HOST}[/cyan]",
+            f"   Please check your Ollama server at [cyan]{args.ollama_host}[/cyan]",
         )
         sys.exit(1)
 
@@ -422,6 +422,11 @@ async def async_main() -> None:
         "-m",
         default=DEFAULT_MODEL,
         help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
+    )
+    parser.add_argument(
+        "--ollama-host",
+        default=OLLAMA_HOST,
+        help=f"The Ollama server host. Default is {OLLAMA_HOST}.",
     )
 
     args = parser.parse_args()

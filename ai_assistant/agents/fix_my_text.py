@@ -26,6 +26,7 @@ import time
 import httpx
 import pyperclip
 from ollama import ResponseError
+from openai import APIConnectionError
 from pydantic_ai.exceptions import ModelHTTPError
 from rich.console import Console
 from rich.panel import Panel
@@ -77,9 +78,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-async def process_text(text: str, model: str) -> tuple[str, float]:
+async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
-    agent = build_agent(model=model, ollama_host=OLLAMA_HOST)
+    agent = build_agent(model=model, ollama_host=ollama_host)
     t_start = time.monotonic()
     result = await agent.run(
         text,
@@ -146,6 +147,11 @@ def main() -> None:
         help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
     )
     parser.add_argument(
+        "--ollama-host",
+        default=OLLAMA_HOST,
+        help=f"The Ollama server host. Default is {OLLAMA_HOST}.",
+    )
+    parser.add_argument(
         "text",
         nargs="?",
         default=None,
@@ -164,7 +170,9 @@ def main() -> None:
 
     try:
         if args.quiet:
-            corrected_text, elapsed = asyncio.run(process_text(original_text, args.model))
+            corrected_text, elapsed = asyncio.run(
+                process_text(original_text, args.model, args.ollama_host),
+            )
         else:
             with Status(
                 f"[bold yellow]🤖 Correcting with {args.model}...[/bold yellow]",
@@ -174,7 +182,9 @@ def main() -> None:
                 status.update(
                     f"[bold yellow]🤖 Correcting with {args.model}...{maybe_log}[/bold yellow]",
                 )
-                corrected_text, elapsed = asyncio.run(process_text(original_text, args.model))
+                corrected_text, elapsed = asyncio.run(
+                    process_text(original_text, args.model, args.ollama_host),
+                )
 
         _display_result(
             corrected_text,
@@ -184,13 +194,13 @@ def main() -> None:
             console=console,
         )
 
-    except (ResponseError, httpx.ConnectError, ModelHTTPError) as e:
+    except (ResponseError, httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
         if args.quiet:
             print(f"❌ {e}")
         elif console:
             console.print(f"❌ {e}", style="bold red")
             console.print(
-                f"   Please check that your Ollama server is running at [bold cyan]{OLLAMA_HOST}[/bold cyan]",
+                f"   Please check that your Ollama server is running at [bold cyan]{args.ollama_host}[/bold cyan]",
             )
         sys.exit(1)
 

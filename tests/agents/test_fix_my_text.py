@@ -110,7 +110,11 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_build_agent.return_value = mock_agent
 
     # Test the function
-    result, elapsed = await fix_my_text.process_text("this is text", "test-model")
+    result, elapsed = await fix_my_text.process_text(
+        "this is text",
+        "test-model",
+        "http://localhost:11434",
+    )
 
     # Verify the result
     assert result == "This is corrected text."
@@ -120,7 +124,7 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     # Verify the agent was called correctly
     mock_build_agent.assert_called_once_with(
         model="test-model",
-        ollama_host=fix_my_text.OLLAMA_HOST,
+        ollama_host="http://localhost:11434",
     )
     mock_agent.run.assert_called_once_with(
         "this is text",
@@ -181,4 +185,8 @@ def test_main_with_text_argument(mock_get_clipboard: MagicMock) -> None:
     # Should not have called clipboard since text was provided
     mock_get_clipboard.assert_not_called()
     # Should have processed the provided text
-    mock_process.assert_called_with("input text", fix_my_text.DEFAULT_MODEL)
+    mock_process.assert_called_with(
+        "input text",
+        fix_my_text.DEFAULT_MODEL,
+        fix_my_text.OLLAMA_HOST,
+    )
