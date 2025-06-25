@@ -14,6 +14,7 @@ dependencies = [
     "pyperclip",
     "pydantic-ai-slim[openai]",
     "typer[all]",
+    "python-daemon",
 ]
 requires-python = ">=3.11"
 

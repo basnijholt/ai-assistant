@@ -15,7 +15,6 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = "devstral:24b"
 
 # --- PyAudio Configuration ---
-
 PYAUDIO_FORMAT = pyaudio.paInt16
 PYAUDIO_CHANNELS = 1
 PYAUDIO_RATE = 16000

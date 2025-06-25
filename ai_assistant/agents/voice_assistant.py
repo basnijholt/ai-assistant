@@ -213,34 +213,38 @@ async def get_voice_instruction(
     logger.info("Connecting to Wyoming server at %s", uri)
 
     try:
-        async with asr.AsyncClient.from_uri(uri) as client:
+        async with AsyncClient.from_uri(uri) as client:
             logger.info("ASR connection established")
             _print(console, "[green]Listening for your command...[/green]")
-
-            with asr.open_pyaudio_stream(
-                p,
-                format=config.PYAUDIO_FORMAT,
-                channels=config.PYAUDIO_CHANNELS,
-                rate=config.PYAUDIO_RATE,
-                input=True,
-                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=device_index,
-            ) as stream:
-                live_cm = (
-                    Live(
-                        Text("Listening...", style="blue"),
-                        console=console,
-                        transient=True,
-                        refresh_per_second=10,
-                    )
-                    if console
-                    else nullcontext()
+            live_cm = (
+                Live(
+                    Text("Listening...", style="blue"),
+                    console=console,
+                    transient=True,
+                    refresh_per_second=10,
                 )
-                with live_cm as live:
+                if console
+                else nullcontext()
+            )
+            with (
+                asr.open_pyaudio_stream(
+                    p,
+                    format=config.PYAUDIO_FORMAT,
+                    channels=config.PYAUDIO_CHANNELS,
+                    rate=config.PYAUDIO_RATE,
+                    input=True,
+                    frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
+                    input_device_index=device_index,
+                ) as stream,
+                live_cm,
+            ):
+                with live_cm:
                     send_task = asyncio.create_task(
-                        asr.send_audio(client, stream, stop_event, logger, live),
+                        send_audio(client, stream, stop_event, logger, console),
                     )
-                    recv_task = asyncio.create_task(asr.receive_text(client, logger))
+                    recv_task = asyncio.create_task(
+                        receive_text(client, logger, console)
+                    )
                     done, pending = await asyncio.wait(
                         [send_task, recv_task],
                         return_when=asyncio.ALL_COMPLETED,
@@ -451,9 +455,12 @@ def voice_assistant(
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
-            _print(console, f"[green]✅ Voice assistant daemon is running (PID: {pid}).[/green]")
+            _print(
+                console,
+                f"[green]✅ Voice assistant daemon is running (PID: {pid}).[/green]",
+            )
         else:
-            _print(console, "[yellow]⚠️  Voice assistant daemon is not running.[/yellow]")
+            _print(console, "[yellow]⚠️  No voice assistant daemon is running.[/yellow]")
         return
 
     def job_to_run() -> None:
