@@ -14,7 +14,6 @@ from ai_assistant.agents import transcribe
 @patch("ai_assistant.agents.transcribe.cli")
 @patch("ai_assistant.agents.transcribe.asr")
 @patch("ai_assistant.agents.transcribe.pyperclip")
-@patch("ai_assistant.agents.transcribe.sys")
 async def test_transcribe_main(
     mock_pyperclip: MagicMock,
     mock_asr: MagicMock,
