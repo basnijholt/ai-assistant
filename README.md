@@ -121,7 +121,7 @@ Corrects text from your clipboard or direct input.
 
 ### `transcribe`
 
-Transcribes an audio file.
+Transcribes whatever you say into text using Wyoming ASR (Automatic Speech Recognition) which uses faster-whisper.
 
 <details>
 <summary>See the output of <code>ai-assistant transcribe --help</code></summary>
