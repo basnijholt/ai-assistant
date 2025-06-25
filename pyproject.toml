@@ -13,7 +13,7 @@ dependencies = [
     "rich",
     "pyperclip",
     "pydantic-ai-slim[openai]",
-    "typer[all]",
+    "typer",
 ]
 requires-python = ">=3.11"
 
