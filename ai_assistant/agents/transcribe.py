@@ -130,47 +130,48 @@ def transcribe(
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
     clipboard: bool = opts.CLIPBOARD,
-    daemon: bool = opts.DAEMON,
     kill: bool = opts.KILL,
     status: bool = opts.STATUS,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
 ) -> None:
-    """Wyoming ASR Client for streaming microphone audio to a transcription server."""
+    """Wyoming ASR Client for streaming microphone audio to a transcription server.
+
+    Usage:
+    - Run in foreground: ai-assistant transcribe --device-index 1
+    - Run in background: ai-assistant transcribe --device-index 1 &
+    - Check status: ai-assistant transcribe --status
+    - Kill background process: ai-assistant transcribe --kill
+    """
     setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     process_name = "transcribe"
 
     if kill:
         if process_manager.kill_process(process_name):
-            _print(console, "[green]✅ Transcribe daemon stopped.[/green]")
+            _print(console, "[green]✅ Transcribe stopped.[/green]")
         else:
-            _print(console, "[yellow]⚠️  No transcribe daemon is running.[/yellow]")
+            _print(console, "[yellow]⚠️  No transcribe is running.[/yellow]")
         return
 
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
-            _print(console, f"[green]✅ Transcribe daemon is running (PID: {pid}).[/green]")
+            _print(console, f"[green]✅ Transcribe is running (PID: {pid}).[/green]")
         else:
-            _print(console, "[yellow]⚠️  Transcribe daemon is not running.[/yellow]")
+            _print(console, "[yellow]⚠️  Transcribe is not running.[/yellow]")
         return
 
-    def job_to_run() -> None:
-        with suppress(KeyboardInterrupt):
-            asyncio.run(
-                async_main(
-                    device_index=device_index,
-                    asr_server_ip=asr_server_ip,
-                    asr_server_port=asr_server_port,
-                    clipboard=clipboard,
-                    quiet=quiet,
-                    list_devices=list_devices,
-                ),
-            )
-
-    if daemon:
-        process_manager.daemonize(process_name, job_to_run)
-    else:
-        job_to_run()
+    # Use context manager for PID file management
+    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        asyncio.run(
+            async_main(
+                device_index=device_index,
+                asr_server_ip=asr_server_ip,
+                asr_server_port=asr_server_port,
+                clipboard=clipboard,
+                quiet=quiet,
+                list_devices=list_devices,
+            ),
+        )

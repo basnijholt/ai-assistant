@@ -27,10 +27,10 @@ To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
 
 4. Else Actions (if process is not running):
    - Display Text Briefly: "📋 Listening for command..."
-   - Execute Shell Script: voice-assistant --daemon --device-index 1 --quiet
+   - Execute Shell Script: voice-assistant --device-index 1 --quiet &
    - Select "Display results in a notification"
 
-This is much cleaner than the previous approach using pgrep/pkill!
+This approach uses standard Unix background processes (&) instead of Python daemons!
 """
 
 from __future__ import annotations
@@ -46,10 +46,8 @@ from typing import TYPE_CHECKING, Any
 import pyperclip
 from pydantic_ai import Agent
 from rich.console import Console
-from rich.live import Live
 from rich.panel import Panel
 from rich.status import Status
-from rich.text import Text
 from wyoming.asr import (
     Transcribe,
     Transcript,
@@ -124,41 +122,25 @@ async def send_audio(
     )
 
     try:
-        live_cm = (
-            Live(
-                Text("Listening...", style="blue"),
-                console=console,
-                transient=True,
-                refresh_per_second=10,
+        seconds_streamed = 0.0
+        while not stop_event.is_set():
+            chunk = await asyncio.to_thread(
+                stream.read,
+                num_frames=config.PYAUDIO_CHUNK_SIZE,
+                exception_on_overflow=False,
             )
-            if console
-            else nullcontext()
-        )
-        with live_cm as live:
-            seconds_streamed = 0.0
-            while not stop_event.is_set():
-                chunk = await asyncio.to_thread(
-                    stream.read,
-                    num_frames=config.PYAUDIO_CHUNK_SIZE,
-                    exception_on_overflow=False,
-                )
-                await client.write_event(
-                    AudioChunk(
-                        rate=config.PYAUDIO_RATE,
-                        width=2,
-                        channels=config.PYAUDIO_CHANNELS,
-                        audio=chunk,
-                    ).event(),
-                )
-                logger.debug("Sent %d byte(s) of audio", len(chunk))
-                if console:
-                    seconds_streamed += len(chunk) / (
-                        config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2
-                    )
-                    assert isinstance(live, Live)
-                    live.update(
-                        Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"),
-                    )
+            await client.write_event(
+                AudioChunk(
+                    rate=config.PYAUDIO_RATE,
+                    width=2,
+                    channels=config.PYAUDIO_CHANNELS,
+                    audio=chunk,
+                ).event(),
+            )
+            logger.debug("Sent %d byte(s) of audio", len(chunk))
+            if console:
+                seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+                # Note: Live display updates are handled by get_voice_instruction
     finally:
         await client.write_event(AudioStop().event())
         logger.debug("Sent AudioStop")
@@ -215,16 +197,7 @@ async def get_voice_instruction(
         async with AsyncClient.from_uri(uri) as client:
             logger.info("ASR connection established")
             _print(console, "[green]Listening for your command...[/green]")
-            live_cm = (
-                Live(
-                    Text("Listening...", style="blue"),
-                    console=console,
-                    transient=True,
-                    refresh_per_second=10,
-                )
-                if console
-                else nullcontext()
-            )
+
             with (
                 asr.open_pyaudio_stream(
                     p,
@@ -235,7 +208,6 @@ async def get_voice_instruction(
                     frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
                     input_device_index=device_index,
                 ) as stream,
-                live_cm,
             ):
                 send_task = asyncio.create_task(
                     send_audio(client, stream, stop_event, logger, console),
@@ -431,23 +403,29 @@ def voice_assistant(
     asr_server_port: int = opts.ASR_SERVER_PORT,
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
-    daemon: bool = opts.DAEMON,
     kill: bool = opts.KILL,
     status: bool = opts.STATUS,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
 ) -> None:
-    """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM."""
+    """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
+
+    Usage:
+    - Run in foreground: ai-assistant voice-assistant --device-index 1
+    - Run in background: ai-assistant voice-assistant --device-index 1 &
+    - Check status: ai-assistant voice-assistant --status
+    - Kill background process: ai-assistant voice-assistant --kill
+    """
     setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     process_name = "voice-assistant"
 
     if kill:
         if process_manager.kill_process(process_name):
-            _print(console, "[green]✅ Voice assistant daemon stopped.[/green]")
+            _print(console, "[green]✅ Voice assistant stopped.[/green]")
         else:
-            _print(console, "[yellow]⚠️  No voice assistant daemon is running.[/yellow]")
+            _print(console, "[yellow]⚠️  No voice assistant is running.[/yellow]")
         return
 
     if status:
@@ -455,27 +433,22 @@ def voice_assistant(
             pid = process_manager.read_pid_file(process_name)
             _print(
                 console,
-                f"[green]✅ Voice assistant daemon is running (PID: {pid}).[/green]",
+                f"[green]✅ Voice assistant is running (PID: {pid}).[/green]",
             )
         else:
-            _print(console, "[yellow]⚠️  No voice assistant daemon is running.[/yellow]")
+            _print(console, "[yellow]⚠️  Voice assistant is not running.[/yellow]")
         return
 
-    def job_to_run() -> None:
-        with suppress(KeyboardInterrupt):
-            asyncio.run(
-                async_main(
-                    quiet=quiet,
-                    device_index=device_index,
-                    list_devices=list_devices,
-                    asr_server_ip=asr_server_ip,
-                    asr_server_port=asr_server_port,
-                    model=model,
-                    ollama_host=ollama_host,
-                ),
-            )
-
-    if daemon:
-        process_manager.daemonize(process_name, job_to_run)
-    else:
-        job_to_run()
+    # Use context manager for PID file management
+    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        asyncio.run(
+            async_main(
+                quiet=quiet,
+                device_index=device_index,
+                list_devices=list_devices,
+                asr_server_ip=asr_server_ip,
+                asr_server_port=asr_server_port,
+                model=model,
+                ollama_host=ollama_host,
+            ),
+        )

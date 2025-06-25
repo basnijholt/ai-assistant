@@ -6,14 +6,12 @@ import os
 import signal
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import daemon
-from daemon.pidfile import PIDLockFile
-
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Generator
 
 # Default location for PID files
 PID_DIR = Path.home() / ".cache" / "ai-assistant"
@@ -31,83 +29,89 @@ def get_log_file(process_name: str) -> Path:
     return PID_DIR / f"{process_name}.log"
 
 
+def get_running_pid(process_name: str) -> int | None:
+    """Get PID if process is running, None otherwise. Cleans up stale files."""
+    pid_file = get_pid_file(process_name)
+
+    if not pid_file.exists():
+        return None
+
+    try:
+        with pid_file.open() as f:
+            pid = int(f.read().strip())
+
+        # Check if process is actually running
+        os.kill(pid, 0)
+        return pid
+
+    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
+        # Clean up stale/invalid PID file
+        if pid_file.exists():
+            pid_file.unlink()
+        return None
+
+
 def is_process_running(process_name: str) -> bool:
-    """Check if a process with the given name is currently running."""
-    pid_file_path = get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file_path)
-    return pid_lock.is_locked()
+    """Check if a process is currently running."""
+    return get_running_pid(process_name) is not None
 
 
 def read_pid_file(process_name: str) -> int | None:
-    """Read PID from file, return None if file doesn't exist or is invalid."""
-    pid_file_path = get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file_path)
-
-    if not pid_lock.is_locked():
-        return None
-
-    return pid_lock.read_pid()
+    """Read PID from file if process is running."""
+    return get_running_pid(process_name)
 
 
 def kill_process(process_name: str) -> bool:
-    """Kill a process by name. Returns True if process was killed, False if not found."""
-    pid_file_path = get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file_path)
-    pid = pid_lock.read_pid()
+    """Kill a process by name. Returns True if killed or cleaned up, False if not found."""
+    pid_file = get_pid_file(process_name)
 
-    if not pid or not pid_lock.is_locked():
+    # If no PID file exists at all, nothing to do
+    if not pid_file.exists():
         return False
 
+    # Check if we have a running process
+    pid = get_running_pid(process_name)
+
+    # If get_running_pid returned None but file existed, it cleaned up a stale file
+    if pid is None:
+        return True  # Cleanup of stale file is success
+
+    # Kill the running process
     try:
         os.kill(pid, signal.SIGTERM)
-        # Wait for the process to terminate
-        for _ in range(10):  # Wait up to 1 second
+        # Wait for process to terminate
+        for _ in range(10):  # 1 second max
             if not is_process_running(process_name):
                 break
             time.sleep(0.1)
-    except ProcessLookupError:
-        # Process already dead
-        pass
-    except PermissionError:
-        # No permission to kill process
-        return False
+    except (ProcessLookupError, PermissionError):
+        pass  # Process dead or no permission - we'll clean up regardless
+
+    # Clean up PID file
+    if pid_file.exists():
+        pid_file.unlink()
+
+    return True
+
+
+@contextmanager
+def pid_file_context(process_name: str) -> Generator[Path, None, None]:
+    """Context manager for PID file lifecycle.
+
+    Creates PID file on entry, cleans up on exit.
+    Exits with error if process already running.
+    """
+    if is_process_running(process_name):
+        existing_pid = get_running_pid(process_name)
+        print(f"Process {process_name} is already running (PID: {existing_pid})")
+        sys.exit(1)
+
+    pid_file = get_pid_file(process_name)
+    with pid_file.open("w") as f:
+        f.write(str(os.getpid()))
+
+    try:
+        yield pid_file
     finally:
-        # Clean up the lock file if it's still locked
-        if pid_lock.is_locked():
-            pid_lock.break_lock()
-
-    return not is_process_running(process_name)
-
-
-def daemonize(process_name: str, main_function: Callable[[], None]) -> None:
-    """Run a function as a daemon process using python-daemon."""
-    pid_file_path = get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file_path)
-
-    if pid_lock.is_locked():
-        existing_pid = pid_lock.read_pid()
-        if existing_pid is not None:
-            try:
-                # Check if the process is actually running
-                os.kill(existing_pid, 0)  # Signal 0 checks if process exists
-                print(f"Process {process_name} is already running (PID: {existing_pid})")
-                sys.exit(1)
-            except (ProcessLookupError, PermissionError):
-                # Process is dead, clean up stale lock
-                print(f"Cleaning up stale PID lock for {process_name} (PID: {existing_pid})")
-                pid_lock.break_lock()
-        else:
-            # PID file exists but is unreadable, clean it up
-            print(f"Cleaning up corrupted PID lock for {process_name}")
-            pid_lock.break_lock()
-
-    log_file_path = get_log_file(process_name)
-
-    with daemon.DaemonContext(
-        pidfile=pid_lock,
-        stdout=log_file_path.open("w"),
-        stderr=log_file_path.open("w"),
-        detach_process=True,  # Detach from the user session to run in the background
-        prevent_core=True,
-    ):
-        main_function()
+        if pid_file.exists():
+            pid_file.unlink()

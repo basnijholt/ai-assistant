@@ -58,12 +58,12 @@ DAEMON: bool = typer.Option(
 KILL: bool = typer.Option(
     False,  # noqa: FBT003
     "--kill",
-    help="Kill any running daemon process.",
+    help="Kill any running background process.",
 )
 STATUS: bool = typer.Option(
     False,  # noqa: FBT003
     "--status",
-    help="Check if a daemon process is running.",
+    help="Check if a background process is running.",
 )
 
 

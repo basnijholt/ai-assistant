@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 import pytest
-from daemon.pidfile import PIDLockFile
 
 from ai_assistant import process_manager
 
@@ -41,32 +40,64 @@ def test_get_log_file(temp_pid_dir: Path) -> None:
     assert temp_pid_dir.exists()
 
 
-def test_is_process_running() -> None:
-    """Test checking if a process is running."""
+def test_is_process_running_no_file() -> None:
+    """Test checking if a process is running when no PID file exists."""
+    assert not process_manager.is_process_running("nonexistent-process")
+
+
+def test_is_process_running_invalid_pid() -> None:
+    """Test checking if a process is running with invalid PID."""
     process_name = "test-process"
     pid_file = process_manager.get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file)
 
-    # Case 1: Process is not running
+    # Write invalid PID
+    pid_file.write_text("invalid")
+
     assert not process_manager.is_process_running(process_name)
-
-    # Case 2: Process is running
-    with pid_lock:
-        assert process_manager.is_process_running(process_name)
+    # Should clean up invalid PID file
+    assert not pid_file.exists()
 
 
-def test_read_pid_file() -> None:
-    """Test reading a PID from a PID file."""
+def test_is_process_running_dead_process() -> None:
+    """Test checking if a process is running with dead process PID."""
     process_name = "test-process"
     pid_file = process_manager.get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file)
 
-    # Case 1: No PID file
-    assert process_manager.read_pid_file(process_name) is None
+    # Use a PID that's very unlikely to exist
+    dead_pid = 999999
+    pid_file.write_text(str(dead_pid))
 
-    # Case 2: PID file exists
-    with pid_lock:
-        assert process_manager.read_pid_file(process_name) == os.getpid()
+    assert not process_manager.is_process_running(process_name)
+    # Should clean up stale PID file
+    assert not pid_file.exists()
+
+
+def test_is_process_running_current_process() -> None:
+    """Test checking if a process is running with current process PID."""
+    process_name = "test-process"
+    pid_file = process_manager.get_pid_file(process_name)
+
+    # Write current process PID
+    pid_file.write_text(str(os.getpid()))
+
+    assert process_manager.is_process_running(process_name)
+
+
+def test_read_pid_file_no_file() -> None:
+    """Test reading PID file when it doesn't exist."""
+    assert process_manager.read_pid_file("nonexistent-process") is None
+
+
+def test_read_pid_file_current_process() -> None:
+    """Test reading PID file with current process."""
+    process_name = "test-process"
+    pid_file = process_manager.get_pid_file(process_name)
+
+    # Write current process PID
+    current_pid = os.getpid()
+    pid_file.write_text(str(current_pid))
+
+    assert process_manager.read_pid_file(process_name) == current_pid
 
 
 @patch("os.kill")
@@ -74,19 +105,28 @@ def test_kill_process_success(mock_os_kill: MagicMock) -> None:
     """Test successfully killing a process."""
     process_name = "test-process"
     pid_file = process_manager.get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file)
 
-    pid_lock.acquire()
+    # Write current process PID
+    current_pid = os.getpid()
+    pid_file.write_text(str(current_pid))
+
+    # Mock the process to be killed immediately
+    def kill_side_effect(pid: int, sig: int) -> None:  # noqa: ARG001
+        if sig == signal.SIGTERM:
+            # Simulate process death by removing PID file
+            pid_file.unlink()
+
+    mock_os_kill.side_effect = kill_side_effect
+
     result = process_manager.kill_process(process_name)
     assert result is True
-    mock_os_kill.assert_called_once_with(os.getpid(), signal.SIGTERM)
-    assert not pid_lock.is_locked()
+    mock_os_kill.assert_called_with(current_pid, signal.SIGTERM)
     assert not pid_file.exists()
 
 
 def test_kill_process_not_running() -> None:
     """Test killing a process that is not running."""
-    result = process_manager.kill_process("test-process")
+    result = process_manager.kill_process("nonexistent-process")
     assert result is False
 
 
@@ -97,45 +137,77 @@ def test_kill_process_already_dead(
     """Test killing a process that is already dead (stale PID file)."""
     process_name = "test-process"
     pid_file = process_manager.get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file)
 
-    pid_lock.acquire()
+    # Write a PID (doesn't matter if it's valid since we're mocking)
+    pid_file.write_text("12345")
+
     result = process_manager.kill_process(process_name)
     assert result is True
-    assert not pid_lock.is_locked()
     assert not pid_file.exists()
 
 
-@patch("daemon.DaemonContext")
-@patch("daemon.pidfile.PIDLockFile")
-def test_daemonize_success(
-    mock_pid_lock_file: MagicMock,
-    mock_daemon_context: MagicMock,
-) -> None:
-    """Test successful daemonization."""
-    mock_lock = MagicMock()
-    mock_pid_lock_file.return_value = mock_lock
-    mock_lock.is_locked.return_value = False
-    main_func = MagicMock()
-
-    process_manager.daemonize("test-process", main_func)
-
-    mock_daemon_context.assert_called_once()
-    main_func.assert_called_once()
-
-
-@patch("os.kill")
-def test_daemonize_already_running(
-    mock_os_kill: MagicMock,  # noqa: ARG001
-) -> None:
-    """Test daemonization when a process is already running."""
+def test_pid_file_context_success() -> None:
+    """Test successful PID file context management."""
     process_name = "test-process"
     pid_file = process_manager.get_pid_file(process_name)
-    pid_lock = PIDLockFile(pid_file)
-    main_func = MagicMock()
 
-    with pid_lock, pytest.raises(SystemExit) as e:
-        process_manager.daemonize(process_name, main_func)
+    # Ensure no PID file exists initially
+    assert not pid_file.exists()
 
-    assert e.value.code == 1
-    main_func.assert_not_called()
+    with process_manager.pid_file_context(process_name) as returned_pid_file:
+        # PID file should exist during context
+        assert pid_file.exists()
+        assert returned_pid_file == pid_file
+
+        # PID file should contain current process ID
+        with pid_file.open() as f:
+            stored_pid = int(f.read().strip())
+        assert stored_pid == os.getpid()
+
+    # PID file should be cleaned up after context
+    assert not pid_file.exists()
+
+
+def test_pid_file_context_already_running() -> None:
+    """Test PID file context when process is already running."""
+    process_name = "test-process"
+    pid_file = process_manager.get_pid_file(process_name)
+
+    # Create a PID file with current process ID to simulate running process
+    pid_file.write_text(str(os.getpid()))
+
+    try:
+        with (  # noqa: PT012
+            pytest.raises(SystemExit) as e,
+            process_manager.pid_file_context(process_name),
+        ):
+            msg = "Should not reach here"
+            raise RuntimeError(msg)
+
+        assert e.value.code == 1
+    finally:
+        # Clean up for other tests
+        if pid_file.exists():
+            pid_file.unlink()
+
+
+def test_pid_file_context_exception_cleanup() -> None:
+    """Test PID file is cleaned up even when exception occurs."""
+    process_name = "test-process"
+    pid_file = process_manager.get_pid_file(process_name)
+
+    # Ensure no PID file exists initially
+    assert not pid_file.exists()
+
+    with (  # noqa: PT012
+        pytest.raises(ValueError, match="Test exception"),
+        process_manager.pid_file_context(process_name),
+    ):
+        # PID file should exist during context
+        assert pid_file.exists()
+        # Raise exception to test cleanup
+        msg = "Test exception"
+        raise ValueError(msg)
+
+    # PID file should still be cleaned up after exception
+    assert not pid_file.exists()
