@@ -24,7 +24,7 @@ import time
 
 import httpx
 import pyperclip
-from ollama._types import OllamaError
+from ollama import ResponseError
 from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
@@ -77,14 +77,13 @@ def parse_args() -> argparse.Namespace:
 
 def process_text(text: str, model: str) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
-    agent = build_agent(
-        model=model,
-        ollama_host=OLLAMA_HOST,
+    agent = build_agent(model=model, ollama_host=OLLAMA_HOST)
+    t_start = time.monotonic()
+    result = agent.run(
+        text,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
-    t_start = time.monotonic()
-    result = agent.run(text)
     t_end = time.monotonic()
     return result.output, t_end - t_start
 
@@ -137,12 +136,18 @@ def _display_result(
 def main() -> None:
     """Main function."""
     parser = cli.get_base_parser()
-    parser.description = __doc__
+    parser.description = "Correct text from clipboard using a local Ollama model."
     parser.add_argument(
         "--model",
         "-m",
         default=DEFAULT_MODEL,
         help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
+    )
+    parser.add_argument(
+        "text",
+        nargs="?",
+        default=None,
+        help="The text to correct. If not provided, reads from clipboard.",
     )
     args = parser.parse_args()
     cli.setup_logging(args)
@@ -176,7 +181,7 @@ def main() -> None:
             console=console,
         )
 
-    except (OllamaError, httpx.ConnectError) as e:
+    except (ResponseError, httpx.ConnectError) as e:
         if args.quiet:
             print(f"❌ {e}")
         elif console:

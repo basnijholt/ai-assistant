@@ -384,7 +384,11 @@ async def process_with_llm(
 {instruction}
 </instruction>
 """
-    result = await agent.run(user_input)
+    result = await agent.run(
+        user_input,
+        system_prompt=SYSTEM_PROMPT,
+        instructions=AGENT_INSTRUCTIONS,
+    )
     t_end = time.monotonic()
     return result.output, t_end - t_start
 
@@ -400,12 +404,7 @@ async def process_and_update_clipboard(
 
     In quiet mode, only the result is printed to stdout.
     """
-    agent = build_agent(
-        model=args.model,
-        ollama_host=OLLAMA_HOST,
-        system_prompt=SYSTEM_PROMPT,
-        instructions=AGENT_INSTRUCTIONS,
-    )
+    agent = build_agent(model=args.model, ollama_host=OLLAMA_HOST)
     try:
         status_cm = (
             Status(
