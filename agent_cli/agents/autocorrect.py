@@ -24,7 +24,6 @@ import time
 import httpx
 import pyperclip
 import typer
-from ollama import ResponseError
 from openai import APIConnectionError
 from pydantic_ai.exceptions import ModelHTTPError
 from rich.console import Console
@@ -164,7 +163,7 @@ def autocorrect(
             console=console,
         )
 
-    except (ResponseError, httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
+    except (httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
         if quiet:
             print(f"❌ {e}")
         elif console:
