@@ -50,11 +50,6 @@ CLIPBOARD: bool = typer.Option(
 
 
 # --- Process Management Options ---
-DAEMON: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--daemon",
-    help="Run as a background daemon process.",
-)
 KILL: bool = typer.Option(
     False,  # noqa: FBT003
     "--kill",
