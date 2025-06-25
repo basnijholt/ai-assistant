@@ -43,7 +43,6 @@ from contextlib import AbstractContextManager, nullcontext, suppress
 from typing import TYPE_CHECKING
 
 import pyperclip
-from pydantic_ai import Agent
 from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
@@ -61,6 +60,7 @@ from ai_assistant.utils import (
 
 if TYPE_CHECKING:
     from pydantic_ai import Agent
+
 
 # LLM Prompts
 SYSTEM_PROMPT = """\
@@ -105,13 +105,9 @@ async def process_with_llm(
     instruction: str,
 ) -> tuple[str, float]:
     """Run the agent asynchronously and return corrected text and elapsed time."""
-    t_start = time.monotonic()
     user_input = INPUT_TEMPLATE.format(original_text=original_text, instruction=instruction)
-    result = await agent.run(
-        user_input,
-        system_prompt=SYSTEM_PROMPT,
-        instructions=AGENT_INSTRUCTIONS,
-    )
+    t_start = time.monotonic()
+    result = await agent.run(user_input)
     t_end = time.monotonic()
     return result.output, t_end - t_start
 
@@ -138,7 +134,12 @@ async def process_and_update_clipboard(
 
     In quiet mode, only the result is printed to stdout.
     """
-    agent = build_agent(model=model, ollama_host=ollama_host)
+    agent = build_agent(
+        model=model,
+        ollama_host=ollama_host,
+        system_prompt=SYSTEM_PROMPT,
+        instructions=AGENT_INSTRUCTIONS,
+    )
     try:
         with _maybe_status(console, model):
             result_text, elapsed = await process_with_llm(agent, original_text, instruction)

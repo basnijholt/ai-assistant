@@ -58,13 +58,14 @@ Do not wrap the output in markdown or code blocks.
 
 async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
-    agent = build_agent(model=model, ollama_host=ollama_host)
-    t_start = time.monotonic()
-    result = await agent.run(
-        text,
+    agent = build_agent(
+        model=model,
+        ollama_host=ollama_host,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
+    t_start = time.monotonic()
+    result = await agent.run(text)
     t_end = time.monotonic()
     return result.output, t_end - t_start
 

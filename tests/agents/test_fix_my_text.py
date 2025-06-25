@@ -125,12 +125,10 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_build_agent.assert_called_once_with(
         model="test-model",
         ollama_host="http://localhost:11434",
-    )
-    mock_agent.run.assert_called_once_with(
-        "this is text",
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
+    mock_agent.run.assert_called_once_with("this is text")
 
 
 def test_configuration_constants():
