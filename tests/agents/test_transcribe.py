@@ -47,4 +47,3 @@ async def test_transcribe_main(
     assert call_args.kwargs["asr_server_ip"] == "localhost"
     assert call_args.kwargs["asr_server_port"] == 12345
     assert call_args.kwargs["device_index"] is None
-    assert call_args.kwargs["send_transcribe_event"] is False

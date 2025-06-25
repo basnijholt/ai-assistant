@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import signal
 from contextlib import AbstractContextManager, nullcontext, suppress
 
 import pyperclip
@@ -15,7 +14,7 @@ from rich.text import Text
 import ai_assistant.agents._cli_options as opts
 from ai_assistant import asr, process_manager
 from ai_assistant.cli import app, setup_logging
-from ai_assistant.utils import _print
+from ai_assistant.utils import _print, print_device_index, signal_handling_context
 
 
 async def async_main(
@@ -35,19 +34,12 @@ async def async_main(
         if list_devices:
             asr.list_input_devices(p, console)
             return
+        print_device_index(console, device_index)
 
-        stop_event = asyncio.Event()
-
-        def shutdown_handler() -> None:
-            logger.info("Shutdown signal received.")
-            stop_event.set()
-
-        loop = asyncio.get_running_loop()
-        loop.add_signal_handler(signal.SIGINT, shutdown_handler)
-
-        # Set up Live display for transcribe mode
-
-        with _maybe_live(console) as live:
+        with (
+            signal_handling_context(console, logger) as stop_event,
+            _maybe_live(console) as live,
+        ):
             transcript = await asr.transcribe_audio(
                 asr_server_ip=asr_server_ip,
                 asr_server_port=asr_server_port,
@@ -58,7 +50,6 @@ async def async_main(
                 console=console,
                 live=live,
                 listening_message="Listening...",
-                send_transcribe_event=False,  # Transcribe doesn't need this
             )
 
             if transcript and clipboard:

@@ -64,7 +64,6 @@ async def send_audio(
     logger: logging.Logger,
     *,
     live: Live | None = None,
-    send_transcribe_event: bool = False,
 ) -> None:
     """Read from mic and send to Wyoming server.
 
@@ -75,11 +74,9 @@ async def send_audio(
         logger: Logger instance
         live: Rich Live display for progress (transcribe mode)
         console: Rich Console for manual timing display (voice-assistant mode)
-        send_transcribe_event: Whether to send Transcribe event first (voice-assistant needs this)
 
     """
-    if send_transcribe_event:
-        await client.write_event(Transcribe().event())
+    await client.write_event(Transcribe().event())
 
     await client.write_event(
         AudioStart(rate=config.PYAUDIO_RATE, width=2, channels=config.PYAUDIO_CHANNELS).event(),
@@ -167,7 +164,6 @@ async def transcribe_audio(
     console: Console | None = None,
     live: Live | None = None,
     listening_message: str = "Listening...",
-    send_transcribe_event: bool = False,
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
 ) -> str | None:
@@ -183,7 +179,6 @@ async def transcribe_audio(
         console: Rich console for messages
         live: Rich Live display for progress
         listening_message: Message to display when starting
-        send_transcribe_event: Whether to send Transcribe event (voice-assistant needs this)
         chunk_callback: Callback for transcript chunks
         final_callback: Callback for final transcript
 
@@ -216,7 +211,6 @@ async def transcribe_audio(
                         stop_event,
                         logger,
                         live=live,
-                        send_transcribe_event=send_transcribe_event,
                     ),
                 )
                 recv_task = asyncio.create_task(

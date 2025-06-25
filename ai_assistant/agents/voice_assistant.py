@@ -37,10 +37,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import signal
 import sys
 import time
-from contextlib import nullcontext, suppress
+from contextlib import AbstractContextManager, nullcontext, suppress
 from typing import TYPE_CHECKING
 
 import pyperclip
@@ -53,7 +52,12 @@ import ai_assistant.agents._cli_options as opts
 from ai_assistant import asr, process_manager
 from ai_assistant.cli import app, setup_logging
 from ai_assistant.ollama_client import build_agent
-from ai_assistant.utils import _print, get_clipboard_text
+from ai_assistant.utils import (
+    _print,
+    get_clipboard_text,
+    print_device_index,
+    signal_handling_context,
+)
 
 if TYPE_CHECKING:
     from pydantic_ai import Agent
@@ -84,15 +88,7 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 
 # --- LLM (Editing) Logic ---
 
-
-async def process_with_llm(
-    agent: Agent,
-    original_text: str,
-    instruction: str,
-) -> tuple[str, float]:
-    """Run the agent asynchronously and return corrected text and elapsed time."""
-    t_start = time.monotonic()
-    user_input = f"""
+INPUT_TEMPLATE = """
 <original-text>
 {original_text}
 </original-text>
@@ -101,6 +97,16 @@ async def process_with_llm(
 {instruction}
 </instruction>
 """
+
+
+async def process_with_llm(
+    agent: Agent,
+    original_text: str,
+    instruction: str,
+) -> tuple[str, float]:
+    """Run the agent asynchronously and return corrected text and elapsed time."""
+    t_start = time.monotonic()
+    user_input = INPUT_TEMPLATE.format(original_text=original_text, instruction=instruction)
     result = await agent.run(
         user_input,
         system_prompt=SYSTEM_PROMPT,
@@ -108,6 +114,16 @@ async def process_with_llm(
     )
     t_end = time.monotonic()
     return result.output, t_end - t_start
+
+
+def _maybe_status(console: Console | None, model: str) -> AbstractContextManager[Status | None]:
+    """Context manager for status display."""
+    if console:
+        return Status(
+            f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]",
+            console=console,
+        )
+    return nullcontext()
 
 
 async def process_and_update_clipboard(
@@ -124,20 +140,8 @@ async def process_and_update_clipboard(
     """
     agent = build_agent(model=model, ollama_host=ollama_host)
     try:
-        status_cm = (
-            Status(
-                f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]",
-                console=console,
-            )
-            if console
-            else nullcontext()
-        )
-        with status_cm:
-            result_text, elapsed = await process_with_llm(
-                agent,
-                original_text,
-                instruction,
-            )
+        with _maybe_status(console, model):
+            result_text, elapsed = await process_with_llm(agent, original_text, instruction)
 
         pyperclip.copy(result_text)
         logger.info("Copied result to clipboard.")
@@ -195,66 +199,46 @@ async def async_main(
             return
 
         _print(console, Panel(original_text, title="[cyan]📝 Text to Process[/cyan]"))
-        if device_index is not None:
-            _print(
-                console,
-                f"🎤 Using device [bold yellow]{device_index}[/bold yellow]",
-            )
-        else:
-            _print(
-                console,
-                "[bold yellow]⚠️  No --device-index specified. Using default system input.[/bold yellow]",
-            )
+        print_device_index(console, device_index)
 
-        loop = asyncio.get_running_loop()
-        stop_event = asyncio.Event()
+        with signal_handling_context(console, logger) as stop_event:
+            # Define callbacks for voice assistant specific formatting
+            def chunk_callback(chunk_text: str) -> None:
+                """Handle transcript chunks as they arrive."""
+                _print(console, chunk_text, end="")
 
-        def shutdown_handler() -> None:
-            logger.info("Shutdown signal received. Stopping transcription.")
-            if not stop_event.is_set():
-                stop_event.set()
+            def final_callback(transcript_text: str) -> None:
+                """Format the final instruction result."""
+                _print(
+                    console,
+                    f"\n[bold green]Instruction:[/bold green] {transcript_text}",
+                )
 
-        loop.add_signal_handler(signal.SIGINT, shutdown_handler)
-        loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
-
-        # Define callbacks for voice assistant specific formatting
-        def chunk_callback(chunk_text: str) -> None:
-            """Handle transcript chunks as they arrive."""
-            _print(console, chunk_text, end="")
-
-        def final_callback(transcript_text: str) -> None:
-            """Format the final instruction result."""
-            _print(
-                console,
-                f"\n[bold green]Instruction:[/bold green] {transcript_text}",
+            instruction = await asr.transcribe_audio(
+                asr_server_ip=asr_server_ip,
+                asr_server_port=asr_server_port,
+                device_index=device_index,
+                logger=logger,
+                p=p,
+                stop_event=stop_event,
+                console=console,
+                listening_message="Listening for your command...",
+                chunk_callback=chunk_callback,
+                final_callback=final_callback,
             )
 
-        instruction = await asr.transcribe_audio(
-            asr_server_ip=asr_server_ip,
-            asr_server_port=asr_server_port,
-            device_index=device_index,
-            logger=logger,
-            p=p,
-            stop_event=stop_event,
-            console=console,
-            listening_message="Listening for your command...",
-            send_transcribe_event=True,  # Voice assistant needs this
-            chunk_callback=chunk_callback,
-            final_callback=final_callback,
-        )
+            if not instruction or not instruction.strip():
+                _print(console, "[yellow]No instruction was transcribed. Exiting.[/yellow]")
+                return
 
-        if not instruction or not instruction.strip():
-            _print(console, "[yellow]No instruction was transcribed. Exiting.[/yellow]")
-            return
-
-        await process_and_update_clipboard(
-            model=model,
-            ollama_host=ollama_host,
-            logger=logger,
-            console=console,
-            original_text=original_text,
-            instruction=instruction,
-        )
+            await process_and_update_clipboard(
+                model=model,
+                ollama_host=ollama_host,
+                logger=logger,
+                console=console,
+                original_text=original_text,
+                instruction=instruction,
+            )
 
 
 @app.command("voice-assistant")
