@@ -1,0 +1,135 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "versioningit"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-assistant"
+description = "A CLI tool to download files from GitHub repositories, including private ones, by leveraging your existing gh CLI authentication."
+dynamic = ["version"]
+authors = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
+dependencies = [
+    "requests>=2.32.3",
+    "rich>=14.0.0",
+    "typer>=0.12.3",
+]
+requires-python = ">=3.10"
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.urls]
+Homepage = "https://github.com/basnijholt/ai-assistant"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.20.0",
+    "pytest-cov>=4.0.0",
+    "requests>=2.25.1",
+]
+dev = [
+    "ai-assistant[test]",
+    "pre-commit>=3.0.0",
+    "versioningit",
+    "markdown-code-runner",
+    "ruff",
+    "notebook",
+]
+
+# Duplicate of test+dev optional-dependencies groups
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.20.0",
+    "pytest-cov>=4.0.0",
+    "requests>=2.25.1",
+    "pre-commit>=3.0.0",
+    "versioningit",
+    "markdown-code-runner",
+    "ruff",
+    "notebook",
+]
+
+[project.scripts]
+ai-assistant = "ai_assistant.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ai_assistant.*", "ai_assistant"]
+
+[tool.setuptools.package-data]
+"ai_assistant" = ["py.typed"]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+addopts = [
+    "--cov=ai_assistant",
+    "--cov-report=term",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--no-cov-on-fail",
+    "-v",
+]
+
+[tool.coverage.run]
+omit = []
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "T20",     # flake8-print
+    "ANN101",  # Missing type annotation for {name} in method
+    "S101",    # Use of assert detected
+    "S603",    # S603 `subprocess` call: check for execution of untrusted input
+    "PD901",   # df is a bad variable name. Be kinder to your future self.
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in {name}
+    "D402",    # First line should not be the function's signature
+    "PLW0603", # Using the global statement to update `X` is discouraged
+    "D401",    # First line of docstring should be in imperative mood
+    "SLF001",  # Private member accessed
+    "PLR0913", # Too many arguments in function definition
+    "TD002",   # Missing author in TODO
+    "ANN002",  # Missing type annotation for `*args`
+    "ANN003",  # Missing type annotation for `**kwargs`
+    "E501",    # Line too long
+    "TRY300",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SLF001", "D103", "E501", "PLR2004", "S101", "ANN201"]
+"tests/test_examples.py" = ["E501"]
+".github/*" = ["INP001"]
+"example/*" = ["INP001", "D100"]
+"docs/*" = ["INP001", "E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 18
+
+[tool.mypy]
+python_version = "3.10"
+
+[tool.versioningit]
+
+[tool.versioningit.vcs]
+method = "git"
+match = ["v*"]
+default-tag = "0.0.0"
