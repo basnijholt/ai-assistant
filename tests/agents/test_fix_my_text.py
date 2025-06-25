@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
+from ai_assistant import config
 from ai_assistant.agents import autocorrect
 
 
@@ -136,12 +137,12 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
 def test_configuration_constants():
     """Test that configuration constants are properly set."""
     # Test that OLLAMA_HOST has a reasonable value (could be localhost or custom)
-    assert autocorrect.OLLAMA_HOST
-    assert autocorrect.OLLAMA_HOST.startswith("http")  # Should be a valid URL
+    assert config.OLLAMA_HOST
+    assert config.OLLAMA_HOST.startswith("http")  # Should be a valid URL
 
     # Test that DEFAULT_MODEL is set
-    assert autocorrect.DEFAULT_MODEL
-    assert isinstance(autocorrect.DEFAULT_MODEL, str)
+    assert config.DEFAULT_MODEL
+    assert isinstance(config.DEFAULT_MODEL, str)
 
 
 # Keep one minimal integration test for the main function to ensure it doesn't crash
@@ -187,6 +188,6 @@ def test_main_with_text_argument(mock_get_clipboard: MagicMock) -> None:
     # Should have processed the provided text
     mock_process.assert_called_with(
         "input text",
-        autocorrect.DEFAULT_MODEL,
-        autocorrect.OLLAMA_HOST,
+        config.DEFAULT_MODEL,
+        config.OLLAMA_HOST,
     )

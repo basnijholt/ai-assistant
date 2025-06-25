@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 import pyaudio
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
+from ai_assistant import config
+
 if TYPE_CHECKING:
     import logging
     from collections.abc import Generator
@@ -17,11 +19,7 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-# PyAudio settings
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 16000
-CHUNK_SIZE = 1024
+# PyAudio settings have been moved to config.py
 
 
 @contextmanager
@@ -67,22 +65,33 @@ async def send_audio(
     live: Live | None,
 ) -> None:
     """Read from mic and send to Wyoming server."""
-    await client.write_event(AudioStart(rate=RATE, width=2, channels=CHANNELS).event())
+    await client.write_event(
+        AudioStart(
+            rate=config.PYAUDIO_RATE,
+            width=2,
+            channels=config.PYAUDIO_CHANNELS,
+        ).event(),
+    )
 
     try:
         seconds_streamed = 0.0
         while not stop_event.is_set():
             chunk = await asyncio.to_thread(
                 stream.read,
-                num_frames=CHUNK_SIZE,
+                num_frames=config.PYAUDIO_CHUNK_SIZE,
                 exception_on_overflow=False,
             )
             await client.write_event(
-                AudioChunk(rate=RATE, width=2, channels=CHANNELS, audio=chunk).event(),
+                AudioChunk(
+                    rate=config.PYAUDIO_RATE,
+                    width=2,
+                    channels=config.PYAUDIO_CHANNELS,
+                    audio=chunk,
+                ).event(),
             )
             logger.debug("Sent %d byte(s) of audio", len(chunk))
             if live:
-                seconds_streamed += len(chunk) / (RATE * CHANNELS * 2)
+                seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
                 from rich.text import Text
 
                 live.update(

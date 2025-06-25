@@ -141,7 +141,25 @@ options:
 
 ### `voice-assistant`
 
-Starts the voice assistant.
+Starts the voice assistant. Supports daemon mode with process management.
+
+**Basic Usage:**
+```bash
+# Run in foreground
+voice-assistant --device-index 1
+
+# Run as daemon (background)
+voice-assistant --daemon --device-index 1 --quiet
+
+# Check daemon status
+voice-assistant --status
+
+# Stop daemon
+voice-assistant --kill
+```
+
+**Keyboard Maestro Integration:**
+The process management features make it perfect for hotkey toggles. Use `--status` to check if running, `--kill` to stop, and `--daemon` to start in background.
 
 <details>
 <summary>See the output of <code>voice-assistant --help</code></summary>

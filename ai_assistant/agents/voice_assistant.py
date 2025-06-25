@@ -18,20 +18,19 @@ To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
 
 2. If/Then/Else Action:
    - Condition: Shell script returns success
-   - Script: pgrep -f "voice_clipboard_assistant\.py" > /dev/null
+   - Script: voice-assistant --status >/dev/null 2>&1
 
 3. Then Actions (if process is running):
    - Display Text Briefly: "🗣️ Processing command..."
-   - Execute Shell Script: pkill -INT -f "voice_clipboard_assistant\.py"
+   - Execute Shell Script: voice-assistant --kill --quiet
    - (The script will show its own "Done" notification)
 
 4. Else Actions (if process is not running):
    - Display Text Briefly: "📋 Listening for command..."
-   - Execute Shell Script:
-     #!/bin/zsh
-     source "$HOME/.dotbins/shell/zsh.sh" 2>/dev/null || true  # Adds uv to PATH
-     ${HOME}/dotfiles/scripts/voice_clipboard_assistant.py --device-index 1 --quiet &
+   - Execute Shell Script: voice-assistant --daemon --device-index 1 --quiet
    - Select "Display results in a notification"
+
+This is much cleaner than the previous approach using pgrep/pkill!
 """
 
 from __future__ import annotations
@@ -39,14 +38,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import os
 import signal
 import sys
 import time
-from contextlib import contextmanager, nullcontext, suppress
+from contextlib import nullcontext, suppress
 from typing import TYPE_CHECKING, Any
 
-import pyaudio
+if TYPE_CHECKING:
+    import pyaudio
 import pyperclip
 from pydantic_ai import Agent
 from rich.console import Console
@@ -64,21 +63,9 @@ from wyoming.asr import (
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
-from ai_assistant import asr, cli
+from ai_assistant import asr, cli, config, process_manager
 from ai_assistant.ollama_client import build_agent
 from ai_assistant.utils import get_clipboard_text
-
-# --- Configuration ---
-ASR_SERVER_IP = "192.168.1.143"
-ASR_SERVER_PORT = 10300
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_MODEL = "devstral:24b"
-
-# PyAudio settings
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 16000
-CHUNK_SIZE = 1024
 
 # LLM Prompts
 SYSTEM_PROMPT = """\
@@ -104,8 +91,6 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 """
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
     from pydantic_ai import Agent
     from rich.align import Align
     from wyoming.client import AsyncClient
@@ -117,40 +102,6 @@ if TYPE_CHECKING:
 def _print(console: Console | None, message: str | Align, **kwargs: Any) -> None:
     if console is not None:
         console.print(message, **kwargs)
-
-
-@contextmanager
-def pyaudio_context() -> Generator[pyaudio.PyAudio, None, None]:
-    """Context manager for PyAudio lifecycle."""
-    p = pyaudio.PyAudio()
-    try:
-        yield p
-    finally:
-        p.terminate()
-
-
-@contextmanager
-def open_pyaudio_stream(
-    p: pyaudio.PyAudio,
-    *args,
-    **kwargs,
-) -> Generator[pyaudio.Stream, None, None]:
-    """Context manager for a PyAudio stream that ensures it's properly closed."""
-    stream = p.open(*args, **kwargs)
-    try:
-        yield stream
-    finally:
-        stream.stop_stream()
-        stream.close()
-
-
-def list_input_devices(pa: pyaudio.PyAudio, console: Console | None) -> None:
-    """Print a numbered list of available input devices."""
-    _print(console, "[bold]Available input devices:[/bold]")
-    for i in range(pa.get_device_count()):
-        info = pa.get_device_info_by_index(i)
-        if info.get("maxInputChannels", 0) > 0:
-            _print(console, f"  [yellow]{i}[/yellow]: {info['name']}")
 
 
 # --- ASR (Transcription) Logic ---
@@ -165,7 +116,13 @@ async def send_audio(
 ) -> None:
     """Read from mic and send to Wyoming server."""
     await client.write_event(Transcribe().event())
-    await client.write_event(AudioStart(rate=RATE, width=2, channels=CHANNELS).event())
+    await client.write_event(
+        AudioStart(
+            rate=config.PYAUDIO_RATE,
+            width=2,
+            channels=config.PYAUDIO_CHANNELS,
+        ).event(),
+    )
 
     try:
         live_cm = (
@@ -183,20 +140,22 @@ async def send_audio(
             while not stop_event.is_set():
                 chunk = await asyncio.to_thread(
                     stream.read,
-                    num_frames=CHUNK_SIZE,
+                    num_frames=config.PYAUDIO_CHUNK_SIZE,
                     exception_on_overflow=False,
                 )
                 await client.write_event(
                     AudioChunk(
-                        rate=RATE,
+                        rate=config.PYAUDIO_RATE,
                         width=2,
-                        channels=CHANNELS,
+                        channels=config.PYAUDIO_CHANNELS,
                         audio=chunk,
                     ).event(),
                 )
                 logger.debug("Sent %d byte(s) of audio", len(chunk))
                 if console:
-                    seconds_streamed += len(chunk) / (RATE * CHANNELS * 2)
+                    seconds_streamed += len(chunk) / (
+                        config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2
+                    )
                     assert isinstance(live, Live)
                     live.update(
                         Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"),
@@ -258,11 +217,11 @@ async def get_voice_instruction(
 
             with asr.open_pyaudio_stream(
                 p,
-                format=asr.FORMAT,
-                channels=asr.CHANNELS,
-                rate=asr.RATE,
+                format=config.PYAUDIO_FORMAT,
+                channels=config.PYAUDIO_CHANNELS,
+                rate=config.PYAUDIO_RATE,
                 input=True,
-                frames_per_buffer=asr.CHUNK_SIZE,
+                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
                 input_device_index=args.device_index,
             ) as stream:
                 live_cm = (
@@ -388,51 +347,9 @@ async def process_and_update_clipboard(
 # --- Main Application Logic ---
 
 
-async def async_main() -> None:
-    """Main function."""
-    parser = cli.get_base_parser()
-    parser.description = __doc__
-    parser.formatter_class = argparse.RawDescriptionHelpFormatter
-
-    # Add voice-assistant specific arguments
-    parser.add_argument(
-        "--device-index",
-        type=int,
-        default=None,
-        help="Index of the PyAudio input device to use.",
-    )
-    parser.add_argument(
-        "--list-devices",
-        action="store_true",
-        help="List available audio input devices and exit.",
-    )
-    parser.add_argument(
-        "--asr-server-ip",
-        default=ASR_SERVER_IP,
-        help="Wyoming ASR server IP address.",
-    )
-    parser.add_argument(
-        "--asr-server-port",
-        type=int,
-        default=ASR_SERVER_PORT,
-        help="Wyoming ASR server port.",
-    )
-    parser.add_argument(
-        "--model",
-        "-m",
-        default=DEFAULT_MODEL,
-        help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
-    )
-    parser.add_argument(
-        "--ollama-host",
-        default=OLLAMA_HOST,
-        help=f"The Ollama server host. Default is {OLLAMA_HOST}.",
-    )
-
-    args = parser.parse_args()
-    cli.setup_logging(args)
+async def async_main(args: argparse.Namespace) -> None:
+    """Main async function, consumes parsed arguments."""
     logger = logging.getLogger()
-
     console = Console() if not args.quiet else None
 
     with asr.pyaudio_context() as p:
@@ -484,8 +401,90 @@ async def async_main() -> None:
 
 def main() -> None:
     """Synchronous entry point for CLI."""
-    with suppress(KeyboardInterrupt):
-        asyncio.run(async_main())
+    parser = cli.get_base_parser()
+    parser.description = __doc__
+    parser.formatter_class = argparse.RawDescriptionHelpFormatter
+
+    # Add voice-assistant specific arguments
+    parser.add_argument(
+        "--device-index",
+        type=int,
+        default=None,
+        help="Index of the PyAudio input device to use.",
+    )
+    parser.add_argument(
+        "--list-devices",
+        action="store_true",
+        help="List available audio input devices and exit.",
+    )
+    parser.add_argument(
+        "--asr-server-ip",
+        default=config.ASR_SERVER_IP,
+        help="Wyoming ASR server IP address.",
+    )
+    parser.add_argument(
+        "--asr-server-port",
+        type=int,
+        default=config.ASR_SERVER_PORT,
+        help="Wyoming ASR server port.",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=config.DEFAULT_MODEL,
+        help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
+    )
+    parser.add_argument(
+        "--ollama-host",
+        default=config.OLLAMA_HOST,
+        help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
+    )
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+        help="Run as a background daemon process.",
+    )
+    parser.add_argument(
+        "--kill",
+        action="store_true",
+        help="Kill any running voice-assistant daemon.",
+    )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Check if voice-assistant daemon is running.",
+    )
+
+    args = parser.parse_args()
+    cli.setup_logging(args)
+    console = Console() if not args.quiet else None
+
+    # Handle process management commands
+    process_name = "voice-assistant"
+
+    if args.kill:
+        if process_manager.kill_process(process_name):
+            _print(console, "[green]✅ Voice assistant daemon stopped.[/green]")
+        else:
+            _print(console, "[yellow]⚠️  No voice assistant daemon is running.[/yellow]")
+        return
+
+    if args.status:
+        if process_manager.is_process_running(process_name):
+            pid = process_manager.read_pid_file(process_name)
+            _print(console, f"[green]✅ Voice assistant daemon is running (PID: {pid}).[/green]")
+        else:
+            _print(console, "[yellow]⚠️  Voice assistant daemon is not running.[/yellow]")
+        return
+
+    def job_to_run() -> None:
+        with suppress(KeyboardInterrupt):
+            asyncio.run(async_main(args))
+
+    if args.daemon:
+        process_manager.daemonize(process_name, job_to_run)
+    else:
+        job_to_run()
 
 
 if __name__ == "__main__":

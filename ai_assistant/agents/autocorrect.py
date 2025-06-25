@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import sys
 import time
 
@@ -32,13 +31,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
 
-from ai_assistant import cli
+from ai_assistant import cli, config
 from ai_assistant.ollama_client import build_agent
 from ai_assistant.utils import get_clipboard_text
 
 # --- Configuration ---
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_MODEL = "gemma3:latest"
 
 # The agent's core identity and immutable rules.
 SYSTEM_PROMPT = """\
@@ -72,8 +69,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         "-m",
-        default=DEFAULT_MODEL,
-        help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
+        default=config.DEFAULT_MODEL,
+        help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
     )
     return parser.parse_args()
 
@@ -143,13 +140,13 @@ def main() -> None:
     parser.add_argument(
         "--model",
         "-m",
-        default=DEFAULT_MODEL,
-        help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
+        default=config.DEFAULT_MODEL,
+        help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
     )
     parser.add_argument(
         "--ollama-host",
-        default=OLLAMA_HOST,
-        help=f"The Ollama server host. Default is {OLLAMA_HOST}.",
+        default=config.OLLAMA_HOST,
+        help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
     )
     parser.add_argument(
         "text",
