@@ -50,6 +50,7 @@ def test_fix_my_text_main(
 def test_fix_my_text_main_quiet(
     mock_print: MagicMock,
     mock_process_text: MagicMock,
+    mock_get_clipboard: MagicMock,
     mock_get_parser: MagicMock,
 ) -> None:
     """Test the main function in quiet mode."""
@@ -63,6 +64,7 @@ def test_fix_my_text_main_quiet(
     with patch("sys.argv", ["fix_my_text", "--quiet"]):
         fix_my_text.main()
 
+    mock_get_clipboard.assert_called_once()
     mock_process_text.assert_called_once_with("hello", "test-model")
     mock_print.assert_called_with("hello world")
 
@@ -77,6 +79,7 @@ def test_fix_my_text_main_quiet(
 def test_fix_my_text_main_error(
     mock_print: MagicMock,
     mock_process_text: MagicMock,
+    mock_get_clipboard: MagicMock,
     mock_get_parser: MagicMock,
 ) -> None:
     """Test the main function with an error."""
@@ -90,5 +93,6 @@ def test_fix_my_text_main_error(
     with patch("sys.argv", ["fix_my_text", "--quiet"]), pytest.raises(SystemExit):
         fix_my_text.main()
 
+    mock_get_clipboard.assert_called_once()
     mock_process_text.assert_called_once()
     mock_print.assert_called_with("❌ Test error (status code: -1)")
