@@ -18,6 +18,7 @@ Pro-tip:
 from __future__ import annotations
 
 import argparse
+import asyncio
 import os
 import sys
 import time
@@ -25,6 +26,7 @@ import time
 import httpx
 import pyperclip
 from ollama import ResponseError
+from pydantic_ai.exceptions import ModelHTTPError
 from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
@@ -35,7 +37,7 @@ from ai_assistant.utils import get_clipboard_text
 
 # --- Configuration ---
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_MODEL = "llama3"
+DEFAULT_MODEL = "gemma3:latest"
 
 # The agent's core identity and immutable rules.
 SYSTEM_PROMPT = """\
@@ -75,11 +77,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def process_text(text: str, model: str) -> tuple[str, float]:
+async def process_text(text: str, model: str) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = build_agent(model=model, ollama_host=OLLAMA_HOST)
     t_start = time.monotonic()
-    result = agent.run(
+    result = await agent.run(
         text,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
@@ -162,16 +164,17 @@ def main() -> None:
 
     try:
         if args.quiet:
-            corrected_text, elapsed = process_text(original_text, args.model)
+            corrected_text, elapsed = asyncio.run(process_text(original_text, args.model))
         else:
             with Status(
                 f"[bold yellow]🤖 Correcting with {args.model}...[/bold yellow]",
                 console=console,
             ) as status:
+                maybe_log = f" (see [dim]log at {args.log_file}[/dim])" if args.log_file else ""
                 status.update(
-                    f"[bold yellow]🤖 Correcting with {args.model}... (see [dim]log at {args.log_file}[/dim])[/bold yellow]",
+                    f"[bold yellow]🤖 Correcting with {args.model}...{maybe_log}[/bold yellow]",
                 )
-                corrected_text, elapsed = process_text(original_text, args.model)
+                corrected_text, elapsed = asyncio.run(process_text(original_text, args.model))
 
         _display_result(
             corrected_text,
@@ -181,7 +184,7 @@ def main() -> None:
             console=console,
         )
 
-    except (ResponseError, httpx.ConnectError) as e:
+    except (ResponseError, httpx.ConnectError, ModelHTTPError) as e:
         if args.quiet:
             print(f"❌ {e}")
         elif console:

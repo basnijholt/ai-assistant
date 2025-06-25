@@ -5,8 +5,9 @@ from __future__ import annotations
 import contextlib
 import io
 from contextlib import redirect_stdout
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from rich.console import Console
 
 from ai_assistant.agents import fix_my_text
@@ -97,18 +98,19 @@ def test_display_original_text_none_console():
     fix_my_text.display_original_text("Test text", None)
 
 
+@pytest.mark.asyncio
 @patch("ai_assistant.agents.fix_my_text.build_agent")
-def test_process_text_integration(mock_build_agent: MagicMock) -> None:
+async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     """Test process_text with a more realistic mock setup."""
     # Create a mock agent that behaves more like the real thing
     mock_agent = MagicMock()
     mock_result = MagicMock()
     mock_result.output = "This is corrected text."
-    mock_agent.run.return_value = mock_result
+    mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
     # Test the function
-    result, elapsed = fix_my_text.process_text("this is text", "test-model")
+    result, elapsed = await fix_my_text.process_text("this is text", "test-model")
 
     # Verify the result
     assert result == "This is corrected text."
