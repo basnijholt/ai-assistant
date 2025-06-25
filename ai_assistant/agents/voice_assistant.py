@@ -22,7 +22,7 @@ To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
 
 3. Then Actions (if process is running):
    - Display Text Briefly: "🗣️ Processing command..."
-   - Execute Shell Script: voice-assistant --kill --quiet
+   - Execute Shell Script: voice-assistant --stop --quiet
    - (The script will show its own "Done" notification)
 
 4. Else Actions (if process is not running):
@@ -251,7 +251,7 @@ def voice_assistant(
     asr_server_port: int = opts.ASR_SERVER_PORT,
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
-    kill: bool = opts.KILL,
+    stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
@@ -263,13 +263,13 @@ def voice_assistant(
     - Run in foreground: ai-assistant voice-assistant --device-index 1
     - Run in background: ai-assistant voice-assistant --device-index 1 &
     - Check status: ai-assistant voice-assistant --status
-    - Kill background process: ai-assistant voice-assistant --kill
+    - Stop background process: ai-assistant voice-assistant --stop
     """
     setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     process_name = "voice-assistant"
 
-    if kill:
+    if stop:
         if process_manager.kill_process(process_name):
             _print(console, "[green]✅ Voice assistant stopped.[/green]")
         else:

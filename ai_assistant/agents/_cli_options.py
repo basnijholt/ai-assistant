@@ -50,10 +50,10 @@ CLIPBOARD: bool = typer.Option(
 
 
 # --- Process Management Options ---
-KILL: bool = typer.Option(
+STOP: bool = typer.Option(
     False,  # noqa: FBT003
-    "--kill",
-    help="Kill any running background process.",
+    "--stop",
+    help="Stop any running background process.",
 )
 STATUS: bool = typer.Option(
     False,  # noqa: FBT003

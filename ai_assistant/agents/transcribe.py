@@ -80,7 +80,7 @@ def transcribe(
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
     clipboard: bool = opts.CLIPBOARD,
-    kill: bool = opts.KILL,
+    stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
@@ -92,13 +92,13 @@ def transcribe(
     - Run in foreground: ai-assistant transcribe --device-index 1
     - Run in background: ai-assistant transcribe --device-index 1 &
     - Check status: ai-assistant transcribe --status
-    - Kill background process: ai-assistant transcribe --kill
+    - Stop background process: ai-assistant transcribe --stop
     """
     setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     process_name = "transcribe"
 
-    if kill:
+    if stop:
         if process_manager.kill_process(process_name):
             _print(console, "[green]✅ Transcribe stopped.[/green]")
         else:
