@@ -155,15 +155,14 @@ def test_autocorrect_command_with_text(
     mock_get_clipboard.return_value = "from clipboard"
     mock_process_text.return_value = ("Corrected text.", 0.1)
 
-    mock_ctx = MagicMock()
-    mock_ctx.obj = {"quiet": True, "log_file": None}
-
     with patch("ai_assistant.agents.autocorrect.pyperclip.copy"):
         autocorrect.autocorrect(
-            ctx=mock_ctx,
             text="input text",
             model=config.DEFAULT_MODEL,
             ollama_host=config.OLLAMA_HOST,
+            quiet=True,
+            log_file=None,
+            log_level="WARNING",
         )
 
     # Assertions
@@ -186,15 +185,14 @@ def test_autocorrect_command_from_clipboard(
     mock_get_clipboard.return_value = "clipboard text"
     mock_process_text.return_value = ("Corrected clipboard text.", 0.1)
 
-    mock_ctx = MagicMock()
-    mock_ctx.obj = {"quiet": True, "log_file": None}
-
     with patch("ai_assistant.agents.autocorrect.pyperclip.copy"):
         autocorrect.autocorrect(
-            ctx=mock_ctx,
             text=None,  # No text argument provided
             model=config.DEFAULT_MODEL,
             ollama_host=config.OLLAMA_HOST,
+            quiet=True,
+            log_file=None,
+            log_level="WARNING",
         )
 
     # Assertions

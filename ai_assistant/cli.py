@@ -22,29 +22,8 @@ console = Console()
 
 
 @app.callback(invoke_without_command=True)
-def main(
-    ctx: typer.Context,
-    log_level: str = typer.Option(
-        "INFO",
-        "--log-level",
-        help="Set logging level.",
-        case_sensitive=False,
-    ),
-    log_file: str | None = typer.Option(
-        None,
-        "--log-file",
-        help="Path to a file to write logs to.",
-    ),
-    quiet: bool = typer.Option(  # noqa: FBT001
-        False,  # noqa: FBT003
-        "-q",
-        "--quiet",
-        help="Suppress console output from rich.",
-    ),
-) -> None:
+def main(ctx: typer.Context) -> None:
     """A suite of AI-powered tools."""
-    ctx.obj = {"quiet": quiet, "log_file": log_file}
-    setup_logging(log_level, log_file, quiet=quiet)
     if ctx.invoked_subcommand is None:
         console.print("[bold red]No command specified.[/bold red]")
         console.print("Run with --help for a list of available commands.")

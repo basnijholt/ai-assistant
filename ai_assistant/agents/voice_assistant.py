@@ -62,7 +62,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
 from ai_assistant import asr, config, process_manager
-from ai_assistant.cli import app
+from ai_assistant.cli import app, setup_logging
 from ai_assistant.ollama_client import build_agent
 from ai_assistant.utils import get_clipboard_text
 
@@ -422,7 +422,6 @@ async def async_main(
 
 @app.command("voice-assistant")
 def voice_assistant(
-    ctx: typer.Context,
     device_index: int | None = typer.Option(
         None,
         "--device-index",
@@ -471,9 +470,26 @@ def voice_assistant(
         "--status",
         help="Check if voice-assistant daemon is running.",
     ),
+    log_level: str = typer.Option(
+        "WARNING",
+        "--log-level",
+        help="Set logging level.",
+        case_sensitive=False,
+    ),
+    log_file: str | None = typer.Option(
+        None,
+        "--log-file",
+        help="Path to a file to write logs to.",
+    ),
+    quiet: bool = typer.Option(
+        False,  # noqa: FBT003
+        "-q",
+        "--quiet",
+        help="Suppress console output from rich.",
+    ),
 ) -> None:
     """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM."""
-    quiet = ctx.obj["quiet"]
+    setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     process_name = "voice-assistant"
 

@@ -16,7 +16,7 @@ from rich.text import Text
 from wyoming.client import AsyncClient
 
 from ai_assistant import asr, config, process_manager
-from ai_assistant.cli import app
+from ai_assistant.cli import app, setup_logging
 from ai_assistant.utils import _print
 
 if TYPE_CHECKING:
@@ -124,7 +124,6 @@ async def async_main(
 
 @app.command("transcribe")
 def transcribe(
-    ctx: typer.Context,
     *,
     device_index: int | None = typer.Option(
         None,
@@ -167,9 +166,26 @@ def transcribe(
         "--status",
         help="Check if transcribe daemon is running.",
     ),
+    log_level: str = typer.Option(
+        "WARNING",
+        "--log-level",
+        help="Set logging level.",
+        case_sensitive=False,
+    ),
+    log_file: str | None = typer.Option(
+        None,
+        "--log-file",
+        help="Path to a file to write logs to.",
+    ),
+    quiet: bool = typer.Option(
+        False,  # noqa: FBT003
+        "-q",
+        "--quiet",
+        help="Suppress console output from rich.",
+    ),
 ) -> None:
     """Wyoming ASR Client for streaming microphone audio to a transcription server."""
-    quiet = ctx.obj["quiet"]
+    setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     process_name = "transcribe"
 

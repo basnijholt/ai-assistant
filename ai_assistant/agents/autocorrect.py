@@ -32,7 +32,7 @@ from rich.panel import Panel
 from rich.status import Status
 
 from ai_assistant import config
-from ai_assistant.cli import app
+from ai_assistant.cli import app, setup_logging
 from ai_assistant.ollama_client import build_agent
 from ai_assistant.utils import get_clipboard_text
 
@@ -116,7 +116,6 @@ def _display_result(
 
 @app.command("autocorrect")
 def autocorrect(
-    ctx: typer.Context,
     *,
     text: str | None = typer.Argument(
         None,
@@ -133,11 +132,26 @@ def autocorrect(
         "--ollama-host",
         help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
     ),
+    log_level: str = typer.Option(
+        "WARNING",
+        "--log-level",
+        help="Set logging level.",
+        case_sensitive=False,
+    ),
+    log_file: str | None = typer.Option(
+        None,
+        "--log-file",
+        help="Path to a file to write logs to.",
+    ),
+    quiet: bool = typer.Option(
+        False,  # noqa: FBT003
+        "-q",
+        "--quiet",
+        help="Suppress console output from rich.",
+    ),
 ) -> None:
     """Correct text from clipboard using a local Ollama model."""
-    quiet = ctx.obj["quiet"]
-    log_file = ctx.obj["log_file"]
-
+    setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     original_text = text if text is not None else get_clipboard_text(console)
 
