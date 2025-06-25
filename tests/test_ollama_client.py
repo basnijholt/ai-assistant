@@ -19,5 +19,3 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     agent = build_agent(model, host)
 
     assert agent.model.model_name == model
-
-    # The assertion that checks the `provider.base_url` has been removed as per the instructions.

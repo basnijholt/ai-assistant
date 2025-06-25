@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
-from contextlib import suppress
+from contextlib import AbstractContextManager, nullcontext, suppress
 
 import pyperclip
 from rich.console import Console
@@ -46,17 +46,8 @@ async def async_main(
         loop.add_signal_handler(signal.SIGINT, shutdown_handler)
 
         # Set up Live display for transcribe mode
-        live_cm = (
-            Live(
-                Text("Transcribing...", style="blue"),
-                console=console,
-                transient=True,
-            )
-            if console
-            else suppress(Exception)
-        )
 
-        with live_cm as live:
+        with _maybe_live(console) as live:
             transcript = await asr.transcribe_audio(
                 asr_server_ip=asr_server_ip,
                 asr_server_port=asr_server_port,
@@ -78,6 +69,16 @@ async def async_main(
                 logger.info("Transcript empty.")
             else:
                 logger.info("Clipboard copy disabled.")
+
+
+def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
+    if console:
+        return Live(
+            Text("Transcribing...", style="blue"),
+            console=console,
+            transient=True,
+        )
+    return nullcontext()
 
 
 @app.command("transcribe")

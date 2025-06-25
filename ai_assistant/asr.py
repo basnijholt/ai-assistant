@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import pyaudio
+from rich.text import Text
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
@@ -19,8 +20,6 @@ if TYPE_CHECKING:
 
     from rich.console import Console
     from rich.live import Live
-
-# PyAudio settings have been moved to config.py
 
 
 @contextmanager
@@ -107,10 +106,7 @@ async def send_audio(
             # Update display timing
             seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
             if live:
-                from rich.text import Text
-
                 live.update(Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"))
-            # Note: console timing is handled by voice-assistant's live display
 
     finally:
         await client.write_event(AudioStop().event())
