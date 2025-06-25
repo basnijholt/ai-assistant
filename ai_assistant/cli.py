@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 app = typer.Typer(
     name="ai-assistant",
     help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
-    add_completion=False,
+    add_completion=True,
 )
 
 console = Console()
