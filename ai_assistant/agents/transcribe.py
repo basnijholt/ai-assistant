@@ -93,6 +93,37 @@ async def async_main() -> None:
     """Main entry point."""
     parser = cli.get_base_parser()
     parser.description = __doc__
+
+    # Add transcribe-specific arguments
+    parser.add_argument(
+        "--device-index",
+        type=int,
+        default=None,
+        help="Index of the PyAudio input device to use.",
+    )
+    parser.add_argument(
+        "--list-devices",
+        action="store_true",
+        help="List available audio input devices and exit.",
+    )
+    parser.add_argument(
+        "--asr-server-ip",
+        default="192.168.1.143",
+        help="Wyoming ASR server IP address.",
+    )
+    parser.add_argument(
+        "--asr-server-port",
+        type=int,
+        default=10300,
+        help="Wyoming ASR server port.",
+    )
+    parser.add_argument(
+        "--clipboard",
+        action="store_true",
+        default=True,
+        help="Copy transcript to clipboard (default: True).",
+    )
+
     args = parser.parse_args()
     cli.setup_logging(args)
 

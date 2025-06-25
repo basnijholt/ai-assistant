@@ -114,71 +114,6 @@ if TYPE_CHECKING:
 # --- Helper Functions & Context Managers ---
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Interact with clipboard text with a voice command using Wyoming and an Ollama LLM.",
-    )
-    # Audio arguments
-    parser.add_argument(
-        "--device-index",
-        type=int,
-        default=None,
-        help="Index of the PyAudio input device to use.",
-    )
-    parser.add_argument(
-        "--list-devices",
-        action="store_true",
-        help="List available audio input devices and exit.",
-    )
-    parser.add_argument(
-        "--asr-server-ip",
-        default=ASR_SERVER_IP,
-        help="Wyoming ASR server IP address.",
-    )
-    parser.add_argument(
-        "--asr-server-port",
-        type=int,
-        default=ASR_SERVER_PORT,
-        help="Wyoming ASR server port.",
-    )
-    # LLM arguments
-    parser.add_argument(
-        "--model",
-        "-m",
-        default=DEFAULT_MODEL,
-        help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
-    )
-    # General arguments
-    parser.add_argument("--log-file", help="Path to log file (default: stdout only).")
-    parser.add_argument(
-        "--log-level",
-        type=str.upper,
-        default="WARNING",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level (default: WARNING).",
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Don't print anything to the console.",
-    )
-    return parser.parse_args()
-
-
-def setup_logging(args: argparse.Namespace) -> logging.Logger:
-    """Set up logging to console and optionally a file."""
-    handlers = [logging.StreamHandler()] if not args.quiet else []
-    if args.log_file:
-        handlers.append(logging.FileHandler(args.log_file, mode="w"))  # type: ignore[arg-type]
-    logging.basicConfig(
-        level=args.log_level,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        handlers=handlers,
-    )
-    return logging.getLogger(__name__)
-
-
 def _print(console: Console | None, message: str | Align, **kwargs: Any) -> None:
     if console is not None:
         console.print(message, **kwargs)
@@ -458,6 +393,37 @@ async def async_main() -> None:
     parser = cli.get_base_parser()
     parser.description = __doc__
     parser.formatter_class = argparse.RawDescriptionHelpFormatter
+
+    # Add voice-assistant specific arguments
+    parser.add_argument(
+        "--device-index",
+        type=int,
+        default=None,
+        help="Index of the PyAudio input device to use.",
+    )
+    parser.add_argument(
+        "--list-devices",
+        action="store_true",
+        help="List available audio input devices and exit.",
+    )
+    parser.add_argument(
+        "--asr-server-ip",
+        default=ASR_SERVER_IP,
+        help="Wyoming ASR server IP address.",
+    )
+    parser.add_argument(
+        "--asr-server-port",
+        type=int,
+        default=ASR_SERVER_PORT,
+        help="Wyoming ASR server port.",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=DEFAULT_MODEL,
+        help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
+    )
+
     args = parser.parse_args()
     cli.setup_logging(args)
     logger = logging.getLogger()
