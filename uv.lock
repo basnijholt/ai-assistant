@@ -3,7 +3,7 @@ revision = 2
 requires-python = ">=3.11"
 
 [[package]]
-name = "ai-assistant"
+name = "agent-cli"
 source = { editable = "." }
 dependencies = [
     { name = "pyaudio" },
@@ -57,7 +57,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ai-assistant", extras = ["test"], marker = "extra == 'dev'" },
+    { name = "agent-cli", extras = ["test"], marker = "extra == 'dev'" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "ollama", marker = "extra == 'test'" },

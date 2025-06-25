@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ai_assistant.ollama_client import build_agent
+from agent_cli.ollama_client import build_agent
 
 if TYPE_CHECKING:
     import pytest

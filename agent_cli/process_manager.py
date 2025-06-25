@@ -1,4 +1,4 @@
-"""Process management utilities for AI Assistant tools."""
+"""Process management utilities for Agent CLI tools."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 # Default location for PID files
-PID_DIR = Path.home() / ".cache" / "ai-assistant"
+PID_DIR = Path.home() / ".cache" / "agent-cli"
 
 
 def get_pid_file(process_name: str) -> Path:

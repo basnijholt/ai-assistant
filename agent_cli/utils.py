@@ -1,4 +1,4 @@
-"""Common utility functions for the AI assistant tools."""
+"""Common utility functions for the Agent CLI tools."""
 
 from __future__ import annotations
 

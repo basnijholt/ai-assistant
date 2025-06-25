@@ -1,4 +1,4 @@
-"""Default configuration settings for the AI Assistant package."""
+"""Default configuration settings for the Agent CLI package."""
 
 from __future__ import annotations
 

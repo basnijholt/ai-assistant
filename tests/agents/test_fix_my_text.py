@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from ai_assistant import config
-from ai_assistant.agents import autocorrect
+from agent_cli import config
+from agent_cli.agents import autocorrect
 
 
 def test_system_prompt_and_instructions():
@@ -27,7 +27,7 @@ def test_system_prompt_and_instructions():
 def test_display_result_quiet_mode():
     """Test the _display_result function in quiet mode with real output."""
     # Test normal correction
-    with patch("ai_assistant.agents.autocorrect.pyperclip.copy") as mock_copy:
+    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
         output = io.StringIO()
         with redirect_stdout(output):
             autocorrect._display_result(
@@ -44,7 +44,7 @@ def test_display_result_quiet_mode():
 
 def test_display_result_no_correction_needed():
     """Test the _display_result function when no correction is needed."""
-    with patch("ai_assistant.agents.autocorrect.pyperclip.copy") as mock_copy:
+    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
         output = io.StringIO()
         with redirect_stdout(output):
             autocorrect._display_result(
@@ -63,7 +63,7 @@ def test_display_result_verbose_mode():
     """Test the _display_result function in verbose mode with real console output."""
     console = Console(file=io.StringIO(), width=80)
 
-    with patch("ai_assistant.agents.autocorrect.pyperclip.copy") as mock_copy:
+    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
         autocorrect._display_result(
             "Hello world!",
             "hello world",
@@ -99,7 +99,7 @@ def test_display_original_text_none_console():
 
 
 @pytest.mark.asyncio
-@patch("ai_assistant.agents.autocorrect.build_agent")
+@patch("agent_cli.agents.autocorrect.build_agent")
 async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     """Test process_text with a more realistic mock setup."""
     # Create a mock agent that behaves more like the real thing
@@ -142,8 +142,8 @@ def test_configuration_constants():
     assert isinstance(config.DEFAULT_MODEL, str)
 
 
-@patch("ai_assistant.agents.autocorrect.process_text", new_callable=AsyncMock)
-@patch("ai_assistant.agents.autocorrect.get_clipboard_text")
+@patch("agent_cli.agents.autocorrect.process_text", new_callable=AsyncMock)
+@patch("agent_cli.agents.autocorrect.get_clipboard_text")
 def test_autocorrect_command_with_text(
     mock_get_clipboard: MagicMock,
     mock_process_text: AsyncMock,
@@ -153,7 +153,7 @@ def test_autocorrect_command_with_text(
     mock_get_clipboard.return_value = "from clipboard"
     mock_process_text.return_value = ("Corrected text.", 0.1)
 
-    with patch("ai_assistant.agents.autocorrect.pyperclip.copy"):
+    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
         autocorrect.autocorrect(
             text="input text",
             model=config.DEFAULT_MODEL,
@@ -172,8 +172,8 @@ def test_autocorrect_command_with_text(
     )
 
 
-@patch("ai_assistant.agents.autocorrect.process_text", new_callable=AsyncMock)
-@patch("ai_assistant.agents.autocorrect.get_clipboard_text")
+@patch("agent_cli.agents.autocorrect.process_text", new_callable=AsyncMock)
+@patch("agent_cli.agents.autocorrect.get_clipboard_text")
 def test_autocorrect_command_from_clipboard(
     mock_get_clipboard: MagicMock,
     mock_process_text: AsyncMock,
@@ -183,7 +183,7 @@ def test_autocorrect_command_from_clipboard(
     mock_get_clipboard.return_value = "clipboard text"
     mock_process_text.return_value = ("Corrected clipboard text.", 0.1)
 
-    with patch("ai_assistant.agents.autocorrect.pyperclip.copy"):
+    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
         autocorrect.autocorrect(
             text=None,  # No text argument provided
             model=config.DEFAULT_MODEL,

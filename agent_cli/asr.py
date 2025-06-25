@@ -12,7 +12,7 @@ from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
-from ai_assistant import config
+from agent_cli import config
 
 if TYPE_CHECKING:
     import logging

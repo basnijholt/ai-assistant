@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from ai_assistant import utils
+from agent_cli import utils
 
 
 def test_get_clipboard_text() -> None:

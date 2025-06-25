@@ -1,1 +1,1 @@
-"""Tests for the ai-assistant package."""
+"""Tests for the agent-cli package."""

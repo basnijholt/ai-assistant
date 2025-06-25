@@ -3,7 +3,7 @@ requires = ["setuptools>=42", "wheel", "versioningit"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ai-assistant"
+name = "agent-cli"
 description = "A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance."
 dynamic = ["version"]
 authors = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
@@ -22,7 +22,7 @@ file = "README.md"
 content-type = "text/markdown"
 
 [project.urls]
-Homepage = "https://github.com/basnijholt/ai-assistant"
+Homepage = "https://github.com/basnijholt/agent-cli"
 
 [project.optional-dependencies]
 test = [
@@ -35,7 +35,7 @@ test = [
     "ollama",
 ]
 dev = [
-    "ai-assistant[test]",
+    "agent-cli[test]",
     "pre-commit>=3.0.0",
     "versioningit",
     "markdown-code-runner",
@@ -61,13 +61,13 @@ dev = [
 ]
 
 [project.scripts]
-ai-assistant = "ai_assistant.cli:app"
+agent-cli = "agent_cli.cli:app"
 
 [tool.setuptools.packages.find]
-include = ["ai_assistant.*", "ai_assistant"]
+include = ["agent_cli.*", "agent_cli"]
 
 [tool.setuptools.package-data]
-"ai_assistant" = ["py.typed"]
+"agent_cli" = ["py.typed"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
@@ -76,7 +76,7 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
 ]
 addopts = [
-    "--cov=ai_assistant",
+    "--cov=agent_cli",
     "--cov-report=term",
     "--cov-report=html",
     "--cov-report=xml",

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 import pytest
 
-from ai_assistant import process_manager
+from agent_cli import process_manager
 
 
 @pytest.fixture

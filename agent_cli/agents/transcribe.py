@@ -11,10 +11,10 @@ from rich.console import Console
 from rich.live import Live
 from rich.text import Text
 
-import ai_assistant.agents._cli_options as opts
-from ai_assistant import asr, process_manager
-from ai_assistant.cli import app, setup_logging
-from ai_assistant.utils import _print, print_device_index, signal_handling_context
+import agent_cli.agents._cli_options as opts
+from agent_cli import asr, process_manager
+from agent_cli.cli import app, setup_logging
+from agent_cli.utils import _print, print_device_index, signal_handling_context
 
 
 async def async_main(
@@ -89,10 +89,10 @@ def transcribe(
     """Wyoming ASR Client for streaming microphone audio to a transcription server.
 
     Usage:
-    - Run in foreground: ai-assistant transcribe --device-index 1
-    - Run in background: ai-assistant transcribe --device-index 1 &
-    - Check status: ai-assistant transcribe --status
-    - Stop background process: ai-assistant transcribe --stop
+    - Run in foreground: agent-cli transcribe --device-index 1
+    - Run in background: agent-cli transcribe --device-index 1 &
+    - Check status: agent-cli transcribe --status
+    - Stop background process: agent-cli transcribe --stop
     """
     setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None

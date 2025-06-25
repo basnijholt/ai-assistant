@@ -1,4 +1,4 @@
-"""Shared CLI functionality for the AI assistant tools."""
+"""Shared CLI functionality for the Agent CLI tools."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 app = typer.Typer(
-    name="ai-assistant",
+    name="agent-cli",
     help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
     add_completion=True,
 )

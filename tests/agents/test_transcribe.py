@@ -7,12 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ai_assistant.agents import transcribe
+from agent_cli.agents import transcribe
 
 
 @pytest.mark.asyncio
-@patch("ai_assistant.agents.transcribe.asr")
-@patch("ai_assistant.agents.transcribe.pyperclip")
+@patch("agent_cli.agents.transcribe.asr")
+@patch("agent_cli.agents.transcribe.pyperclip")
 async def test_transcribe_main(
     mock_pyperclip: MagicMock,
     mock_asr: MagicMock,

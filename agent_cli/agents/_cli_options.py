@@ -1,10 +1,10 @@
-"""Shared Typer options for the AI assistant agents."""
+"""Shared Typer options for the Agent CLI agents."""
 
 from __future__ import annotations
 
 import typer
 
-from ai_assistant import config
+from agent_cli import config
 
 # --- LLM Options ---
 MODEL: str = typer.Option(

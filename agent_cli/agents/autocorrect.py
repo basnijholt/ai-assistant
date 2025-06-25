@@ -31,10 +31,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
 
-import ai_assistant.agents._cli_options as opts
-from ai_assistant.cli import app, setup_logging
-from ai_assistant.ollama_client import build_agent
-from ai_assistant.utils import get_clipboard_text
+import agent_cli.agents._cli_options as opts
+from agent_cli.cli import app, setup_logging
+from agent_cli.ollama_client import build_agent
+from agent_cli.utils import get_clipboard_text
 
 # --- Configuration ---
 
