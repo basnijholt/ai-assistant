@@ -64,7 +64,7 @@ from wyoming.asr import (
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
-from . import cli
+from . import asr, cli
 from .ollama_client import build_agent
 from .utils import get_clipboard_text
 
@@ -108,6 +108,7 @@ if TYPE_CHECKING:
 
     from pydantic_ai import Agent
     from rich.align import Align
+    from wyoming.client import AsyncClient
 
 
 # --- Helper Functions & Context Managers ---
@@ -316,31 +317,42 @@ async def get_voice_instruction(
     logger.info("Connecting to Wyoming server at %s", uri)
 
     try:
-        async with AsyncClient.from_uri(uri) as client:
+        async with asr.AsyncClient.from_uri(uri) as client:
             logger.info("ASR connection established")
             _print(console, "[green]Listening for your command...[/green]")
 
-            with open_pyaudio_stream(
+            with asr.open_pyaudio_stream(
                 p,
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=RATE,
+                format=asr.FORMAT,
+                channels=asr.CHANNELS,
+                rate=asr.RATE,
                 input=True,
-                frames_per_buffer=CHUNK_SIZE,
+                frames_per_buffer=asr.CHUNK_SIZE,
                 input_device_index=args.device_index,
             ) as stream:
-                send_task = asyncio.create_task(
-                    send_audio(client, stream, stop_event, logger, console),
+                live_cm = (
+                    Live(
+                        Text("Listening...", style="blue"),
+                        console=console,
+                        transient=True,
+                        refresh_per_second=10,
+                    )
+                    if console
+                    else nullcontext()
                 )
-                recv_task = asyncio.create_task(receive_text(client, logger, console))
-                done, pending = await asyncio.wait(
-                    [send_task, recv_task],
-                    return_when=asyncio.ALL_COMPLETED,
-                )
-                for task in pending:
-                    task.cancel()
-                # The result of recv_task is the transcript string
-                return next(t.result() for t in done if t is recv_task)
+                with live_cm as live:
+                    send_task = asyncio.create_task(
+                        asr.send_audio(client, stream, stop_event, logger, live),
+                    )
+                    recv_task = asyncio.create_task(asr.receive_text(client, logger))
+                    done, pending = await asyncio.wait(
+                        [send_task, recv_task],
+                        return_when=asyncio.ALL_COMPLETED,
+                    )
+                    for task in pending:
+                        task.cancel()
+                    # The result of recv_task is the transcript string
+                    return next(t.result() for t in done if t is recv_task)
     except ConnectionRefusedError:
         _print(
             console,
@@ -454,9 +466,9 @@ async def main() -> None:
 
     console = Console() if not args.quiet else None
 
-    with pyaudio_context() as p:
+    with asr.pyaudio_context() as p:
         if args.list_devices:
-            list_input_devices(p, console)
+            asr.list_input_devices(p, console)
             return
 
         original_text = get_clipboard_text(console)
