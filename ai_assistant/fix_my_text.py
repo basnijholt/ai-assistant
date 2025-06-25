@@ -1,11 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# dependencies = [
-#   "pydantic-ai-slim[openai]",
-#   "pyperclip",
-#   "rich",
-# ]
-# ///
 """Read text from clipboard, correct it using a local Ollama model, and write the result back to the clipboard.
 
 Usage:

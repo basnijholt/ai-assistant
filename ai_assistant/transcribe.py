@@ -1,12 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# dependencies = [
-#   "wyoming==1.7.1",
-#   "pyaudio",  # We need PyAudio to access the microphone
-#   "rich",  # For nice terminal output
-#   "pyperclip",
-# ]
-# ///
 r"""Wyoming ASR Client for streaming microphone audio to a transcription server.
 
 KEYBOARD MAESTRO INTEGRATION:
@@ -129,7 +120,7 @@ def setup_logging(args: argparse.Namespace) -> logging.Logger:
     """Set up logging to console and optionally a file."""
     handlers = [logging.StreamHandler()]
     if args.log_file:
-        handlers.append(logging.FileHandler(args.log_file, mode="w"))
+        handlers.append(logging.FileHandler(args.log_file, mode="w"))  # type: ignore[arg-type]
     logging.basicConfig(
         level=args.log_level,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -382,7 +373,7 @@ async def main() -> None:
                 f"[bold red]Connection refused.[/bold red] Is the server running and firewall open on port {args.server_port}?",
             )
         except Exception as e:
-            logger.exception("Unhandled exception: %s", e)
+            logger.exception("Unhandled exception.")
             _print(console, f"[bold red]An error occurred:[/bold red] {e}")
         finally:
             _print(console, "[bold]Done.[/bold]")

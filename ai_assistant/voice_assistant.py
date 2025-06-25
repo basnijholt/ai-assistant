@@ -1,13 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# dependencies = [
-#   "wyoming==1.7.1",
-#   "pyaudio",
-#   "rich",
-#   "pyperclip",
-#   "pydantic-ai-slim[openai]",
-# ]
-# ///
 r"""Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
 
 This script combines functionalities from transcribe.py and fix_my_text_ollama.py.
@@ -53,7 +43,6 @@ import os
 import signal
 import sys
 import time
-from collections.abc import Generator
 from contextlib import contextmanager, nullcontext, suppress
 from typing import TYPE_CHECKING, Any
 
@@ -113,6 +102,8 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 """
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from rich.align import Align
 
 
@@ -175,7 +166,7 @@ def setup_logging(args: argparse.Namespace) -> logging.Logger:
     """Set up logging to console and optionally a file."""
     handlers = [logging.StreamHandler()] if not args.quiet else []
     if args.log_file:
-        handlers.append(logging.FileHandler(args.log_file, mode="w"))
+        handlers.append(logging.FileHandler(args.log_file, mode="w"))  # type: ignore[arg-type]
     logging.basicConfig(
         level=args.log_level,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -249,7 +240,7 @@ async def send_audio(
     stop_event: asyncio.Event,
     logger: logging.Logger,
     console: Console | None,
-):
+) -> None:
     """Read from mic and send to Wyoming server."""
     await client.write_event(Transcribe().event())
     await client.write_event(AudioStart(rate=RATE, width=2, channels=CHANNELS).event())
@@ -266,9 +257,13 @@ async def send_audio(
             else nullcontext()
         )
         with live_cm as live:
-            seconds_streamed = 0
+            seconds_streamed = 0.0
             while not stop_event.is_set():
-                chunk = await asyncio.to_thread(stream.read, CHUNK_SIZE, False)
+                chunk = await asyncio.to_thread(
+                    stream.read,
+                    num_frames=CHUNK_SIZE,
+                    exception_on_overflow=False,
+                )
                 await client.write_event(
                     AudioChunk(
                         rate=RATE,
@@ -280,6 +275,7 @@ async def send_audio(
                 logger.debug("Sent %d byte(s) of audio", len(chunk))
                 if console:
                     seconds_streamed += len(chunk) / (RATE * CHANNELS * 2)
+                    assert isinstance(live, Live)
                     live.update(
                         Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"),
                     )
@@ -366,7 +362,7 @@ async def get_voice_instruction(
         )
         return None
     except Exception as e:
-        logger.exception("An error occurred during transcription: %s", e)
+        logger.exception("An error occurred during transcription.")
         _print(console, f"[bold red]Transcription error:[/bold red] {e}")
         return None
 
@@ -412,8 +408,9 @@ async def process_and_update_clipboard(
     console: Console | None,
     original_text: str,
     instruction: str,
-):
+) -> None:
     """Processes the text with the LLM, updates the clipboard, and displays the result.
+
     In quiet mode, only the result is printed to stdout.
     """
     agent = build_agent(args.model)

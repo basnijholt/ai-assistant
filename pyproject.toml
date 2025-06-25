@@ -8,14 +8,11 @@ description = "A suite of AI-powered command-line tools for text correction, aud
 dynamic = ["version"]
 authors = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
 dependencies = [
-    "requests>=2.32.3",
-    "rich>=14.0.0",
-    "typer>=0.12.3",
-    "ollama>=0.2.1",
-    "openai-whisper>=20231117",
-    "sounddevice>=0.4.7",
-    "numpy>=1.26.4",
-    "scipy>=1.14.0",
+    "wyoming",
+    "pyaudio",
+    "rich",
+    "pyperclip",
+    "pydantic-ai-slim[openai]",
 ]
 requires-python = ">=3.11"
 
