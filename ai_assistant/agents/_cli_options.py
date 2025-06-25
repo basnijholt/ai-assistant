@@ -1,74 +1,87 @@
+"""Shared Typer options for the AI assistant agents."""
+
+from __future__ import annotations
+
 import typer
 
 from ai_assistant import config
 
-device_index: int | None = typer.Option(
-    None,
-    "--device-index",
-    help="Index of the PyAudio input device to use.",
-)
-list_devices: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--list-devices",
-    help="List available audio input devices and exit.",
-    is_eager=True,
-)
-asr_server_ip: str = typer.Option(
-    config.ASR_SERVER_IP,
-    "--asr-server-ip",
-    help="Wyoming ASR server IP address.",
-)
-asr_server_port: int = typer.Option(
-    config.ASR_SERVER_PORT,
-    "--asr-server-port",
-    help="Wyoming ASR server port.",
-)
-model: str = typer.Option(
+# --- LLM Options ---
+MODEL: str = typer.Option(
     config.DEFAULT_MODEL,
     "--model",
     "-m",
     help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
 )
-ollama_host: str = typer.Option(
+OLLAMA_HOST: str = typer.Option(
     config.OLLAMA_HOST,
     "--ollama-host",
     help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
 )
-daemon: bool = typer.Option(
+
+
+# --- ASR (Audio) Options ---
+DEVICE_INDEX: int | None = typer.Option(
+    None,
+    "--device-index",
+    help="Index of the PyAudio input device to use.",
+)
+LIST_DEVICES: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--list-devices",
+    help="List available audio input devices and exit.",
+    is_eager=True,
+)
+ASR_SERVER_IP: str = typer.Option(
+    config.ASR_SERVER_IP,
+    "--asr-server-ip",
+    help="Wyoming ASR server IP address.",
+)
+ASR_SERVER_PORT: int = typer.Option(
+    config.ASR_SERVER_PORT,
+    "--asr-server-port",
+    help="Wyoming ASR server port.",
+)
+CLIPBOARD: bool = typer.Option(
+    True,  # noqa: FBT003
+    "--clipboard/--no-clipboard",
+    help="Copy transcript to clipboard.",
+)
+
+
+# --- Process Management Options ---
+DAEMON: bool = typer.Option(
     False,  # noqa: FBT003
     "--daemon",
     help="Run as a background daemon process.",
 )
-kill: bool = typer.Option(
+KILL: bool = typer.Option(
     False,  # noqa: FBT003
     "--kill",
-    help="Kill any running voice-assistant daemon.",
+    help="Kill any running daemon process.",
 )
-status: bool = typer.Option(
+STATUS: bool = typer.Option(
     False,  # noqa: FBT003
     "--status",
-    help="Check if voice-assistant daemon is running.",
+    help="Check if a daemon process is running.",
 )
-log_level: str = typer.Option(
+
+
+# --- General Options ---
+LOG_LEVEL: str = typer.Option(
     "WARNING",
     "--log-level",
     help="Set logging level.",
     case_sensitive=False,
 )
-log_file: str | None = typer.Option(
+LOG_FILE: str | None = typer.Option(
     None,
     "--log-file",
     help="Path to a file to write logs to.",
 )
-quiet: bool = typer.Option(
+QUIET: bool = typer.Option(
     False,  # noqa: FBT003
     "-q",
     "--quiet",
     help="Suppress console output from rich.",
-)
-
-clipboard: bool = typer.Option(
-    True,  # noqa: FBT003
-    "--clipboard/--no-clipboard",
-    help="Copy transcript to clipboard.",
 )

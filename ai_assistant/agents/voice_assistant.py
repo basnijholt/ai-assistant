@@ -422,19 +422,19 @@ async def async_main(
 
 @app.command("voice-assistant")
 def voice_assistant(
-    device_index: int | None = opts.device_index,
+    device_index: int | None = opts.DEVICE_INDEX,
     *,
-    list_devices: bool = opts.list_devices,
-    asr_server_ip: str = opts.asr_server_ip,
-    asr_server_port: int = opts.asr_server_port,
-    model: str = opts.model,
-    ollama_host: str = opts.ollama_host,
-    daemon: bool = opts.daemon,
-    kill: bool = opts.kill,
-    status: bool = opts.status,
-    log_level: str = opts.log_level,
-    log_file: str | None = opts.log_file,
-    quiet: bool = opts.quiet,
+    list_devices: bool = opts.LIST_DEVICES,
+    asr_server_ip: str = opts.ASR_SERVER_IP,
+    asr_server_port: int = opts.ASR_SERVER_PORT,
+    model: str = opts.MODEL,
+    ollama_host: str = opts.OLLAMA_HOST,
+    daemon: bool = opts.DAEMON,
+    kill: bool = opts.KILL,
+    status: bool = opts.STATUS,
+    log_level: str = opts.LOG_LEVEL,
+    log_file: str | None = opts.LOG_FILE,
+    quiet: bool = opts.QUIET,
 ) -> None:
     """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM."""
     setup_logging(log_level, log_file, quiet=quiet)

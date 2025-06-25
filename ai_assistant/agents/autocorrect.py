@@ -121,11 +121,11 @@ def autocorrect(
         None,
         help="The text to correct. If not provided, reads from clipboard.",
     ),
-    model: str = opts.model,
-    ollama_host: str = opts.ollama_host,
-    log_level: str = opts.log_level,
-    log_file: str | None = opts.log_file,
-    quiet: bool = opts.quiet,
+    model: str = opts.MODEL,
+    ollama_host: str = opts.OLLAMA_HOST,
+    log_level: str = opts.LOG_LEVEL,
+    log_file: str | None = opts.LOG_FILE,
+    quiet: bool = opts.QUIET,
 ) -> None:
     """Correct text from clipboard using a local Ollama model."""
     setup_logging(log_level, log_file, quiet=quiet)

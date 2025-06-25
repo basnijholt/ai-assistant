@@ -125,17 +125,17 @@ async def async_main(
 @app.command("transcribe")
 def transcribe(
     *,
-    device_index: int | None = opts.device_index,
-    list_devices: bool = opts.list_devices,
-    asr_server_ip: str = opts.asr_server_ip,
-    asr_server_port: int = opts.asr_server_port,
-    clipboard: bool = opts.clipboard,
-    daemon: bool = opts.daemon,
-    kill: bool = opts.kill,
-    status: bool = opts.status,
-    log_level: str = opts.log_level,
-    log_file: str | None = opts.log_file,
-    quiet: bool = opts.quiet,
+    device_index: int | None = opts.DEVICE_INDEX,
+    list_devices: bool = opts.LIST_DEVICES,
+    asr_server_ip: str = opts.ASR_SERVER_IP,
+    asr_server_port: int = opts.ASR_SERVER_PORT,
+    clipboard: bool = opts.CLIPBOARD,
+    daemon: bool = opts.DAEMON,
+    kill: bool = opts.KILL,
+    status: bool = opts.STATUS,
+    log_level: str = opts.LOG_LEVEL,
+    log_file: str | None = opts.LOG_FILE,
+    quiet: bool = opts.QUIET,
 ) -> None:
     """Wyoming ASR Client for streaming microphone audio to a transcription server."""
     setup_logging(log_level, log_file, quiet=quiet)
