@@ -54,9 +54,9 @@ dev = [
 ]
 
 [project.scripts]
-fix-my-text = "ai_assistant.fix_my_text:main"
-transcribe = "ai_assistant.transcribe:main"
-voice-assistant = "ai_assistant.voice_assistant:main"
+fix-my-text = "ai_assistant.agents.fix_my_text:main"
+transcribe = "ai_assistant.agents.transcribe:main"
+voice-assistant = "ai_assistant.agents.voice_assistant:main"
 
 [tool.setuptools.packages.find]
 include = ["ai_assistant.*", "ai_assistant"]

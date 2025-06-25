@@ -64,9 +64,9 @@ from wyoming.asr import (
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
-from . import asr, cli
-from .ollama_client import build_agent
-from .utils import get_clipboard_text
+from ai_assistant import asr, cli
+from ai_assistant.ollama_client import build_agent
+from ai_assistant.utils import get_clipboard_text
 
 # --- Configuration ---
 ASR_SERVER_IP = "192.168.1.143"

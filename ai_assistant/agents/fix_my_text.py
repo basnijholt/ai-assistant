@@ -29,9 +29,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
 
-from . import cli
-from .ollama_client import build_agent
-from .utils import get_clipboard_text
+from ai_assistant import cli
+from ai_assistant.ollama_client import build_agent
+from ai_assistant.utils import get_clipboard_text
 
 # --- Configuration ---
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")

@@ -14,8 +14,8 @@ from rich.console import Console
 from rich.live import Live
 from rich.text import Text
 
-from . import asr, cli
-from .utils import _print
+from ai_assistant import asr, cli
+from ai_assistant.utils import _print
 
 if TYPE_CHECKING:
     import argparse
