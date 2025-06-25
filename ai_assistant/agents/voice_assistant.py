@@ -1,6 +1,6 @@
 r"""Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
 
-This script combines functionalities from transcribe.py and fix_my_text_ollama.py.
+This script combines functionalities from transcribe.py and autocorrect_ollama.py.
 
 WORKFLOW:
 1. The script starts and immediately copies the current content of the clipboard.

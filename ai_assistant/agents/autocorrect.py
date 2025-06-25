@@ -1,14 +1,14 @@
 """Read text from clipboard, correct it using a local Ollama model, and write the result back to the clipboard.
 
 Usage:
-    python fix_my_text_ollama.py
+    python autocorrect_ollama.py
 
 Environment variables:
     OLLAMA_HOST: The host of the Ollama server. Default is "http://localhost:11434".
 
 
 Example:
-    OLLAMA_HOST=http://pc.local:11434 python fix_my_text_ollama.py
+    OLLAMA_HOST=http://pc.local:11434 python autocorrect_ollama.py
 
 Pro-tip:
     Use Keyboard Maestro on macOS or AutoHotkey on Windows to run this script with a hotkey.
