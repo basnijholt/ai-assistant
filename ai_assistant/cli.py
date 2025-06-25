@@ -2,43 +2,68 @@
 
 from __future__ import annotations
 
-import argparse
 import logging
 from typing import TYPE_CHECKING
+
+import typer
+from rich.console import Console
 
 if TYPE_CHECKING:
     from logging import Handler
 
 
-def get_base_parser() -> argparse.ArgumentParser:
-    """Gets a base argument parser with common arguments."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
+app = typer.Typer(
+    name="ai-assistant",
+    help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
+    add_completion=False,
+)
+
+console = Console()
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    log_level: str = typer.Option(
+        "INFO",
         "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Set logging level.",
-    )
-    parser.add_argument("--log-file", help="Path to a file to write logs to.")
-    parser.add_argument(
+        case_sensitive=False,
+    ),
+    log_file: str | None = typer.Option(
+        None,
+        "--log-file",
+        help="Path to a file to write logs to.",
+    ),
+    quiet: bool = typer.Option(  # noqa: FBT001
+        False,  # noqa: FBT003
         "-q",
         "--quiet",
-        action="store_true",
         help="Suppress console output from rich.",
-    )
-    return parser
+    ),
+) -> None:
+    """A suite of AI-powered tools."""
+    ctx.obj = {"quiet": quiet, "log_file": log_file}
+    setup_logging(log_level, log_file, quiet=quiet)
+    if ctx.invoked_subcommand is None:
+        console.print("[bold red]No command specified.[/bold red]")
+        console.print("Run with --help for a list of available commands.")
 
 
-def setup_logging(args: argparse.Namespace) -> None:
+def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
     """Sets up logging based on parsed arguments."""
     handlers: list[Handler] = []
-    if not getattr(args, "quiet", False):
+    if not quiet:
         handlers.append(logging.StreamHandler())
-    if args.log_file:
-        handlers.append(logging.FileHandler(args.log_file, mode="w"))
+    if log_file:
+        handlers.append(logging.FileHandler(log_file, mode="w"))
 
     logging.basicConfig(
-        level=args.log_level,
+        level=log_level.upper(),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=handlers,
     )
+
+
+# Import commands from other modules to register them
+from .agents import autocorrect, transcribe, voice_assistant  # noqa: E402, F401

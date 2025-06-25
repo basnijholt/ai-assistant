@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import io
 from contextlib import redirect_stdout
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -145,49 +144,63 @@ def test_configuration_constants():
     assert isinstance(config.DEFAULT_MODEL, str)
 
 
-# Keep one minimal integration test for the main function to ensure it doesn't crash
-@patch("ai_assistant.agents.autocorrect.process_text")
+@patch("ai_assistant.agents.autocorrect.process_text", new_callable=AsyncMock)
 @patch("ai_assistant.agents.autocorrect.get_clipboard_text")
-def test_main_basic_integration(
+def test_autocorrect_command_with_text(
     mock_get_clipboard: MagicMock,
-    mock_process_text: MagicMock,
+    mock_process_text: AsyncMock,
 ) -> None:
-    """Basic integration test for main function - minimal mocking."""
-    mock_get_clipboard.return_value = "test text"
-    mock_process_text.return_value = ("Test text.", 0.1)
+    """Test the autocorrect command with text provided as an argument."""
+    # Setup
+    mock_get_clipboard.return_value = "from clipboard"
+    mock_process_text.return_value = ("Corrected text.", 0.1)
 
-    # Test with direct text input (no clipboard needed)
-    with (
-        patch("sys.argv", ["autocorrect", "--quiet", "hello world"]),
-        patch("ai_assistant.agents.autocorrect.pyperclip.copy"),
-        redirect_stdout(io.StringIO()),
-        contextlib.suppress(SystemExit),
-    ):
-        # This should not crash
-        autocorrect.main()
+    mock_ctx = MagicMock()
+    mock_ctx.obj = {"quiet": True, "log_file": None}
 
+    with patch("ai_assistant.agents.autocorrect.pyperclip.copy"):
+        autocorrect.autocorrect(
+            ctx=mock_ctx,
+            text="input text",
+            model=config.DEFAULT_MODEL,
+            ollama_host=config.OLLAMA_HOST,
+        )
 
-@patch("ai_assistant.agents.autocorrect.get_clipboard_text")
-def test_main_with_text_argument(mock_get_clipboard: MagicMock) -> None:
-    """Test main function with text provided as argument."""
-    mock_get_clipboard.return_value = "fallback text"
-
-    with patch("ai_assistant.agents.autocorrect.process_text") as mock_process:
-        mock_process.return_value = ("Corrected text.", 0.1)
-
-        with (
-            patch("sys.argv", ["autocorrect", "--quiet", "input text"]),
-            patch("ai_assistant.agents.autocorrect.pyperclip.copy"),
-            redirect_stdout(io.StringIO()),
-            contextlib.suppress(SystemExit),
-        ):
-            autocorrect.main()
-
-    # Should not have called clipboard since text was provided
+    # Assertions
     mock_get_clipboard.assert_not_called()
-    # Should have processed the provided text
-    mock_process.assert_called_with(
+    mock_process_text.assert_called_once_with(
         "input text",
+        config.DEFAULT_MODEL,
+        config.OLLAMA_HOST,
+    )
+
+
+@patch("ai_assistant.agents.autocorrect.process_text", new_callable=AsyncMock)
+@patch("ai_assistant.agents.autocorrect.get_clipboard_text")
+def test_autocorrect_command_from_clipboard(
+    mock_get_clipboard: MagicMock,
+    mock_process_text: AsyncMock,
+) -> None:
+    """Test the autocorrect command reading from the clipboard."""
+    # Setup
+    mock_get_clipboard.return_value = "clipboard text"
+    mock_process_text.return_value = ("Corrected clipboard text.", 0.1)
+
+    mock_ctx = MagicMock()
+    mock_ctx.obj = {"quiet": True, "log_file": None}
+
+    with patch("ai_assistant.agents.autocorrect.pyperclip.copy"):
+        autocorrect.autocorrect(
+            ctx=mock_ctx,
+            text=None,  # No text argument provided
+            model=config.DEFAULT_MODEL,
+            ollama_host=config.OLLAMA_HOST,
+        )
+
+    # Assertions
+    mock_get_clipboard.assert_called_once()
+    mock_process_text.assert_called_once_with(
+        "clipboard text",
         config.DEFAULT_MODEL,
         config.OLLAMA_HOST,
     )

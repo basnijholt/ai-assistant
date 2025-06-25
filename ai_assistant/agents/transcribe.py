@@ -5,32 +5,37 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
-from contextlib import nullcontext, suppress
+from contextlib import suppress
 from typing import TYPE_CHECKING
 
 import pyperclip
+import typer
 from rich.console import Console
 from rich.live import Live
 from rich.text import Text
 from wyoming.client import AsyncClient
 
-from ai_assistant import asr, cli, config, process_manager
+from ai_assistant import asr, config, process_manager
+from ai_assistant.cli import app
 from ai_assistant.utils import _print
 
 if TYPE_CHECKING:
-    import argparse
-
     import pyaudio
 
 
 async def run_transcription(
-    args: argparse.Namespace,
-    logger: logging.Logger,
+    device_index: int | None,
+    asr_server_ip: str,
+    asr_server_port: int,
+    *,
+    clipboard: bool,
+    quiet: bool,
     p: pyaudio.PyAudio,
-    console: Console | None,
 ) -> None:
     """Connect to the Wyoming server and run the transcription loop."""
-    uri = f"tcp://{args.asr_server_ip}:{args.asr_server_port}"
+    logger = logging.getLogger()
+    console = Console() if not quiet else None
+    uri = f"tcp://{asr_server_ip}:{asr_server_port}"
     logger.info("Connecting to Wyoming server at %s", uri)
 
     stop_event = asyncio.Event()
@@ -54,7 +59,7 @@ async def run_transcription(
                 rate=config.PYAUDIO_RATE,
                 input=True,
                 frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=args.device_index,
+                input_device_index=device_index,
             ) as stream:
                 live_cm = (
                     Live(
@@ -63,7 +68,7 @@ async def run_transcription(
                         transient=True,
                     )
                     if console
-                    else nullcontext()
+                    else suppress(Exception)
                 )
                 with live_cm as live:
                     send_task = asyncio.create_task(
@@ -74,7 +79,7 @@ async def run_transcription(
 
                     transcript = recv_task.result()
                     logger.info("Received transcript: %s", transcript)
-                    if transcript and args.clipboard:
+                    if transcript and clipboard:
                         pyperclip.copy(transcript)
                         logger.info("Copied transcript to clipboard.")
                         _print(console, "[italic green]Copied to clipboard.[/italic green]")
@@ -92,81 +97,90 @@ async def run_transcription(
             console.print_exception(show_locals=True)
 
 
-async def async_main(args: argparse.Namespace) -> None:
+async def async_main(
+    device_index: int | None,
+    asr_server_ip: str,
+    asr_server_port: int,
+    *,
+    clipboard: bool,
+    quiet: bool,
+    list_devices: bool,
+) -> None:
     """Async entry point, consuming parsed args."""
-    logger = logging.getLogger()
-    console = Console() if not args.quiet else None
-
+    console = Console() if not quiet else None
     with asr.pyaudio_context() as p:
-        if args.list_devices:
+        if list_devices:
             asr.list_input_devices(p, console)
             return
-        await run_transcription(args, logger, p, console)
+        await run_transcription(
+            device_index=device_index,
+            asr_server_ip=asr_server_ip,
+            asr_server_port=asr_server_port,
+            clipboard=clipboard,
+            quiet=quiet,
+            p=p,
+        )
 
 
-def main() -> None:
-    """Synchronous entry point for CLI."""
-    parser = cli.get_base_parser()
-    parser.description = __doc__
-
-    # Add transcribe-specific arguments
-    parser.add_argument(
+@app.command("transcribe")
+def transcribe(
+    ctx: typer.Context,
+    *,
+    device_index: int | None = typer.Option(
+        None,
         "--device-index",
-        type=int,
-        default=None,
         help="Index of the PyAudio input device to use.",
-    )
-    parser.add_argument(
+    ),
+    list_devices: bool = typer.Option(
+        False,  # noqa: FBT003
         "--list-devices",
-        action="store_true",
         help="List available audio input devices and exit.",
-    )
-    parser.add_argument(
+        is_eager=True,
+    ),
+    asr_server_ip: str = typer.Option(
+        config.ASR_SERVER_IP,
         "--asr-server-ip",
-        default=config.ASR_SERVER_IP,
         help="Wyoming ASR server IP address.",
-    )
-    parser.add_argument(
+    ),
+    asr_server_port: int = typer.Option(
+        config.ASR_SERVER_PORT,
         "--asr-server-port",
-        type=int,
-        default=config.ASR_SERVER_PORT,
         help="Wyoming ASR server port.",
-    )
-    parser.add_argument(
-        "--clipboard",
-        action="store_true",
-        default=True,
-        help="Copy transcript to clipboard (default: True).",
-    )
-    parser.add_argument(
+    ),
+    clipboard: bool = typer.Option(
+        True,  # noqa: FBT003
+        "--clipboard/--no-clipboard",
+        help="Copy transcript to clipboard.",
+    ),
+    daemon: bool = typer.Option(
+        False,  # noqa: FBT003
         "--daemon",
-        action="store_true",
         help="Run as a background daemon process.",
-    )
-    parser.add_argument(
+    ),
+    kill: bool = typer.Option(
+        False,  # noqa: FBT003
         "--kill",
-        action="store_true",
         help="Kill any running transcribe daemon.",
-    )
-    parser.add_argument(
+    ),
+    status: bool = typer.Option(
+        False,  # noqa: FBT003
         "--status",
-        action="store_true",
         help="Check if transcribe daemon is running.",
-    )
-
-    args = parser.parse_args()
-    cli.setup_logging(args)
-    console = Console() if not args.quiet else None
-
+    ),
+) -> None:
+    """Wyoming ASR Client for streaming microphone audio to a transcription server."""
+    quiet = ctx.obj["quiet"]
+    console = Console() if not quiet else None
     process_name = "transcribe"
-    if args.kill:
+
+    if kill:
         if process_manager.kill_process(process_name):
             _print(console, "[green]✅ Transcribe daemon stopped.[/green]")
         else:
             _print(console, "[yellow]⚠️  No transcribe daemon is running.[/yellow]")
         return
 
-    if args.status:
+    if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
             _print(console, f"[green]✅ Transcribe daemon is running (PID: {pid}).[/green]")
@@ -176,13 +190,18 @@ def main() -> None:
 
     def job_to_run() -> None:
         with suppress(KeyboardInterrupt):
-            asyncio.run(async_main(args))
+            asyncio.run(
+                async_main(
+                    device_index=device_index,
+                    asr_server_ip=asr_server_ip,
+                    asr_server_port=asr_server_port,
+                    clipboard=clipboard,
+                    quiet=quiet,
+                    list_devices=list_devices,
+                ),
+            )
 
-    if args.daemon:
+    if daemon:
         process_manager.daemonize(process_name, job_to_run)
     else:
         job_to_run()
-
-
-if __name__ == "__main__":
-    main()

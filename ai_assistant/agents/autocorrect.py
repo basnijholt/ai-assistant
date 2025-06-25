@@ -17,13 +17,13 @@ Pro-tip:
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import sys
 import time
 
 import httpx
 import pyperclip
+import typer
 from ollama import ResponseError
 from openai import APIConnectionError
 from pydantic_ai.exceptions import ModelHTTPError
@@ -31,7 +31,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
 
-from ai_assistant import cli, config
+from ai_assistant import config
+from ai_assistant.cli import app
 from ai_assistant.ollama_client import build_agent
 from ai_assistant.utils import get_clipboard_text
 
@@ -53,26 +54,6 @@ Do not wrap the output in markdown or code blocks.
 """
 
 # --- Main Application Logic ---
-
-
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments and return the parsed namespace."""
-    parser = argparse.ArgumentParser(
-        description="Correct text from clipboard using a local Ollama model.",
-    )
-    parser.add_argument(
-        "--simple-output",
-        "-s",
-        action="store_true",
-        help="Print minimal output (suitable for notifications/automation).",
-    )
-    parser.add_argument(
-        "--model",
-        "-m",
-        default=config.DEFAULT_MODEL,
-        help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
-    )
-    return parser.parse_args()
 
 
 async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, float]:
@@ -133,32 +114,32 @@ def _display_result(
         )
 
 
-def main() -> None:
-    """Main function."""
-    parser = cli.get_base_parser()
-    parser.description = "Correct text from clipboard using a local Ollama model."
-    parser.add_argument(
+@app.command("autocorrect")
+def autocorrect(
+    ctx: typer.Context,
+    *,
+    text: str | None = typer.Argument(
+        None,
+        help="The text to correct. If not provided, reads from clipboard.",
+    ),
+    model: str = typer.Option(
+        config.DEFAULT_MODEL,
         "--model",
         "-m",
-        default=config.DEFAULT_MODEL,
         help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
-    )
-    parser.add_argument(
+    ),
+    ollama_host: str = typer.Option(
+        config.OLLAMA_HOST,
         "--ollama-host",
-        default=config.OLLAMA_HOST,
         help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
-    )
-    parser.add_argument(
-        "text",
-        nargs="?",
-        default=None,
-        help="The text to correct. If not provided, reads from clipboard.",
-    )
-    args = parser.parse_args()
-    cli.setup_logging(args)
+    ),
+) -> None:
+    """Correct text from clipboard using a local Ollama model."""
+    quiet = ctx.obj["quiet"]
+    log_file = ctx.obj["log_file"]
 
-    console = Console() if not args.quiet else None
-    original_text = args.text if args.text is not None else get_clipboard_text(console)
+    console = Console() if not quiet else None
+    original_text = text if text is not None else get_clipboard_text(console)
 
     if original_text is None:
         sys.exit(0)
@@ -166,41 +147,37 @@ def main() -> None:
     display_original_text(original_text, console)
 
     try:
-        if args.quiet:
+        if quiet:
             corrected_text, elapsed = asyncio.run(
-                process_text(original_text, args.model, args.ollama_host),
+                process_text(original_text, model, ollama_host),
             )
         else:
             with Status(
-                f"[bold yellow]🤖 Correcting with {args.model}...[/bold yellow]",
+                f"[bold yellow]🤖 Correcting with {model}...[/bold yellow]",
                 console=console,
             ) as status:
-                maybe_log = f" (see [dim]log at {args.log_file}[/dim])" if args.log_file else ""
+                maybe_log = f" (see [dim]log at {log_file}[/dim])" if log_file else ""
                 status.update(
-                    f"[bold yellow]🤖 Correcting with {args.model}...{maybe_log}[/bold yellow]",
+                    f"[bold yellow]🤖 Correcting with {model}...{maybe_log}[/bold yellow]",
                 )
                 corrected_text, elapsed = asyncio.run(
-                    process_text(original_text, args.model, args.ollama_host),
+                    process_text(original_text, model, ollama_host),
                 )
 
         _display_result(
             corrected_text,
             original_text,
             elapsed,
-            simple_output=args.quiet,
+            simple_output=quiet,
             console=console,
         )
 
     except (ResponseError, httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
-        if args.quiet:
+        if quiet:
             print(f"❌ {e}")
         elif console:
             console.print(f"❌ {e}", style="bold red")
             console.print(
-                f"   Please check that your Ollama server is running at [bold cyan]{args.ollama_host}[/bold cyan]",
+                f"   Please check that your Ollama server is running at [bold cyan]{ollama_host}[/bold cyan]",
             )
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()

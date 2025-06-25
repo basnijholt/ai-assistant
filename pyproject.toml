@@ -13,6 +13,7 @@ dependencies = [
     "rich",
     "pyperclip",
     "pydantic-ai-slim[openai]",
+    "typer[all]",
 ]
 requires-python = ">=3.11"
 
@@ -60,9 +61,7 @@ dev = [
 ]
 
 [project.scripts]
-autocorrect = "ai_assistant.agents.autocorrect:main"
-transcribe = "ai_assistant.agents.transcribe:main"
-voice-assistant = "ai_assistant.agents.voice_assistant:main"
+ai-assistant = "ai_assistant.cli:app"
 
 [tool.setuptools.packages.find]
 include = ["ai_assistant.*", "ai_assistant"]

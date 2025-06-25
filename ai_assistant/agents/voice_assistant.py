@@ -35,7 +35,6 @@ This is much cleaner than the previous approach using pgrep/pkill!
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import logging
 import signal
@@ -44,9 +43,8 @@ import time
 from contextlib import nullcontext, suppress
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    import pyaudio
 import pyperclip
+import typer
 from pydantic_ai import Agent
 from rich.console import Console
 from rich.live import Live
@@ -63,7 +61,8 @@ from wyoming.asr import (
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
-from ai_assistant import asr, cli, config, process_manager
+from ai_assistant import asr, config, process_manager
+from ai_assistant.cli import app
 from ai_assistant.ollama_client import build_agent
 from ai_assistant.utils import get_clipboard_text
 
@@ -91,6 +90,7 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 """
 
 if TYPE_CHECKING:
+    import pyaudio
     from pydantic_ai import Agent
     from rich.align import Align
     from wyoming.client import AsyncClient
@@ -200,14 +200,16 @@ async def receive_text(
 
 
 async def get_voice_instruction(
-    args: argparse.Namespace,
+    asr_server_ip: str,
+    asr_server_port: int,
+    device_index: int | None,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: asyncio.Event,
     console: Console | None,
 ) -> str | None:
     """Connects to ASR server and returns the transcribed instruction."""
-    uri = f"tcp://{args.asr_server_ip}:{args.asr_server_port}"
+    uri = f"tcp://{asr_server_ip}:{asr_server_port}"
     logger.info("Connecting to Wyoming server at %s", uri)
 
     try:
@@ -222,7 +224,7 @@ async def get_voice_instruction(
                 rate=config.PYAUDIO_RATE,
                 input=True,
                 frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=args.device_index,
+                input_device_index=device_index,
             ) as stream:
                 live_cm = (
                     Live(
@@ -288,7 +290,8 @@ async def process_with_llm(
 
 
 async def process_and_update_clipboard(
-    args: argparse.Namespace,
+    model: str,
+    ollama_host: str,
     logger: logging.Logger,
     console: Console | None,
     original_text: str,
@@ -298,11 +301,11 @@ async def process_and_update_clipboard(
 
     In quiet mode, only the result is printed to stdout.
     """
-    agent = build_agent(model=args.model, ollama_host=args.ollama_host)
+    agent = build_agent(model=model, ollama_host=ollama_host)
     try:
         status_cm = (
             Status(
-                f"[bold yellow]🤖 Applying instruction with {args.model}...[/bold yellow]",
+                f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]",
                 console=console,
             )
             if console
@@ -339,7 +342,7 @@ async def process_and_update_clipboard(
         )
         _print(
             console,
-            f"   Please check your Ollama server at [cyan]{args.ollama_host}[/cyan]",
+            f"   Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
         )
         sys.exit(1)
 
@@ -347,13 +350,22 @@ async def process_and_update_clipboard(
 # --- Main Application Logic ---
 
 
-async def async_main(args: argparse.Namespace) -> None:
+async def async_main(
+    *,
+    quiet: bool,
+    device_index: int | None,
+    list_devices: bool,
+    asr_server_ip: str,
+    asr_server_port: int,
+    model: str,
+    ollama_host: str,
+) -> None:
     """Main async function, consumes parsed arguments."""
     logger = logging.getLogger()
-    console = Console() if not args.quiet else None
+    console = Console() if not quiet else None
 
     with asr.pyaudio_context() as p:
-        if args.list_devices:
+        if list_devices:
             asr.list_input_devices(p, console)
             return
 
@@ -362,10 +374,10 @@ async def async_main(args: argparse.Namespace) -> None:
             return
 
         _print(console, Panel(original_text, title="[cyan]📝 Text to Process[/cyan]"))
-        if args.device_index is not None:
+        if device_index is not None:
             _print(
                 console,
-                f"🎤 Using device [bold yellow]{args.device_index}[/bold yellow]",
+                f"🎤 Using device [bold yellow]{device_index}[/bold yellow]",
             )
         else:
             _print(
@@ -384,92 +396,95 @@ async def async_main(args: argparse.Namespace) -> None:
         loop.add_signal_handler(signal.SIGINT, shutdown_handler)
         loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
 
-        instruction = await get_voice_instruction(args, logger, p, stop_event, console)
+        instruction = await get_voice_instruction(
+            asr_server_ip=asr_server_ip,
+            asr_server_port=asr_server_port,
+            device_index=device_index,
+            logger=logger,
+            p=p,
+            stop_event=stop_event,
+            console=console,
+        )
 
         if not instruction or not instruction.strip():
             _print(console, "[yellow]No instruction was transcribed. Exiting.[/yellow]")
             return
 
         await process_and_update_clipboard(
-            args,
-            logger,
-            console,
-            original_text,
-            instruction,
+            model=model,
+            ollama_host=ollama_host,
+            logger=logger,
+            console=console,
+            original_text=original_text,
+            instruction=instruction,
         )
 
 
-def main() -> None:
-    """Synchronous entry point for CLI."""
-    parser = cli.get_base_parser()
-    parser.description = __doc__
-    parser.formatter_class = argparse.RawDescriptionHelpFormatter
-
-    # Add voice-assistant specific arguments
-    parser.add_argument(
+@app.command("voice-assistant")
+def voice_assistant(
+    ctx: typer.Context,
+    device_index: int | None = typer.Option(
+        None,
         "--device-index",
-        type=int,
-        default=None,
         help="Index of the PyAudio input device to use.",
-    )
-    parser.add_argument(
+    ),
+    *,
+    list_devices: bool = typer.Option(
+        False,  # noqa: FBT003
         "--list-devices",
-        action="store_true",
         help="List available audio input devices and exit.",
-    )
-    parser.add_argument(
+        is_eager=True,
+    ),
+    asr_server_ip: str = typer.Option(
+        config.ASR_SERVER_IP,
         "--asr-server-ip",
-        default=config.ASR_SERVER_IP,
         help="Wyoming ASR server IP address.",
-    )
-    parser.add_argument(
+    ),
+    asr_server_port: int = typer.Option(
+        config.ASR_SERVER_PORT,
         "--asr-server-port",
-        type=int,
-        default=config.ASR_SERVER_PORT,
         help="Wyoming ASR server port.",
-    )
-    parser.add_argument(
+    ),
+    model: str = typer.Option(
+        config.DEFAULT_MODEL,
         "--model",
         "-m",
-        default=config.DEFAULT_MODEL,
         help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
-    )
-    parser.add_argument(
+    ),
+    ollama_host: str = typer.Option(
+        config.OLLAMA_HOST,
         "--ollama-host",
-        default=config.OLLAMA_HOST,
         help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
-    )
-    parser.add_argument(
+    ),
+    daemon: bool = typer.Option(
+        False,  # noqa: FBT003
         "--daemon",
-        action="store_true",
         help="Run as a background daemon process.",
-    )
-    parser.add_argument(
+    ),
+    kill: bool = typer.Option(
+        False,  # noqa: FBT003
         "--kill",
-        action="store_true",
         help="Kill any running voice-assistant daemon.",
-    )
-    parser.add_argument(
+    ),
+    status: bool = typer.Option(
+        False,  # noqa: FBT003
         "--status",
-        action="store_true",
         help="Check if voice-assistant daemon is running.",
-    )
-
-    args = parser.parse_args()
-    cli.setup_logging(args)
-    console = Console() if not args.quiet else None
-
-    # Handle process management commands
+    ),
+) -> None:
+    """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM."""
+    quiet = ctx.obj["quiet"]
+    console = Console() if not quiet else None
     process_name = "voice-assistant"
 
-    if args.kill:
+    if kill:
         if process_manager.kill_process(process_name):
             _print(console, "[green]✅ Voice assistant daemon stopped.[/green]")
         else:
             _print(console, "[yellow]⚠️  No voice assistant daemon is running.[/yellow]")
         return
 
-    if args.status:
+    if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
             _print(console, f"[green]✅ Voice assistant daemon is running (PID: {pid}).[/green]")
@@ -479,13 +494,19 @@ def main() -> None:
 
     def job_to_run() -> None:
         with suppress(KeyboardInterrupt):
-            asyncio.run(async_main(args))
+            asyncio.run(
+                async_main(
+                    quiet=quiet,
+                    device_index=device_index,
+                    list_devices=list_devices,
+                    asr_server_ip=asr_server_ip,
+                    asr_server_port=asr_server_port,
+                    model=model,
+                    ollama_host=ollama_host,
+                ),
+            )
 
-    if args.daemon:
+    if daemon:
         process_manager.daemonize(process_name, job_to_run)
     else:
         job_to_run()
-
-
-if __name__ == "__main__":
-    main()

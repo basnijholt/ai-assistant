@@ -44,10 +44,12 @@ async def test_transcribe_main(
     # The function we are testing
     with caplog.at_level(logging.INFO):
         await transcribe.run_transcription(
-            args=mock_args,
-            logger=logging.getLogger(),
+            device_index=None,
+            asr_server_ip="localhost",
+            asr_server_port=12345,
+            clipboard=True,
+            quiet=True,  # To avoid console output in tests
             p=MagicMock(),
-            console=None,
         )
 
     # Assertions

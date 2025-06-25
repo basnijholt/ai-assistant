@@ -7,7 +7,7 @@ import os
 import pyaudio
 
 # --- ASR (Wyoming) Configuration ---
-ASR_SERVER_IP = "192.168.1.143"
+ASR_SERVER_IP = os.getenv("ASR_SERVER_IP", "192.168.1.143")
 ASR_SERVER_PORT = 10300
 
 # --- Ollama LLM Configuration ---
