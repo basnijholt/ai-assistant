@@ -49,8 +49,6 @@ from typing import TYPE_CHECKING, Any
 import pyaudio
 import pyperclip
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
@@ -65,6 +63,10 @@ from wyoming.asr import (
 )
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
+
+from . import cli
+from .ollama_client import build_agent
+from .utils import get_clipboard_text
 
 # --- Configuration ---
 ASR_SERVER_IP = "192.168.1.143"
@@ -104,6 +106,7 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from pydantic_ai import Agent
     from rich.align import Align
 
 
@@ -178,23 +181,6 @@ def setup_logging(args: argparse.Namespace) -> logging.Logger:
 def _print(console: Console | None, message: str | Align, **kwargs: Any) -> None:
     if console is not None:
         console.print(message, **kwargs)
-
-
-def get_clipboard_text(logger: logging.Logger, console: Console | None) -> str | None:
-    """Retrieves text from the clipboard.
-
-    Returns the text or None if clipboard is empty or an error occurs.
-    """
-    try:
-        original_text = pyperclip.paste()
-        if not original_text:
-            _print(console, "[yellow]Clipboard is empty.[/yellow]")
-            return None
-        return original_text
-    except pyperclip.PyperclipException:
-        logger.exception("Could not read from clipboard")
-        _print(console, "[bold red]❌ Error reading from clipboard:[/bold red]")
-        return None
 
 
 @contextmanager
@@ -370,17 +356,6 @@ async def get_voice_instruction(
 # --- LLM (Editing) Logic ---
 
 
-def build_agent(model: str) -> Agent:
-    """Construct and return a PydanticAI agent configured for local Ollama."""
-    ollama_provider = OpenAIProvider(base_url=f"{OLLAMA_HOST}/v1")
-    ollama_model = OpenAIModel(model_name=model, provider=ollama_provider)
-    return Agent(
-        model=ollama_model,
-        system_prompt=SYSTEM_PROMPT,
-        instructions=AGENT_INSTRUCTIONS,
-    )
-
-
 async def process_with_llm(
     agent: Agent,
     original_text: str,
@@ -413,7 +388,12 @@ async def process_and_update_clipboard(
 
     In quiet mode, only the result is printed to stdout.
     """
-    agent = build_agent(args.model)
+    agent = build_agent(
+        model=args.model,
+        ollama_host=OLLAMA_HOST,
+        system_prompt=SYSTEM_PROMPT,
+        instructions=AGENT_INSTRUCTIONS,
+    )
     try:
         status_cm = (
             Status(
@@ -463,9 +443,15 @@ async def process_and_update_clipboard(
 
 
 async def main() -> None:
-    """Orchestrate the entire voice-assistant-for-clipboard workflow."""
-    args = parse_args()
-    logger = setup_logging(args)
+    """Main function."""
+    parser = cli.get_base_parser()
+    parser.description = __doc__
+    # Add script-specific arguments
+    # ...
+    args = parser.parse_args()
+    cli.setup_logging(args)
+    logger = logging.getLogger()
+
     console = Console() if not args.quiet else None
 
     with pyaudio_context() as p:
@@ -473,7 +459,7 @@ async def main() -> None:
             list_input_devices(p, console)
             return
 
-        original_text = get_clipboard_text(logger, console)
+        original_text = get_clipboard_text(console)
         if not original_text:
             return
 

@@ -1,30 +1,6 @@
-r"""Wyoming ASR Client for streaming microphone audio to a transcription server.
+"""Wyoming ASR Client for streaming microphone audio to a transcription server."""
 
-KEYBOARD MAESTRO INTEGRATION:
-To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
-
-1. Trigger: Hot Key (e.g., Cmd+Shift+R)
-
-2. If/Then/Else Action:
-   - Condition: Shell script returns success
-   - Script: pgrep -f "transcribe\.py.*--clipboard" > /dev/null
-
-3. Then Actions (if process is running):
-   - Display Text Briefly: "Stopping transcription"
-   - Execute Shell Script: pkill -INT -f "transcribe\.py.*--clipboard"
-   - Display Text Briefly: "🛑 Stopped transcription"
-
-4. Else Actions (if process is not running):
-   - Display Text Briefly: "🎤 Starting transcription"
-   - Execute Shell Script:
-     #!/bin/zsh
-     source "$HOME/.dotbins/shell/zsh.sh" 2>/dev/null || true  # Adds uv to PATH
-     ${HOME}/dotfiles/scripts/transcribe.py --device-index 1 --clipboard --quiet &
-   - Display Text Briefly: "Started transcription"
-
-This creates a single hotkey that toggles transcription on/off with visual feedback.
-*Note that Keyboard Maestro requires notification permission to show the notification.*
-"""
+from __future__ import annotations
 
 import argparse
 import asyncio
@@ -35,6 +11,7 @@ from collections.abc import Generator
 from contextlib import contextmanager, nullcontext, suppress
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pyaudio
 import pyperclip
@@ -50,6 +27,12 @@ from wyoming.asr import (
 )
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
+
+from . import cli
+from .utils import _print
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 HERE = Path(__file__).parent
 
@@ -123,7 +106,7 @@ def setup_logging(args: argparse.Namespace) -> logging.Logger:
         handlers.append(logging.FileHandler(args.log_file, mode="w"))  # type: ignore[arg-type]
     logging.basicConfig(
         level=args.log_level,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=handlers,
     )
     return logging.getLogger(__name__)
@@ -264,11 +247,6 @@ async def receive_text(
             )
 
 
-def _print(console: Console | None, message: str, end: str = "\n") -> None:
-    if console is not None:
-        console.print(message, end=end)
-
-
 async def run_transcription(
     args: argparse.Namespace,
     logger: logging.Logger,
@@ -336,9 +314,13 @@ async def run_transcription(
 
 
 async def main() -> None:
-    """Sets up logging, arguments, and the main asyncio loop."""
-    args = parse_args()
-    logger = setup_logging(args)
+    """Main entry point."""
+    parser = cli.get_base_parser()
+    parser.description = __doc__
+    args = parser.parse_args()
+    cli.setup_logging(args)
+
+    logger = logging.getLogger()
     console = Console() if not args.quiet else None
 
     with pyaudio_context() as p:

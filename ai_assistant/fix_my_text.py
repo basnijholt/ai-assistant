@@ -25,16 +25,17 @@ import time
 import httpx
 import pyperclip
 from ollama._types import OllamaError
-from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
 from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
 
+from . import cli
+from .ollama_client import build_agent
+from .utils import get_clipboard_text
+
 # --- Configuration ---
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_MODEL = "gemma3:latest"
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+DEFAULT_MODEL = "llama3"
 
 # The agent's core identity and immutable rules.
 SYSTEM_PROMPT = """\
@@ -74,24 +75,16 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_agent(model: str) -> Agent:
-    """Construct and return a PydanticAI agent configured for local Ollama."""
-    ollama_provider = OpenAIProvider(base_url=f"{OLLAMA_HOST}/v1")
-    ollama_model = OpenAIModel(
-        model_name=model,
-        provider=ollama_provider,
-    )
-    return Agent(
-        model=ollama_model,
+def process_text(text: str, model: str) -> tuple[str, float]:
+    """Process text with the LLM and return the corrected text and elapsed time."""
+    agent = build_agent(
+        model=model,
+        ollama_host=OLLAMA_HOST,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
-
-
-def process_text(agent: Agent, text: str) -> tuple[str, float]:
-    """Run the agent synchronously and return corrected text along with elapsed seconds."""
     t_start = time.monotonic()
-    result = agent.run_sync(text)
+    result = agent.run(text)
     t_end = time.monotonic()
     return result.output, t_end - t_start
 
@@ -142,52 +135,52 @@ def _display_result(
 
 
 def main() -> None:
-    """Orchestrate argument parsing, processing, and output."""
-    args = parse_args()
-    simple_output = args.simple_output
+    """Main function."""
+    parser = cli.get_base_parser()
+    parser.description = __doc__
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=DEFAULT_MODEL,
+        help=f"The Ollama model to use. Default is {DEFAULT_MODEL}.",
+    )
+    args = parser.parse_args()
+    cli.setup_logging(args)
 
-    console: Console | None = Console() if not simple_output else None
+    console = Console() if not args.quiet else None
+    original_text = args.text if args.text is not None else get_clipboard_text(console)
 
-    original_text = pyperclip.paste()
-
-    if not original_text or not original_text.strip():
-        message = "❌ Clipboard is empty. Nothing to correct."
-        if simple_output:
-            print(message)
-        else:
-            assert console is not None
-            console.print(f"[bold red]{message}[/bold red]")
+    if original_text is None:
         sys.exit(0)
 
     display_original_text(original_text, console)
 
-    agent = build_agent(args.model)
-
     try:
-        if simple_output:
-            corrected_text, elapsed = process_text(agent, original_text)
+        if args.quiet:
+            corrected_text, elapsed = process_text(original_text, args.model)
         else:
-            assert console is not None
             with Status(
-                "[bold yellow]🤖 Processing text with Ollama model...[/bold yellow]",
+                f"[bold yellow]🤖 Correcting with {args.model}...[/bold yellow]",
                 console=console,
-            ):
-                corrected_text, elapsed = process_text(agent, original_text)
+            ) as status:
+                status.update(
+                    f"[bold yellow]🤖 Correcting with {args.model}... (see [dim]log at {args.log_file}[/dim])[/bold yellow]",
+                )
+                corrected_text, elapsed = process_text(original_text, args.model)
 
         _display_result(
             corrected_text,
             original_text,
             elapsed,
-            simple_output=simple_output,
+            simple_output=args.quiet,
             console=console,
         )
 
     except (OllamaError, httpx.ConnectError) as e:
-        if simple_output:
+        if args.quiet:
             print(f"❌ {e}")
-        else:
-            assert console is not None
-            console.print(f"❌ [bold red]An unexpected error occurred: {e}[/bold red]")
+        elif console:
+            console.print(f"❌ {e}", style="bold red")
             console.print(
                 f"   Please check that your Ollama server is running at [bold cyan]{OLLAMA_HOST}[/bold cyan]",
             )
