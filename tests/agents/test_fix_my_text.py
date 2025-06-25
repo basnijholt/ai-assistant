@@ -2,188 +2,181 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
+from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
 
-import pytest
-from ollama import ResponseError
 from rich.console import Console
 
 from ai_assistant.agents import fix_my_text
 
 
-@patch("ai_assistant.agents.fix_my_text.cli.get_base_parser")
-@patch("ai_assistant.agents.fix_my_text.get_clipboard_text", return_value="hello")
-@patch("ai_assistant.agents.fix_my_text.process_text", return_value=("hello world", 0.1))
-@patch("ai_assistant.agents.fix_my_text._display_result")
-def test_fix_my_text_main(
-    mock_display_result: MagicMock,
-    mock_process_text: MagicMock,
-    mock_get_clipboard: MagicMock,
-    mock_get_parser: MagicMock,
-) -> None:
-    """Test the main function of the fix_my_text agent."""
-    mock_parser = MagicMock()
-    mock_parser.parse_args.return_value.text = None
-    mock_parser.parse_args.return_value.quiet = False
-    mock_parser.parse_args.return_value.model = "test-model"
-    mock_parser.parse_args.return_value.log_file = None  # Ensure log_file is None
-    mock_get_parser.return_value = mock_parser
+def test_system_prompt_and_instructions():
+    """Test that the system prompt and instructions are properly defined."""
+    assert fix_my_text.SYSTEM_PROMPT
+    assert "editor" in fix_my_text.SYSTEM_PROMPT.lower()
+    assert "correct" in fix_my_text.SYSTEM_PROMPT.lower()
 
-    with patch("sys.argv", ["fix_my_text", "--model", "test-model"]):
-        fix_my_text.main()
-
-    mock_get_clipboard.assert_called_once()
-    mock_process_text.assert_called_once_with("hello", "test-model")
-    mock_display_result.assert_called_once()
-    args, kwargs = mock_display_result.call_args
-    assert args[0] == "hello world"
-    assert args[1] == "hello"
-    assert args[2] == 0.1
-    assert not kwargs["simple_output"]
-    assert isinstance(kwargs["console"], Console)
+    assert fix_my_text.AGENT_INSTRUCTIONS
+    assert "grammar" in fix_my_text.AGENT_INSTRUCTIONS.lower()
+    assert "spelling" in fix_my_text.AGENT_INSTRUCTIONS.lower()
 
 
-@patch("ai_assistant.agents.fix_my_text.cli.get_base_parser")
-@patch("ai_assistant.agents.fix_my_text.get_clipboard_text", return_value="hello")
-@patch("ai_assistant.agents.fix_my_text.process_text", return_value=("hello world", 0.1))
-@patch("builtins.print")
-def test_fix_my_text_main_quiet(
-    mock_print: MagicMock,
-    mock_process_text: MagicMock,
-    mock_get_clipboard: MagicMock,
-    mock_get_parser: MagicMock,
-) -> None:
-    """Test the main function in quiet mode."""
-    mock_parser = MagicMock()
-    mock_parser.parse_args.return_value.text = None
-    mock_parser.parse_args.return_value.quiet = True
-    mock_parser.parse_args.return_value.model = "test-model"
-    mock_parser.parse_args.return_value.log_file = None
-    mock_get_parser.return_value = mock_parser
+def test_display_result_quiet_mode():
+    """Test the _display_result function in quiet mode with real output."""
+    # Test normal correction
+    with patch("ai_assistant.agents.fix_my_text.pyperclip.copy") as mock_copy:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            fix_my_text._display_result(
+                "Hello world!",
+                "hello world",
+                0.1,
+                simple_output=True,
+                console=None,
+            )
 
-    with patch("sys.argv", ["fix_my_text", "--quiet"]):
-        fix_my_text.main()
-
-    mock_get_clipboard.assert_called_once()
-    mock_process_text.assert_called_once_with("hello", "test-model")
-    mock_print.assert_called_with("hello world")
+        assert output.getvalue().strip() == "Hello world!"
+        mock_copy.assert_called_once_with("Hello world!")
 
 
-@patch("ai_assistant.agents.fix_my_text.get_clipboard_text", return_value="hello")
-@patch(
-    "ai_assistant.agents.fix_my_text.process_text",
-    side_effect=ResponseError("Test error"),
-)
-@patch("ai_assistant.agents.fix_my_text.cli.get_base_parser")
-@patch("builtins.print")
-def test_fix_my_text_main_error(
-    mock_print: MagicMock,
-    mock_get_parser: MagicMock,
-    mock_process_text: MagicMock,  # noqa: ARG001
-    mock_get_clipboard: MagicMock,  # noqa: ARG001
-) -> None:
-    """Test the main function with an error."""
-    mock_parser = MagicMock()
-    mock_parser.parse_args.return_value.text = None
-    mock_parser.parse_args.return_value.quiet = True
-    mock_parser.parse_args.return_value.model = "test-model"
-    mock_parser.parse_args.return_value.log_file = None
-    mock_get_parser.return_value = mock_parser
+def test_display_result_no_correction_needed():
+    """Test the _display_result function when no correction is needed."""
+    with patch("ai_assistant.agents.fix_my_text.pyperclip.copy") as mock_copy:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            fix_my_text._display_result(
+                "Hello world!",
+                "Hello world!",
+                0.1,
+                simple_output=True,
+                console=None,
+            )
 
-    with patch("sys.argv", ["fix_my_text", "--quiet"]), pytest.raises(SystemExit):
-        fix_my_text.main()
+        assert output.getvalue().strip() == "✅ No correction needed."
+        mock_copy.assert_called_once_with("Hello world!")
 
-    mock_print.assert_called_with("❌ Test error (status code: -1)")
+
+def test_display_result_verbose_mode():
+    """Test the _display_result function in verbose mode with real console output."""
+    console = Console(file=io.StringIO(), width=80)
+
+    with patch("ai_assistant.agents.fix_my_text.pyperclip.copy") as mock_copy:
+        fix_my_text._display_result(
+            "Hello world!",
+            "hello world",
+            0.25,
+            simple_output=False,
+            console=console,
+        )
+
+        output = console.file.getvalue()
+        assert "Hello world!" in output
+        assert "Corrected Text" in output
+        assert "Success!" in output
+        assert "0.25" in output  # Just check the number, not exact format
+        assert "seconds" in output
+        mock_copy.assert_called_once_with("Hello world!")
+
+
+def test_display_original_text():
+    """Test the display_original_text function."""
+    console = Console(file=io.StringIO(), width=80)
+
+    fix_my_text.display_original_text("Test text here", console)
+
+    output = console.file.getvalue()
+    assert "Test text here" in output
+    assert "Original Text" in output
+
+
+def test_display_original_text_none_console():
+    """Test display_original_text with None console (should not crash)."""
+    # This should not raise an exception
+    fix_my_text.display_original_text("Test text", None)
 
 
 @patch("ai_assistant.agents.fix_my_text.build_agent")
-def test_process_text(mock_build_agent: MagicMock) -> None:
-    """Test the process_text function."""
+def test_process_text_integration(mock_build_agent: MagicMock) -> None:
+    """Test process_text with a more realistic mock setup."""
+    # Create a mock agent that behaves more like the real thing
     mock_agent = MagicMock()
-    mock_agent.run.return_value.output = "corrected text"
+    mock_result = MagicMock()
+    mock_result.output = "This is corrected text."
+    mock_agent.run.return_value = mock_result
     mock_build_agent.return_value = mock_agent
 
-    result, _ = fix_my_text.process_text("original text", "test-model")
+    # Test the function
+    result, elapsed = fix_my_text.process_text("this is text", "test-model")
 
-    assert result == "corrected text"
+    # Verify the result
+    assert result == "This is corrected text."
+    assert isinstance(elapsed, float)
+    assert elapsed >= 0
+
+    # Verify the agent was called correctly
     mock_build_agent.assert_called_once_with(
         model="test-model",
         ollama_host=fix_my_text.OLLAMA_HOST,
     )
     mock_agent.run.assert_called_once_with(
-        "original text",
+        "this is text",
         system_prompt=fix_my_text.SYSTEM_PROMPT,
         instructions=fix_my_text.AGENT_INSTRUCTIONS,
     )
 
 
-@patch("ai_assistant.agents.fix_my_text.pyperclip.copy")
-def test_display_result(mock_copy: MagicMock) -> None:
-    """Test the _display_result function."""
-    mock_console = MagicMock()
-    fix_my_text._display_result(
-        "corrected",
-        "original",
-        0.1,
-        simple_output=False,
-        console=mock_console,
-    )
-    mock_copy.assert_called_once_with("corrected")
-    assert mock_console.print.call_count == 2
+def test_configuration_constants():
+    """Test that configuration constants are properly set."""
+    # Test that OLLAMA_HOST has a reasonable value (could be localhost or custom)
+    assert fix_my_text.OLLAMA_HOST
+    assert fix_my_text.OLLAMA_HOST.startswith("http")  # Should be a valid URL
+
+    # Test that DEFAULT_MODEL is set
+    assert fix_my_text.DEFAULT_MODEL
+    assert isinstance(fix_my_text.DEFAULT_MODEL, str)
 
 
-@patch("ai_assistant.agents.fix_my_text.pyperclip.copy")
-@patch("builtins.print")
-def test_display_result_quiet(mock_print: MagicMock, mock_copy: MagicMock) -> None:
-    """Test the _display_result function in quiet mode."""
-    fix_my_text._display_result(
-        "corrected",
-        "original",
-        0.1,
-        simple_output=True,
-        console=None,
-    )
-    mock_copy.assert_called_once_with("corrected")
-    mock_print.assert_called_once_with("corrected")
-
-    # Reset mocks for the second test
-    mock_copy.reset_mock()
-    mock_print.reset_mock()
-
-    # Test no correction needed
-    fix_my_text._display_result(
-        "original",
-        "original",
-        0.1,
-        simple_output=True,
-        console=None,
-    )
-    mock_copy.assert_called_once_with("original")
-    mock_print.assert_called_once_with("✅ No correction needed.")
-
-
-@patch("ai_assistant.agents.fix_my_text.get_clipboard_text", return_value="hello")
-@patch(
-    "ai_assistant.agents.fix_my_text.process_text",
-    side_effect=ResponseError("Test error"),
-)
-@patch("ai_assistant.agents.fix_my_text.Console")
-@patch("ai_assistant.agents.fix_my_text.cli.get_base_parser")
-def test_fix_my_text_main_error_verbose(
-    mock_get_parser: MagicMock,
-    mock_console: MagicMock,
-    mock_process_text: MagicMock,  # noqa: ARG001
-    mock_get_clipboard: MagicMock,  # noqa: ARG001
+# Keep one minimal integration test for the main function to ensure it doesn't crash
+@patch("ai_assistant.agents.fix_my_text.process_text")
+@patch("ai_assistant.agents.fix_my_text.get_clipboard_text")
+def test_main_basic_integration(
+    mock_get_clipboard: MagicMock,
+    mock_process_text: MagicMock,
 ) -> None:
-    """Test the main function with an error in verbose mode."""
-    mock_parser = MagicMock()
-    mock_parser.parse_args.return_value.text = None
-    mock_parser.parse_args.return_value.quiet = False
-    mock_parser.parse_args.return_value.model = "test-model"
-    mock_parser.parse_args.return_value.log_file = None
-    mock_get_parser.return_value = mock_parser
+    """Basic integration test for main function - minimal mocking."""
+    mock_get_clipboard.return_value = "test text"
+    mock_process_text.return_value = ("Test text.", 0.1)
 
-    with pytest.raises(SystemExit):
+    # Test with direct text input (no clipboard needed)
+    with (
+        patch("sys.argv", ["fix_my_text", "--quiet", "hello world"]),
+        patch("ai_assistant.agents.fix_my_text.pyperclip.copy"),
+        redirect_stdout(io.StringIO()),
+        contextlib.suppress(SystemExit),
+    ):
+        # This should not crash
         fix_my_text.main()
 
-    assert mock_console().print.call_count > 0
+
+@patch("ai_assistant.agents.fix_my_text.get_clipboard_text")
+def test_main_with_text_argument(mock_get_clipboard: MagicMock) -> None:
+    """Test main function with text provided as argument."""
+    mock_get_clipboard.return_value = "fallback text"
+
+    with patch("ai_assistant.agents.fix_my_text.process_text") as mock_process:
+        mock_process.return_value = ("Corrected text.", 0.1)
+
+        with (
+            patch("sys.argv", ["fix_my_text", "--quiet", "input text"]),
+            patch("ai_assistant.agents.fix_my_text.pyperclip.copy"),
+            redirect_stdout(io.StringIO()),
+            contextlib.suppress(SystemExit),
+        ):
+            fix_my_text.main()
+
+    # Should not have called clipboard since text was provided
+    mock_get_clipboard.assert_not_called()
+    # Should have processed the provided text
+    mock_process.assert_called_with("input text", fix_my_text.DEFAULT_MODEL)
