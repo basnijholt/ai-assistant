@@ -17,6 +17,7 @@ dependencies = [
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
+    { name = "ollama" },
     { name = "pre-commit" },
     { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "pyperclip" },
@@ -28,6 +29,7 @@ dev = [
     { name = "versioningit" },
 ]
 test = [
+    { name = "ollama" },
     { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "pyperclip" },
     { name = "pytest" },
@@ -40,6 +42,7 @@ test = [
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
+    { name = "ollama" },
     { name = "pre-commit" },
     { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "pyperclip" },
@@ -56,6 +59,7 @@ requires-dist = [
     { name = "ai-assistant", extras = ["test"], marker = "extra == 'dev'" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "notebook", marker = "extra == 'dev'" },
+    { name = "ollama", marker = "extra == 'test'" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pyaudio" },
     { name = "pydantic-ai-slim", extras = ["openai"] },
@@ -77,6 +81,7 @@ provides-extras = ["test", "dev"]
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
+    { name = "ollama" },
     { name = "pre-commit", specifier = ">=3.0.0" },
     { name = "pydantic-ai-slim", extras = ["openai"] },
     { name = "pyperclip" },
@@ -1186,6 +1191,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/54/d2/92fa3243712b9a3e8bafaf60aac366da1cada3639ca767ff4b5b3654ec28/notebook_shim-0.2.4.tar.gz", hash = "sha256:b4b2cfa1b65d98307ca24361f5b30fe785b53c3fd07b7a47e89acb5e6ac638cb", size = 13167, upload-time = "2024-02-14T23:35:18.353Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/33/bd5b9137445ea4b680023eb0469b2bb969d61303dedb2aac6560ff3d14a1/notebook_shim-0.2.4-py3-none-any.whl", hash = "sha256:411a5be4e9dc882a074ccbcae671eda64cceb068767e9a3419096986560e1cef", size = 13307, upload-time = "2024-02-14T23:35:16.286Z" },
+]
+
+[[package]]
+name = "ollama"
+version = "0.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/96/c7fe0d2d1b3053be614822a7b722c7465161b3672ce90df71515137580a0/ollama-0.5.1.tar.gz", hash = "sha256:5a799e4dc4e7af638b11e3ae588ab17623ee019e496caaf4323efbaa8feeff93", size = 41112, upload-time = "2025-05-30T21:32:48.679Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d6/76/3f96c8cdbf3955d7a73ee94ce3e0db0755d6de1e0098a70275940d1aff2f/ollama-0.5.1-py3-none-any.whl", hash = "sha256:4c8839f35bc173c7057b1eb2cbe7f498c1a7e134eafc9192824c8aecb3617506", size = 13369, upload-time = "2025-05-30T21:32:47.429Z" },
 ]
 
 [[package]]
