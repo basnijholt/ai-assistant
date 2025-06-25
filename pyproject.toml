@@ -4,15 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-assistant"
-description = "A CLI tool to download files from GitHub repositories, including private ones, by leveraging your existing gh CLI authentication."
+description = "A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance."
 dynamic = ["version"]
 authors = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
 dependencies = [
     "requests>=2.32.3",
     "rich>=14.0.0",
     "typer>=0.12.3",
+    "ollama>=0.2.1",
+    "openai-whisper>=20231117",
+    "sounddevice>=0.4.7",
+    "numpy>=1.26.4",
+    "scipy>=1.14.0",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [project.readme]
 file = "README.md"
@@ -52,7 +57,9 @@ dev = [
 ]
 
 [project.scripts]
-ai-assistant = "ai_assistant.cli:main"
+fix-my-text = "ai_assistant.fix_my_text:main"
+transcribe = "ai_assistant.transcribe:main"
+voice-assistant = "ai_assistant.voice_assistant:main"
 
 [tool.setuptools.packages.find]
 include = ["ai_assistant.*", "ai_assistant"]
@@ -83,7 +90,7 @@ exclude_lines = [
     "pragma: no cover",
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
-    "if __name__ == .__main__.:",
+    'if __name__ == "__main__":',
 ]
 
 [tool.black]
@@ -91,26 +98,26 @@ line-length = 100
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "T20",     # flake8-print
-    "ANN101",  # Missing type annotation for {name} in method
-    "S101",    # Use of assert detected
-    "S603",    # S603 `subprocess` call: check for execution of untrusted input
-    "PD901",   # df is a bad variable name. Be kinder to your future self.
-    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in {name}
-    "D402",    # First line should not be the function's signature
-    "PLW0603", # Using the global statement to update `X` is discouraged
-    "D401",    # First line of docstring should be in imperative mood
-    "SLF001",  # Private member accessed
-    "PLR0913", # Too many arguments in function definition
-    "TD002",   # Missing author in TODO
-    "ANN002",  # Missing type annotation for `*args`
-    "ANN003",  # Missing type annotation for `**kwargs`
-    "E501",    # Line too long
+    "T20",
+    "ANN101",
+    "S101",
+    "S603",
+    "PD901",
+    "ANN401",
+    "D402",
+    "PLW0603",
+    "D401",
+    "SLF001",
+    "PLR0913",
+    "TD002",
+    "ANN002",
+    "ANN003",
+    "E501",
     "TRY300",
 ]
 
@@ -125,7 +132,7 @@ ignore = [
 max-complexity = 18
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 
 [tool.versioningit]
 

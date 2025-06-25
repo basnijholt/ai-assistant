@@ -41,8 +41,8 @@ import logging
 import signal
 import wave
 from collections.abc import Generator
-from contextlib import contextmanager, nullcontext
-from datetime import datetime
+from contextlib import contextmanager, nullcontext, suppress
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pyaudio
@@ -265,11 +265,11 @@ async def receive_text(
             pyperclip.copy(transcript_text)
             logger.info("Copied transcript to clipboard.")
             _print(console, "[italic green]Copied to clipboard.[/italic green]")
-        except pyperclip.PyperclipException as e:
-            logger.error("Could not copy to clipboard: %s", e)
+        except pyperclip.PyperclipException:
+            logger.exception("Could not copy to clipboard")
             _print(
                 console,
-                f"[bold red]Error:[/bold red] Could not copy to clipboard: {e}",
+                "[bold red]Error:[/bold red] Could not copy to clipboard",
             )
 
 
@@ -292,17 +292,18 @@ async def run_transcription(
 
     client = AsyncClient.from_uri(uri)
     output_wav = (
-        HERE / f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
+        HERE / f"recording_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.wav"
         if args.save_recording
         else None
     )
+
+    if output_wav:
+        _print(console, f"[green]Will save recording to:[/] {output_wav}")
 
     try:
         await client.connect()
         logger.info("Connection established")
         _print(console, "[green]Connection successful.[/green] Listening...")
-
-        wav_manager = wave.open(output_wav, "wb") if output_wav else nullcontext()
 
         with (
             open_pyaudio_stream(
@@ -314,21 +315,26 @@ async def run_transcription(
                 frames_per_buffer=CHUNK_SIZE,
                 input_device_index=args.device_index,
             ) as stream,
-            wav_manager as wav_file,
         ):
             if output_wav:
                 logger.debug("Opening WAV file %s", output_wav)
-                wav_file.setnchannels(CHANNELS)
-                wav_file.setsampwidth(2)
-                wav_file.setframerate(RATE)
+                with wave.open(str(output_wav), "wb") as wav_file:
+                    if wav_file:
+                        wav_file.setnchannels(1)
+                        wav_file.setsampwidth(p.get_sample_size(pyaudio.paInt16))
+                        wav_file.setframerate(RATE)
 
-            send_task = asyncio.create_task(
-                send_audio(client, stream, wav_file, stop_event, logger, console),
-            )
-            recv_task = asyncio.create_task(receive_text(client, logger, console, args))
+                    send_task = asyncio.create_task(
+                        send_audio(client, stream, wav_file, stop_event, logger, console),
+                    )
+                    recv_task = asyncio.create_task(receive_text(client, logger, console, args))
 
-            await asyncio.gather(send_task, recv_task)
+                    await asyncio.gather(send_task, recv_task)
 
+    except Exception:
+        logger.exception("An error occurred during the main loop")
+        if console:
+            console.print_exception()
     finally:
         logger.info("run_transcription finally block reached.")
         if output_wav:
@@ -383,8 +389,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    # This try/except is for a fast Ctrl+C before the loop starts
-    try:
+    with suppress(KeyboardInterrupt):
         asyncio.run(main())
-    except KeyboardInterrupt:
-        pass

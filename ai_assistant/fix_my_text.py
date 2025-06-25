@@ -23,12 +23,16 @@ Pro-tip:
 
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
 import time
 
+import httpx
 import pyperclip
+from ollama._types import OllamaError
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -114,10 +118,11 @@ def display_original_text(original_text: str, console: Console | None) -> None:
     )
 
 
-def output_corrected_text(
+def _display_result(
     corrected_text: str,
     original_text: str,
     elapsed: float,
+    *,
     simple_output: bool,
     console: Console | None,
 ) -> None:
@@ -177,15 +182,15 @@ def main() -> None:
             ):
                 corrected_text, elapsed = process_text(agent, original_text)
 
-        output_corrected_text(
+        _display_result(
             corrected_text,
             original_text,
             elapsed,
-            simple_output,
-            console,
+            simple_output=simple_output,
+            console=console,
         )
 
-    except Exception as e:
+    except (OllamaError, httpx.ConnectError) as e:
         if simple_output:
             print(f"❌ {e}")
         else:

@@ -44,6 +44,8 @@ To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
    - Select "Display results in a notification"
 """
 
+from __future__ import annotations
+
 import argparse
 import asyncio
 import logging
@@ -52,7 +54,8 @@ import signal
 import sys
 import time
 from collections.abc import Generator
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager, nullcontext, suppress
+from typing import TYPE_CHECKING, Any
 
 import pyaudio
 import pyperclip
@@ -108,6 +111,9 @@ Analyze the instruction to determine if it's a command to edit the text or a que
 
 Return ONLY the resulting text (either the edit or the answer), with no extra formatting or commentary.
 """
+
+if TYPE_CHECKING:
+    from rich.align import Align
 
 
 # --- Helper Functions & Context Managers ---
@@ -178,27 +184,25 @@ def setup_logging(args: argparse.Namespace) -> logging.Logger:
     return logging.getLogger(__name__)
 
 
-def _print(console: Console | None, message, **kwargs):
+def _print(console: Console | None, message: str | Align, **kwargs: Any) -> None:
     if console is not None:
         console.print(message, **kwargs)
 
 
 def get_clipboard_text(logger: logging.Logger, console: Console | None) -> str | None:
     """Retrieves text from the clipboard.
+
     Returns the text or None if clipboard is empty or an error occurs.
     """
     try:
         original_text = pyperclip.paste()
-        if not original_text or not original_text.strip():
-            _print(
-                console,
-                "[bold red]❌ Clipboard is empty. Nothing to edit.[/bold red]",
-            )
+        if not original_text:
+            _print(console, "[yellow]Clipboard is empty.[/yellow]")
             return None
         return original_text
-    except pyperclip.PyperclipException as e:
-        logger.error("Could not read from clipboard: %s", e)
-        _print(console, f"[bold red]❌ Error reading from clipboard:[/bold red] {e}")
+    except pyperclip.PyperclipException:
+        logger.exception("Could not read from clipboard")
+        _print(console, "[bold red]❌ Error reading from clipboard:[/bold red]")
         return None
 
 
@@ -446,7 +450,7 @@ async def process_and_update_clipboard(
             print(result_text)
 
     except Exception as e:
-        logger.exception("An error occurred during LLM processing: %s", e)
+        logger.exception("An error occurred during LLM processing.")
         _print(
             console,
             f"❌ [bold red]An unexpected LLM error occurred: {e}[/bold red]",
@@ -491,7 +495,7 @@ async def main() -> None:
         loop = asyncio.get_running_loop()
         stop_event = asyncio.Event()
 
-        def shutdown_handler():
+        def shutdown_handler() -> None:
             logger.info("Shutdown signal received. Stopping transcription.")
             if not stop_event.is_set():
                 stop_event.set()
@@ -515,8 +519,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
+    with suppress(KeyboardInterrupt):
         asyncio.run(main())
-    except KeyboardInterrupt:
-        # This catches Ctrl+C if it happens before the loop starts
-        pass
