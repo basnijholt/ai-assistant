@@ -66,6 +66,11 @@ from ai_assistant.cli import app, setup_logging
 from ai_assistant.ollama_client import build_agent
 from ai_assistant.utils import get_clipboard_text
 
+if TYPE_CHECKING:
+    import pyaudio
+    from pydantic_ai import Agent
+    from rich.align import Align
+
 # LLM Prompts
 SYSTEM_PROMPT = """\
 You are a versatile AI text assistant. Your purpose is to either **modify** a given text or **answer questions** about it, based on a specific instruction.
@@ -88,12 +93,6 @@ Analyze the instruction to determine if it's a command to edit the text or a que
 
 Return ONLY the resulting text (either the edit or the answer), with no extra formatting or commentary.
 """
-
-if TYPE_CHECKING:
-    import pyaudio
-    from pydantic_ai import Agent
-    from rich.align import Align
-    from wyoming.client import AsyncClient
 
 
 # --- Helper Functions & Context Managers ---
@@ -238,21 +237,20 @@ async def get_voice_instruction(
                 ) as stream,
                 live_cm,
             ):
-                with live_cm:
-                    send_task = asyncio.create_task(
-                        send_audio(client, stream, stop_event, logger, console),
-                    )
-                    recv_task = asyncio.create_task(
-                        receive_text(client, logger, console)
-                    )
-                    done, pending = await asyncio.wait(
-                        [send_task, recv_task],
-                        return_when=asyncio.ALL_COMPLETED,
-                    )
-                    for task in pending:
-                        task.cancel()
-                    # The result of recv_task is the transcript string
-                    return next(t.result() for t in done if t is recv_task)
+                send_task = asyncio.create_task(
+                    send_audio(client, stream, stop_event, logger, console),
+                )
+                recv_task = asyncio.create_task(
+                    receive_text(client, logger, console),
+                )
+                done, pending = await asyncio.wait(
+                    [send_task, recv_task],
+                    return_when=asyncio.ALL_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+                # The result of recv_task is the transcript string
+                return next(t.result() for t in done if t is recv_task)
     except ConnectionRefusedError:
         _print(
             console,
