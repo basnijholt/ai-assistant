@@ -41,33 +41,22 @@ import signal
 import sys
 import time
 from contextlib import nullcontext, suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pyperclip
 from pydantic_ai import Agent
 from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
-from wyoming.asr import (
-    Transcribe,
-    Transcript,
-    TranscriptChunk,
-    TranscriptStart,
-    TranscriptStop,
-)
-from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.client import AsyncClient
 
 import ai_assistant.agents._cli_options as opts
-from ai_assistant import asr, config, process_manager
+from ai_assistant import asr, process_manager
 from ai_assistant.cli import app, setup_logging
 from ai_assistant.ollama_client import build_agent
-from ai_assistant.utils import get_clipboard_text
+from ai_assistant.utils import _print, get_clipboard_text
 
 if TYPE_CHECKING:
-    import pyaudio
     from pydantic_ai import Agent
-    from rich.align import Align
 
 # LLM Prompts
 SYSTEM_PROMPT = """\
@@ -91,148 +80,6 @@ Analyze the instruction to determine if it's a command to edit the text or a que
 
 Return ONLY the resulting text (either the edit or the answer), with no extra formatting or commentary.
 """
-
-
-# --- Helper Functions & Context Managers ---
-
-
-def _print(console: Console | None, message: str | Align, **kwargs: Any) -> None:
-    if console is not None:
-        console.print(message, **kwargs)
-
-
-# --- ASR (Transcription) Logic ---
-
-
-async def send_audio(
-    client: AsyncClient,
-    stream: pyaudio.Stream,
-    stop_event: asyncio.Event,
-    logger: logging.Logger,
-    console: Console | None,
-) -> None:
-    """Read from mic and send to Wyoming server."""
-    await client.write_event(Transcribe().event())
-    await client.write_event(
-        AudioStart(
-            rate=config.PYAUDIO_RATE,
-            width=2,
-            channels=config.PYAUDIO_CHANNELS,
-        ).event(),
-    )
-
-    try:
-        seconds_streamed = 0.0
-        while not stop_event.is_set():
-            chunk = await asyncio.to_thread(
-                stream.read,
-                num_frames=config.PYAUDIO_CHUNK_SIZE,
-                exception_on_overflow=False,
-            )
-            await client.write_event(
-                AudioChunk(
-                    rate=config.PYAUDIO_RATE,
-                    width=2,
-                    channels=config.PYAUDIO_CHANNELS,
-                    audio=chunk,
-                ).event(),
-            )
-            logger.debug("Sent %d byte(s) of audio", len(chunk))
-            if console:
-                seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
-                # Note: Live display updates are handled by get_voice_instruction
-    finally:
-        await client.write_event(AudioStop().event())
-        logger.debug("Sent AudioStop")
-
-
-async def receive_text(
-    client: AsyncClient,
-    logger: logging.Logger,
-    console: Console | None,
-) -> str:
-    """Receive transcription events and return the final transcript."""
-    transcript_text = ""
-    while True:
-        event = await client.read_event()
-        if event is None:
-            logger.warning("Connection to ASR server lost.")
-            break
-
-        if Transcript.is_type(event.type):
-            transcript = Transcript.from_event(event)
-            transcript_text = transcript.text
-            _print(
-                console,
-                f"\n[bold green]Instruction:[/bold green] {transcript_text}",
-            )
-            logger.info("Final transcript: %s", transcript_text)
-            break
-        if TranscriptChunk.is_type(event.type):
-            chunk = TranscriptChunk.from_event(event)
-            _print(console, chunk.text, end="")
-            logger.debug("Transcript chunk: %s", chunk.text)
-        elif TranscriptStart.is_type(event.type) or TranscriptStop.is_type(event.type):
-            logger.debug("Received %s", event.type)
-        else:
-            logger.debug("Ignoring event type: %s", event.type)
-
-    return transcript_text
-
-
-async def get_voice_instruction(
-    asr_server_ip: str,
-    asr_server_port: int,
-    device_index: int | None,
-    logger: logging.Logger,
-    p: pyaudio.PyAudio,
-    stop_event: asyncio.Event,
-    console: Console | None,
-) -> str | None:
-    """Connects to ASR server and returns the transcribed instruction."""
-    uri = f"tcp://{asr_server_ip}:{asr_server_port}"
-    logger.info("Connecting to Wyoming server at %s", uri)
-
-    try:
-        async with AsyncClient.from_uri(uri) as client:
-            logger.info("ASR connection established")
-            _print(console, "[green]Listening for your command...[/green]")
-
-            with (
-                asr.open_pyaudio_stream(
-                    p,
-                    format=config.PYAUDIO_FORMAT,
-                    channels=config.PYAUDIO_CHANNELS,
-                    rate=config.PYAUDIO_RATE,
-                    input=True,
-                    frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                    input_device_index=device_index,
-                ) as stream,
-            ):
-                send_task = asyncio.create_task(
-                    send_audio(client, stream, stop_event, logger, console),
-                )
-                recv_task = asyncio.create_task(
-                    receive_text(client, logger, console),
-                )
-                done, pending = await asyncio.wait(
-                    [send_task, recv_task],
-                    return_when=asyncio.ALL_COMPLETED,
-                )
-                for task in pending:
-                    task.cancel()
-                # The result of recv_task is the transcript string
-                return next(t.result() for t in done if t is recv_task)
-    except ConnectionRefusedError:
-        _print(
-            console,
-            f"[bold red]ASR Connection refused.[/bold red] Is the server at {uri} running?",
-        )
-        return None
-    except Exception as e:
-        logger.exception("An error occurred during transcription.")
-        _print(console, f"[bold red]Transcription error:[/bold red] {e}")
-        return None
 
 
 # --- LLM (Editing) Logic ---
@@ -370,7 +217,19 @@ async def async_main(
         loop.add_signal_handler(signal.SIGINT, shutdown_handler)
         loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
 
-        instruction = await get_voice_instruction(
+        # Define callbacks for voice assistant specific formatting
+        def chunk_callback(chunk_text: str) -> None:
+            """Handle transcript chunks as they arrive."""
+            _print(console, chunk_text, end="")
+
+        def final_callback(transcript_text: str) -> None:
+            """Format the final instruction result."""
+            _print(
+                console,
+                f"\n[bold green]Instruction:[/bold green] {transcript_text}",
+            )
+
+        instruction = await asr.transcribe_audio(
             asr_server_ip=asr_server_ip,
             asr_server_port=asr_server_port,
             device_index=device_index,
@@ -378,6 +237,10 @@ async def async_main(
             p=p,
             stop_event=stop_event,
             console=console,
+            listening_message="Listening for your command...",
+            send_transcribe_event=True,  # Voice assistant needs this
+            chunk_callback=chunk_callback,
+            final_callback=final_callback,
         )
 
         if not instruction or not instruction.strip():

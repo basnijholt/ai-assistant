@@ -13,48 +13,38 @@ from ai_assistant.agents import transcribe
 @pytest.mark.asyncio
 @patch("ai_assistant.agents.transcribe.asr")
 @patch("ai_assistant.agents.transcribe.pyperclip")
-@patch("ai_assistant.agents.transcribe.AsyncClient")
 async def test_transcribe_main(
-    mock_async_client_class: MagicMock,
     mock_pyperclip: MagicMock,
     mock_asr: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent."""
-    mock_args = MagicMock()
-    mock_args.list_devices = False
-    mock_args.clipboard = True
-    mock_args.asr_server_ip = "localhost"
-    mock_args.asr_server_port = 12345
-    mock_args.device_index = None
+    # Mock the pyaudio context manager
+    mock_pyaudio_instance = MagicMock()
+    mock_asr.pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
 
-    # This is the client that is used in the 'async with' statement
-    mock_async_client_instance = AsyncMock()
-    # This is the class that is called
-    mock_async_client_class.from_uri.return_value = mock_async_client_instance
-
-    # Mock the context manager for the audio stream
-    mock_pyaudio_stream = MagicMock()
-    mock_asr.open_pyaudio_stream.return_value.__enter__.return_value = mock_pyaudio_stream
-
-    # Mock the two async functions that are gathered
-    mock_asr.send_audio = AsyncMock(return_value=None)
-    mock_asr.receive_text = AsyncMock(return_value="hello world")
+    # Mock the unified transcribe_audio function
+    mock_asr.transcribe_audio = AsyncMock(return_value="hello world")
 
     # The function we are testing
     with caplog.at_level(logging.INFO):
-        await transcribe.run_transcription(
+        await transcribe.async_main(
             device_index=None,
             asr_server_ip="localhost",
             asr_server_port=12345,
             clipboard=True,
             quiet=True,  # To avoid console output in tests
-            p=MagicMock(),
+            list_devices=False,
         )
 
     # Assertions
-    assert "Received transcript: hello world" in caplog.text
     assert "Copied transcript to clipboard." in caplog.text
     mock_pyperclip.copy.assert_called_once_with("hello world")
-    mock_asr.send_audio.assert_awaited_once()
-    mock_asr.receive_text.assert_awaited_once()
+    mock_asr.transcribe_audio.assert_awaited_once()
+
+    # Verify the correct arguments were passed to transcribe_audio
+    call_args = mock_asr.transcribe_audio.call_args
+    assert call_args.kwargs["asr_server_ip"] == "localhost"
+    assert call_args.kwargs["asr_server_port"] == 12345
+    assert call_args.kwargs["device_index"] is None
+    assert call_args.kwargs["send_transcribe_event"] is False

@@ -6,95 +6,16 @@ import asyncio
 import logging
 import signal
 from contextlib import suppress
-from typing import TYPE_CHECKING
 
 import pyperclip
 from rich.console import Console
 from rich.live import Live
 from rich.text import Text
-from wyoming.client import AsyncClient
 
 import ai_assistant.agents._cli_options as opts
-from ai_assistant import asr, config, process_manager
+from ai_assistant import asr, process_manager
 from ai_assistant.cli import app, setup_logging
 from ai_assistant.utils import _print
-
-if TYPE_CHECKING:
-    import pyaudio
-
-
-async def run_transcription(
-    device_index: int | None,
-    asr_server_ip: str,
-    asr_server_port: int,
-    *,
-    clipboard: bool,
-    quiet: bool,
-    p: pyaudio.PyAudio,
-) -> None:
-    """Connect to the Wyoming server and run the transcription loop."""
-    logger = logging.getLogger()
-    console = Console() if not quiet else None
-    uri = f"tcp://{asr_server_ip}:{asr_server_port}"
-    logger.info("Connecting to Wyoming server at %s", uri)
-
-    stop_event = asyncio.Event()
-
-    def shutdown_handler() -> None:
-        logger.info("Shutdown signal received.")
-        stop_event.set()
-
-    loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, shutdown_handler)
-
-    try:
-        async with AsyncClient.from_uri(uri) as client:
-            logger.info("Connection established")
-            _print(console, "[green]Listening...")
-
-            with asr.open_pyaudio_stream(
-                p,
-                format=config.PYAUDIO_FORMAT,
-                channels=config.PYAUDIO_CHANNELS,
-                rate=config.PYAUDIO_RATE,
-                input=True,
-                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=device_index,
-            ) as stream:
-                live_cm = (
-                    Live(
-                        Text("Transcribing...", style="blue"),
-                        console=console,
-                        transient=True,
-                    )
-                    if console
-                    else suppress(Exception)
-                )
-                with live_cm as live:
-                    send_task = asyncio.create_task(
-                        asr.send_audio(client, stream, stop_event, logger, live),
-                    )
-                    recv_task = asyncio.create_task(asr.receive_text(client, logger))
-                    await asyncio.gather(send_task, recv_task)
-
-                    transcript = recv_task.result()
-                    logger.info("Received transcript: %s", transcript)
-                    if transcript and clipboard:
-                        pyperclip.copy(transcript)
-                        logger.info("Copied transcript to clipboard.")
-                        _print(console, "[italic green]Copied to clipboard.[/italic green]")
-                    else:
-                        logger.info("Transcript empty or clipboard copy disabled.")
-
-    except ConnectionRefusedError:
-        _print(
-            console,
-            f"[bold red]Connection refused.[/bold red] Could not connect to {uri}",
-        )
-    except Exception:
-        logger.exception("Unhandled exception.")
-        if console:
-            console.print_exception(show_locals=True)
 
 
 async def async_main(
@@ -107,19 +28,56 @@ async def async_main(
     list_devices: bool,
 ) -> None:
     """Async entry point, consuming parsed args."""
+    logger = logging.getLogger()
     console = Console() if not quiet else None
+
     with asr.pyaudio_context() as p:
         if list_devices:
             asr.list_input_devices(p, console)
             return
-        await run_transcription(
-            device_index=device_index,
-            asr_server_ip=asr_server_ip,
-            asr_server_port=asr_server_port,
-            clipboard=clipboard,
-            quiet=quiet,
-            p=p,
+
+        stop_event = asyncio.Event()
+
+        def shutdown_handler() -> None:
+            logger.info("Shutdown signal received.")
+            stop_event.set()
+
+        loop = asyncio.get_running_loop()
+        loop.add_signal_handler(signal.SIGINT, shutdown_handler)
+
+        # Set up Live display for transcribe mode
+        live_cm = (
+            Live(
+                Text("Transcribing...", style="blue"),
+                console=console,
+                transient=True,
+            )
+            if console
+            else suppress(Exception)
         )
+
+        with live_cm as live:
+            transcript = await asr.transcribe_audio(
+                asr_server_ip=asr_server_ip,
+                asr_server_port=asr_server_port,
+                device_index=device_index,
+                logger=logger,
+                p=p,
+                stop_event=stop_event,
+                console=console,
+                live=live,
+                listening_message="Listening...",
+                send_transcribe_event=False,  # Transcribe doesn't need this
+            )
+
+            if transcript and clipboard:
+                pyperclip.copy(transcript)
+                logger.info("Copied transcript to clipboard.")
+                _print(console, "[italic green]Copied to clipboard.[/italic green]")
+            elif not transcript:
+                logger.info("Transcript empty.")
+            else:
+                logger.info("Clipboard copy disabled.")
 
 
 @app.command("transcribe")
