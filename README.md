@@ -166,6 +166,17 @@ Transcribes whatever you say into text using Wyoming ASR (Automatic Speech Recog
 │                                                   [default: 192.168.1.143]   │
 │ --asr-server-port                        INTEGER  Wyoming ASR server port.   │
 │                                                   [default: 10300]           │
+│ --model            -m                    TEXT     The Ollama model to use.   │
+│                                                   Default is devstral:24b.   │
+│                                                   [default: devstral:24b]    │
+│ --ollama-host                            TEXT     The Ollama server host.    │
+│                                                   Default is                 │
+│                                                   http://localhost:11434.    │
+│                                                   [default:                  │
+│                                                   http://localhost:11434]    │
+│ --llm                  --no-llm                   Use an LLM to process the  │
+│                                                   transcript.                │
+│                                                   [default: no-llm]          │
 │ --stop                                            Stop any running           │
 │                                                   background process.        │
 │ --status                                          Check if a background      │
