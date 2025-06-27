@@ -11,10 +11,9 @@ import pyperclip
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from rich.panel import Panel
 from rich.status import Status
 
-from agent_cli.utils import _print
+from agent_cli.utils import print_error_message, print_output_panel
 
 if TYPE_CHECKING:
     import logging
@@ -116,13 +115,11 @@ async def process_and_update_clipboard(
             logger.info("Copied result to clipboard.")
 
         if console:
-            console.print(
-                Panel(
-                    result_text,
-                    title="[bold green]✨ Result (Copied to Clipboard)[/bold green]",
-                    border_style="green",
-                    subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
-                ),
+            print_output_panel(
+                console,
+                result_text,
+                title="✨ Result (Copied to Clipboard)" if clipboard else "✨ Result",
+                subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
             )
         else:
             # Quiet mode: print result to stdout for Keyboard Maestro to capture
@@ -130,12 +127,9 @@ async def process_and_update_clipboard(
 
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
-        _print(
+        print_error_message(
             console,
-            f"❌ [bold red]An unexpected LLM error occurred: {e}[/bold red]",
-        )
-        _print(
-            console,
-            f"   Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
+            f"An unexpected LLM error occurred: {e}",
+            f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
         )
         sys.exit(1)

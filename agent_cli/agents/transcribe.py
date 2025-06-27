@@ -9,14 +9,19 @@ from contextlib import AbstractContextManager, nullcontext, suppress
 import pyperclip
 from rich.console import Console
 from rich.live import Live
-from rich.panel import Panel
 from rich.text import Text
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
-from agent_cli.utils import _print, print_device_index, signal_handling_context
+from agent_cli.utils import (
+    print_device_index,
+    print_input_panel,
+    print_output_panel,
+    print_status_message,
+    signal_handling_context,
+)
 
 SYSTEM_PROMPT = """
 You are an AI transcription cleanup assistant. Your purpose is to improve and refine raw speech-to-text transcriptions by correcting errors, adding proper punctuation, and enhancing readability while preserving the original meaning and intent.
@@ -95,7 +100,7 @@ async def async_main(
             )
 
         if llm and model and ollama_host and transcript:
-            _print(console, Panel(transcript, title="[cyan]Raw Transcript 📝[/cyan]"))
+            print_input_panel(console, transcript, title="📝 Raw Transcript")
             await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
@@ -109,16 +114,28 @@ async def async_main(
             )
             return
 
-        if transcript and clipboard:
-            pyperclip.copy(transcript)
-            logger.info("Copied transcript to clipboard.")
-            _print(console, "[italic blue]Copied to clipboard.[/italic blue]")
-        elif not transcript:
-            logger.info("Transcript empty.")
+        # When not using LLM, show transcript in output panel for consistency
+        if transcript:
+            if quiet:
+                # Quiet mode: print result to stdout for Keyboard Maestro to capture
+                print(transcript)
+            else:
+                print_output_panel(
+                    console,
+                    transcript,
+                    title="📝 Transcript",
+                    subtitle="[dim]Copied to clipboard[/dim]" if clipboard else None,
+                )
+
+            if clipboard:
+                pyperclip.copy(transcript)
+                logger.info("Copied transcript to clipboard.")
+            else:
+                logger.info("Clipboard copy disabled.")
         else:
-            logger.info("Clipboard copy disabled.")
-        if not quiet:
-            _print(console, f"[italic green]Transcript: {transcript}[/italic green]")
+            logger.info("Transcript empty.")
+            if not quiet:
+                print_status_message(console, "⚠️ No transcript captured.", style="yellow")
 
 
 def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
@@ -167,17 +184,17 @@ def transcribe(
 
     if stop:
         if process_manager.kill_process(process_name):
-            _print(console, "[green]✅ Transcribe stopped.[/green]")
+            print_status_message(console, "✅ Transcribe stopped.")
         else:
-            _print(console, "[yellow]⚠️  No transcribe is running.[/yellow]")
+            print_status_message(console, "⚠️  No transcribe is running.", style="yellow")
         return
 
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
-            _print(console, f"[green]✅ Transcribe is running (PID: {pid}).[/green]")
+            print_status_message(console, f"✅ Transcribe is running (PID: {pid}).")
         else:
-            _print(console, "[yellow]⚠️  Transcribe is not running.[/yellow]")
+            print_status_message(console, "⚠️  Transcribe is not running.", style="yellow")
         return
 
     # Use context manager for PID file management

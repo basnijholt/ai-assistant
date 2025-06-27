@@ -40,7 +40,6 @@ import logging
 from contextlib import suppress
 
 from rich.console import Console
-from rich.panel import Panel
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -50,6 +49,8 @@ from agent_cli.utils import (
     _print,
     get_clipboard_text,
     print_device_index,
+    print_input_panel,
+    print_status_message,
     signal_handling_context,
 )
 
@@ -108,7 +109,7 @@ async def async_main(
             return
 
         print_device_index(console, device_index, device_name)
-        _print(console, Panel(original_text, title="[cyan]📝 Text to Process[/cyan]"))
+        print_input_panel(console, original_text, title="📝 Text to Process")
 
         with signal_handling_context(console, logger) as stop_event:
             # Define callbacks for voice assistant specific formatting
@@ -118,9 +119,10 @@ async def async_main(
 
             def final_callback(transcript_text: str) -> None:
                 """Format the final instruction result."""
-                _print(
+                print_status_message(
                     console,
-                    f"\n[bold green]Instruction:[/bold green] {transcript_text}",
+                    f"\n🎯 Instruction: {transcript_text}",
+                    style="bold green",
                 )
 
             instruction = await asr.transcribe_audio(
@@ -137,9 +139,10 @@ async def async_main(
             )
 
             if not instruction or not instruction.strip():
-                _print(
+                print_status_message(
                     console,
-                    "[yellow]No instruction was transcribed. Exiting.[/yellow]",
+                    "No instruction was transcribed. Exiting.",
+                    style="yellow",
                 )
                 return
 
@@ -191,20 +194,17 @@ def voice_assistant(
 
     if stop:
         if process_manager.kill_process(process_name):
-            _print(console, "[green]✅ Voice assistant stopped.[/green]")
+            print_status_message(console, "✅ Voice assistant stopped.")
         else:
-            _print(console, "[yellow]⚠️  No voice assistant is running.[/yellow]")
+            print_status_message(console, "⚠️  No voice assistant is running.", style="yellow")
         return
 
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
-            _print(
-                console,
-                f"[green]✅ Voice assistant is running (PID: {pid}).[/green]",
-            )
+            print_status_message(console, f"✅ Voice assistant is running (PID: {pid}).")
         else:
-            _print(console, "[yellow]⚠️  Voice assistant is not running.[/yellow]")
+            print_status_message(console, "⚠️  Voice assistant is not running.", style="yellow")
         return
 
     # Use context manager for PID file management

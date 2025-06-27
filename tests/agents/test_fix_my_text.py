@@ -76,8 +76,7 @@ def test_display_result_verbose_mode():
         assert "Hello world!" in output
         assert "Corrected Text" in output
         assert "Success!" in output
-        assert "0.25" in output  # Just check the number, not exact format
-        assert "seconds" in output
+        assert "0.25s" in output  # Changed to match new format
         mock_copy.assert_called_once_with("Hello world!")
 
 

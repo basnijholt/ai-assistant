@@ -13,6 +13,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
 from agent_cli import config
+from agent_cli.utils import print_error_message, print_status_message
 
 if TYPE_CHECKING:
     import logging
@@ -193,7 +194,7 @@ async def transcribe_audio(
         async with AsyncClient.from_uri(uri) as client:
             logger.info("ASR connection established")
             if console:
-                console.print(f"[green]{listening_message}[/green]")
+                print_status_message(console, listening_message)
 
             with open_pyaudio_stream(
                 p,
@@ -232,15 +233,15 @@ async def transcribe_audio(
                 return recv_task.result()
 
     except ConnectionRefusedError:
-        if console:
-            console.print(
-                f"[bold red]ASR Connection refused.[/bold red] Is the server at {uri} running?",
-            )
+        print_error_message(
+            console,
+            "ASR Connection refused.",
+            f"Is the server at {uri} running?",
+        )
         return None
     except Exception as e:
         logger.exception("An error occurred during transcription.")
-        if console:
-            console.print(f"[bold red]Transcription error:[/bold red] {e}")
+        print_error_message(console, f"Transcription error: {e}")
         return None
 
 

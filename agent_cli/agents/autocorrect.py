@@ -27,13 +27,18 @@ import typer
 from openai import APIConnectionError
 from pydantic_ai.exceptions import ModelHTTPError
 from rich.console import Console
-from rich.panel import Panel
 from rich.status import Status
 
 import agent_cli.agents._cli_options as opts
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
-from agent_cli.utils import get_clipboard_text
+from agent_cli.utils import (
+    get_clipboard_text,
+    print_error_message,
+    print_input_panel,
+    print_output_panel,
+    print_status_message,
+)
 
 # --- Configuration ---
 
@@ -71,16 +76,7 @@ async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, fl
 
 def display_original_text(original_text: str, console: Console | None) -> None:
     """Render the original text panel in verbose mode."""
-    if console is None:
-        return
-    console.print(
-        Panel(
-            original_text,
-            title="[bold cyan]📋 Original Text[/bold cyan]",
-            border_style="cyan",
-            padding=(1, 2),
-        ),
-    )
+    print_input_panel(console, original_text, title="📋 Original Text")
 
 
 def _display_result(
@@ -101,16 +97,15 @@ def _display_result(
             print(corrected_text)
     else:
         assert console is not None
-        console.print(
-            Panel(
-                corrected_text,
-                title="[bold green]✨ Corrected Text[/bold green]",
-                border_style="green",
-                padding=(1, 2),
-            ),
+        print_output_panel(
+            console,
+            corrected_text,
+            title="✨ Corrected Text",
+            subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
         )
-        console.print(
-            f"✅ [bold green]Success! Corrected text has been copied to your clipboard. [bold yellow](took {elapsed:.2f} seconds)[/bold yellow][/bold green]",
+        print_status_message(
+            console,
+            "✅ Success! Corrected text has been copied to your clipboard.",
         )
 
 
@@ -166,9 +161,10 @@ def autocorrect(
     except (httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
         if quiet:
             print(f"❌ {e}")
-        elif console:
-            console.print(f"❌ {e}", style="bold red")
-            console.print(
-                f"   Please check that your Ollama server is running at [bold cyan]{ollama_host}[/bold cyan]",
+        else:
+            print_error_message(
+                console,
+                str(e),
+                f"Please check that your Ollama server is running at [bold cyan]{ollama_host}[/bold cyan]",
             )
         sys.exit(1)
