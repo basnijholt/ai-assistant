@@ -29,7 +29,7 @@ DEVICE_INDEX: int | None = typer.Option(
 DEVICE_NAME: str | None = typer.Option(
     None,
     "--device-name",
-    help="Name of the PyAudio input device to use.",
+    help="Device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
 )
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
