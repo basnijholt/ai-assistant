@@ -25,6 +25,7 @@ async def test_transcribe_main(
 
     # Mock the unified transcribe_audio function
     mock_asr.transcribe_audio = AsyncMock(return_value="hello world")
+    mock_asr.input_device = MagicMock(return_value=(None, None))
 
     # The function we are testing
     with caplog.at_level(logging.INFO):
