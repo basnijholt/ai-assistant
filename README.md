@@ -166,13 +166,12 @@ Transcribes whatever you say into text using Wyoming ASR (Automatic Speech Recog
 │                                                   [default: 192.168.1.143]   │
 │ --asr-server-port                        INTEGER  Wyoming ASR server port.   │
 │                                                   [default: 10300]           │
-│ --clipboard            --no-clipboard             Copy transcript to         │
-│                                                   clipboard.                 │
-│                                                   [default: clipboard]       │
 │ --stop                                            Stop any running           │
 │                                                   background process.        │
 │ --status                                          Check if a background      │
 │                                                   process is running.        │
+│ --clipboard            --no-clipboard             Copy result to clipboard.  │
+│                                                   [default: clipboard]       │
 │ --log-level                              TEXT     Set logging level.         │
 │                                                   [default: WARNING]         │
 │ --log-file                               TEXT     Path to a file to write    │
@@ -238,35 +237,48 @@ The process management features make it perfect for hotkey toggles. Use `--statu
  voice-assistant --stop                                                         
                                                                                 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --device-index             INTEGER  Index of the PyAudio input device to     │
-│                                     use.                                     │
-│                                     [default: None]                          │
-│ --device-name              TEXT     Device name keywords for partial         │
-│                                     matching. Supports comma-separated list  │
-│                                     where each term can partially match      │
-│                                     device names (case-insensitive). First   │
-│                                     matching device is selected.             │
-│                                     [default: None]                          │
-│ --list-devices                      List available audio input devices and   │
-│                                     exit.                                    │
-│ --asr-server-ip            TEXT     Wyoming ASR server IP address.           │
-│                                     [default: 192.168.1.143]                 │
-│ --asr-server-port          INTEGER  Wyoming ASR server port.                 │
-│                                     [default: 10300]                         │
-│ --model            -m      TEXT     The Ollama model to use. Default is      │
-│                                     devstral:24b.                            │
-│                                     [default: devstral:24b]                  │
-│ --ollama-host              TEXT     The Ollama server host. Default is       │
-│                                     http://localhost:11434.                  │
-│                                     [default: http://localhost:11434]        │
-│ --stop                              Stop any running background process.     │
-│ --status                            Check if a background process is         │
-│                                     running.                                 │
-│ --log-level                TEXT     Set logging level. [default: WARNING]    │
-│ --log-file                 TEXT     Path to a file to write logs to.         │
-│                                     [default: None]                          │
-│ --quiet            -q               Suppress console output from rich.       │
-│ --help                              Show this message and exit.              │
+│ --device-index                           INTEGER  Index of the PyAudio input │
+│                                                   device to use.             │
+│                                                   [default: None]            │
+│ --device-name                            TEXT     Device name keywords for   │
+│                                                   partial matching. Supports │
+│                                                   comma-separated list where │
+│                                                   each term can partially    │
+│                                                   match device names         │
+│                                                   (case-insensitive). First  │
+│                                                   matching device is         │
+│                                                   selected.                  │
+│                                                   [default: None]            │
+│ --list-devices                                    List available audio input │
+│                                                   devices and exit.          │
+│ --asr-server-ip                          TEXT     Wyoming ASR server IP      │
+│                                                   address.                   │
+│                                                   [default: 192.168.1.143]   │
+│ --asr-server-port                        INTEGER  Wyoming ASR server port.   │
+│                                                   [default: 10300]           │
+│ --model            -m                    TEXT     The Ollama model to use.   │
+│                                                   Default is devstral:24b.   │
+│                                                   [default: devstral:24b]    │
+│ --ollama-host                            TEXT     The Ollama server host.    │
+│                                                   Default is                 │
+│                                                   http://localhost:11434.    │
+│                                                   [default:                  │
+│                                                   http://localhost:11434]    │
+│ --stop                                            Stop any running           │
+│                                                   background process.        │
+│ --status                                          Check if a background      │
+│                                                   process is running.        │
+│ --clipboard            --no-clipboard             Copy result to clipboard.  │
+│                                                   [default: clipboard]       │
+│ --log-level                              TEXT     Set logging level.         │
+│                                                   [default: WARNING]         │
+│ --log-file                               TEXT     Path to a file to write    │
+│                                                   logs to.                   │
+│                                                   [default: None]            │
+│ --quiet            -q                             Suppress console output    │
+│                                                   from rich.                 │
+│ --help                                            Show this message and      │
+│                                                   exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
