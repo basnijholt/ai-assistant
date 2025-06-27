@@ -18,11 +18,11 @@ from agent_cli.utils import _print, print_device_index, signal_handling_context
 
 
 async def async_main(
+    *,
     device_index: int | None,
     device_name: str | None,
     asr_server_ip: str,
     asr_server_port: int,
-    *,
     clipboard: bool,
     quiet: bool,
     list_devices: bool,
@@ -81,12 +81,15 @@ def transcribe(
     *,
     device_index: int | None = opts.DEVICE_INDEX,
     device_name: str | None = opts.DEVICE_NAME,
+    # Audio
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
-    clipboard: bool = opts.CLIPBOARD,
+    # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
+    # General
+    clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,

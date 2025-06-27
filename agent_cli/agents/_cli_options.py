@@ -47,11 +47,6 @@ ASR_SERVER_PORT: int = typer.Option(
     "--asr-server-port",
     help="Wyoming ASR server port.",
 )
-CLIPBOARD: bool = typer.Option(
-    True,  # noqa: FBT003
-    "--clipboard/--no-clipboard",
-    help="Copy transcript to clipboard.",
-)
 
 
 # --- Process Management Options ---
@@ -68,6 +63,11 @@ STATUS: bool = typer.Option(
 
 
 # --- General Options ---
+CLIPBOARD: bool = typer.Option(
+    True,  # noqa: FBT003
+    "--clipboard/--no-clipboard",
+    help="Copy result to clipboard.",
+)
 LOG_LEVEL: str = typer.Option(
     "WARNING",
     "--log-level",

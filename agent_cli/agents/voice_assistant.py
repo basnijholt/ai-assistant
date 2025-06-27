@@ -105,14 +105,20 @@ async def process_with_llm(
     instruction: str,
 ) -> tuple[str, float]:
     """Run the agent asynchronously and return corrected text and elapsed time."""
-    user_input = INPUT_TEMPLATE.format(original_text=original_text, instruction=instruction)
+    user_input = INPUT_TEMPLATE.format(
+        original_text=original_text,
+        instruction=instruction,
+    )
     t_start = time.monotonic()
     result = await agent.run(user_input)
     t_end = time.monotonic()
     return result.output, t_end - t_start
 
 
-def _maybe_status(console: Console | None, model: str) -> AbstractContextManager[Status | None]:
+def _maybe_status(
+    console: Console | None,
+    model: str,
+) -> AbstractContextManager[Status | None]:
     """Context manager for status display."""
     if console:
         return Status(
@@ -123,12 +129,14 @@ def _maybe_status(console: Console | None, model: str) -> AbstractContextManager
 
 
 async def process_and_update_clipboard(
+    *,
     model: str,
     ollama_host: str,
     logger: logging.Logger,
     console: Console | None,
     original_text: str,
     instruction: str,
+    clipboard: bool,
 ) -> None:
     """Processes the text with the LLM, updates the clipboard, and displays the result.
 
@@ -142,10 +150,15 @@ async def process_and_update_clipboard(
     )
     try:
         with _maybe_status(console, model):
-            result_text, elapsed = await process_with_llm(agent, original_text, instruction)
+            result_text, elapsed = await process_with_llm(
+                agent,
+                original_text,
+                instruction,
+            )
 
-        pyperclip.copy(result_text)
-        logger.info("Copied result to clipboard.")
+        if clipboard:
+            pyperclip.copy(result_text)
+            logger.info("Copied result to clipboard.")
 
         if console:
             console.print(
@@ -186,6 +199,7 @@ async def async_main(
     asr_server_port: int,
     model: str,
     ollama_host: str,
+    clipboard: bool,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     logger = logging.getLogger()
@@ -232,7 +246,10 @@ async def async_main(
             )
 
             if not instruction or not instruction.strip():
-                _print(console, "[yellow]No instruction was transcribed. Exiting.[/yellow]")
+                _print(
+                    console,
+                    "[yellow]No instruction was transcribed. Exiting.[/yellow]",
+                )
                 return
 
             await process_and_update_clipboard(
@@ -242,6 +259,7 @@ async def async_main(
                 console=console,
                 original_text=original_text,
                 instruction=instruction,
+                clipboard=clipboard,
             )
 
 
@@ -250,13 +268,18 @@ def voice_assistant(
     device_index: int | None = opts.DEVICE_INDEX,
     device_name: str | None = opts.DEVICE_NAME,
     *,
+    # Audio
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
+    # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
+    # General
+    clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
@@ -303,5 +326,6 @@ def voice_assistant(
                 asr_server_port=asr_server_port,
                 model=model,
                 ollama_host=ollama_host,
+                clipboard=clipboard,
             ),
         )
