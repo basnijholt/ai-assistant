@@ -150,6 +150,9 @@ Transcribes whatever you say into text using Wyoming ASR (Automatic Speech Recog
 │ --device-index                           INTEGER  Index of the PyAudio input │
 │                                                   device to use.             │
 │                                                   [default: None]            │
+│ --device-name                            TEXT     Name of the PyAudio input  │
+│                                                   device to use.             │
+│                                                   [default: None]            │
 │ --list-devices                                    List available audio input │
 │                                                   devices and exit.          │
 │ --asr-server-ip                          TEXT     Wyoming ASR server IP      │
@@ -231,6 +234,8 @@ The process management features make it perfect for hotkey toggles. Use `--statu
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --device-index             INTEGER  Index of the PyAudio input device to     │
 │                                     use.                                     │
+│                                     [default: None]                          │
+│ --device-name              TEXT     Name of the PyAudio input device to use. │
 │                                     [default: None]                          │
 │ --list-devices                      List available audio input devices and   │
 │                                     exit.                                    │
