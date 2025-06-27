@@ -37,30 +37,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import sys
-import time
-from contextlib import AbstractContextManager, nullcontext, suppress
-from typing import TYPE_CHECKING
+from contextlib import suppress
 
-import pyperclip
 from rich.console import Console
 from rich.panel import Panel
-from rich.status import Status
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
 from agent_cli.cli import app, setup_logging
-from agent_cli.ollama_client import build_agent
+from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
     _print,
     get_clipboard_text,
     print_device_index,
     signal_handling_context,
 )
-
-if TYPE_CHECKING:
-    from pydantic_ai import Agent
-
 
 # LLM Prompts
 SYSTEM_PROMPT = """\
@@ -84,106 +75,6 @@ Analyze the instruction to determine if it's a command to edit the text or a que
 
 Return ONLY the resulting text (either the edit or the answer), with no extra formatting or commentary.
 """
-
-
-# --- LLM (Editing) Logic ---
-
-INPUT_TEMPLATE = """
-<original-text>
-{original_text}
-</original-text>
-
-<instruction>
-{instruction}
-</instruction>
-"""
-
-
-async def process_with_llm(
-    agent: Agent,
-    original_text: str,
-    instruction: str,
-) -> tuple[str, float]:
-    """Run the agent asynchronously and return corrected text and elapsed time."""
-    user_input = INPUT_TEMPLATE.format(
-        original_text=original_text,
-        instruction=instruction,
-    )
-    t_start = time.monotonic()
-    result = await agent.run(user_input)
-    t_end = time.monotonic()
-    return result.output, t_end - t_start
-
-
-def _maybe_status(
-    console: Console | None,
-    model: str,
-) -> AbstractContextManager[Status | None]:
-    """Context manager for status display."""
-    if console:
-        return Status(
-            f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]",
-            console=console,
-        )
-    return nullcontext()
-
-
-async def process_and_update_clipboard(
-    *,
-    model: str,
-    ollama_host: str,
-    logger: logging.Logger,
-    console: Console | None,
-    original_text: str,
-    instruction: str,
-    clipboard: bool,
-) -> None:
-    """Processes the text with the LLM, updates the clipboard, and displays the result.
-
-    In quiet mode, only the result is printed to stdout.
-    """
-    agent = build_agent(
-        model=model,
-        ollama_host=ollama_host,
-        system_prompt=SYSTEM_PROMPT,
-        instructions=AGENT_INSTRUCTIONS,
-    )
-    try:
-        with _maybe_status(console, model):
-            result_text, elapsed = await process_with_llm(
-                agent,
-                original_text,
-                instruction,
-            )
-
-        if clipboard:
-            pyperclip.copy(result_text)
-            logger.info("Copied result to clipboard.")
-
-        if console:
-            console.print(
-                Panel(
-                    result_text,
-                    title="[bold green]✨ Result (Copied to Clipboard)[/bold green]",
-                    border_style="green",
-                    subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
-                ),
-            )
-        else:
-            # Quiet mode: print result to stdout for Keyboard Maestro to capture
-            print(result_text)
-
-    except Exception as e:
-        logger.exception("An error occurred during LLM processing.")
-        _print(
-            console,
-            f"❌ [bold red]An unexpected LLM error occurred: {e}[/bold red]",
-        )
-        _print(
-            console,
-            f"   Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
-        )
-        sys.exit(1)
 
 
 # --- Main Application Logic ---
@@ -253,6 +144,8 @@ async def async_main(
                 return
 
             await process_and_update_clipboard(
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=AGENT_INSTRUCTIONS,
                 model=model,
                 ollama_host=ollama_host,
                 logger=logger,
@@ -268,7 +161,7 @@ def voice_assistant(
     device_index: int | None = opts.DEVICE_INDEX,
     device_name: str | None = opts.DEVICE_NAME,
     *,
-    # Audio
+    # ASR
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,

@@ -18,6 +18,11 @@ OLLAMA_HOST: str = typer.Option(
     "--ollama-host",
     help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
 )
+LLM: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--llm/--no-llm",
+    help="Use an LLM to process the transcript.",
+)
 
 
 # --- ASR (Audio) Options ---

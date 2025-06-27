@@ -32,7 +32,7 @@ from rich.status import Status
 
 import agent_cli.agents._cli_options as opts
 from agent_cli.cli import app, setup_logging
-from agent_cli.ollama_client import build_agent
+from agent_cli.llm import build_agent
 from agent_cli.utils import get_clipboard_text
 
 # --- Configuration ---

@@ -9,12 +9,49 @@ from contextlib import AbstractContextManager, nullcontext, suppress
 import pyperclip
 from rich.console import Console
 from rich.live import Live
+from rich.panel import Panel
 from rich.text import Text
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
 from agent_cli.cli import app, setup_logging
+from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import _print, print_device_index, signal_handling_context
+
+SYSTEM_PROMPT = """
+You are an AI transcription cleanup assistant. Your purpose is to improve and refine raw speech-to-text transcriptions by correcting errors, adding proper punctuation, and enhancing readability while preserving the original meaning and intent.
+
+Your tasks include:
+- Correcting obvious speech recognition errors and mishearing
+- Adding appropriate punctuation (periods, commas, question marks, etc.)
+- Fixing capitalization where needed
+- Removing filler words, false starts, and repeated words when they clearly weren't intentional
+- Improving sentence structure and flow while maintaining the speaker's voice and meaning
+- Formatting the text for better readability
+
+Important rules:
+- Do not change the core meaning or content of the transcription
+- Do not add information that wasn't spoken
+- Do not remove content unless it's clearly an error or filler
+- Return ONLY the cleaned-up text without any explanations or commentary
+- Do not wrap your output in markdown or code blocks
+"""
+
+AGENT_INSTRUCTIONS = """
+You will be given a block of raw transcribed text enclosed in <original-text> tags, and a cleanup instruction enclosed in <instruction> tags.
+
+Your job is to process the transcribed text according to the instruction, which will typically involve:
+- Correcting speech recognition errors
+- Adding proper punctuation and capitalization
+- Removing obvious filler words and false starts
+- Improving readability while preserving meaning
+
+Return ONLY the cleaned-up text with no additional formatting or commentary.
+"""
+
+INSTRUCTION = """
+Please clean up this transcribed text by correcting any speech recognition errors, adding appropriate punctuation and capitalization, removing obvious filler words or false starts, and improving overall readability while preserving the original meaning and intent of the speaker.
+"""
 
 
 async def async_main(
@@ -26,6 +63,9 @@ async def async_main(
     clipboard: bool,
     quiet: bool,
     list_devices: bool,
+    model: str,
+    ollama_host: str,
+    llm: bool,
 ) -> None:
     """Async entry point, consuming parsed args."""
     logger = logging.getLogger()
@@ -54,16 +94,31 @@ async def async_main(
                 listening_message="Listening...",
             )
 
-            if transcript and clipboard:
-                pyperclip.copy(transcript)
-                logger.info("Copied transcript to clipboard.")
-                _print(console, "[italic blue]Copied to clipboard.[/italic blue]")
-            elif not transcript:
-                logger.info("Transcript empty.")
-            else:
-                logger.info("Clipboard copy disabled.")
-            if not quiet:
-                _print(console, f"[italic green]Transcript: {transcript}[/italic green]")
+        if llm and model and ollama_host and transcript:
+            _print(console, Panel(transcript, title="[cyan]Raw Transcript 📝[/cyan]"))
+            await process_and_update_clipboard(
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=AGENT_INSTRUCTIONS,
+                model=model,
+                ollama_host=ollama_host,
+                logger=logger,
+                console=console,
+                original_text=transcript,
+                instruction=INSTRUCTION,
+                clipboard=clipboard,
+            )
+            return
+
+        if transcript and clipboard:
+            pyperclip.copy(transcript)
+            logger.info("Copied transcript to clipboard.")
+            _print(console, "[italic blue]Copied to clipboard.[/italic blue]")
+        elif not transcript:
+            logger.info("Transcript empty.")
+        else:
+            logger.info("Clipboard copy disabled.")
+        if not quiet:
+            _print(console, f"[italic green]Transcript: {transcript}[/italic green]")
 
 
 def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
@@ -81,10 +136,14 @@ def transcribe(
     *,
     device_index: int | None = opts.DEVICE_INDEX,
     device_name: str | None = opts.DEVICE_NAME,
-    # Audio
+    # ASR
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
+    # LLM
+    model: str = opts.MODEL,
+    ollama_host: str = opts.OLLAMA_HOST,
+    llm: bool = opts.LLM,
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -132,5 +191,8 @@ def transcribe(
                 clipboard=clipboard,
                 quiet=quiet,
                 list_devices=list_devices,
+                model=model,
+                ollama_host=ollama_host,
+                llm=llm,
             ),
         )
