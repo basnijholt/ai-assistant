@@ -54,6 +54,8 @@ from agent_cli.utils import (
     signal_handling_context,
 )
 
+LOGGER = logging.getLogger()
+
 # LLM Prompts
 SYSTEM_PROMPT = """\
 You are a versatile AI text assistant. Your purpose is to either **modify** a given text or **answer questions** about it, based on a specific instruction.
@@ -94,7 +96,6 @@ async def async_main(
     clipboard: bool,
 ) -> None:
     """Main async function, consumes parsed arguments."""
-    logger = logging.getLogger()
     console = Console() if not quiet else None
 
     with asr.pyaudio_context() as p:
@@ -111,7 +112,7 @@ async def async_main(
         print_device_index(console, device_index, device_name)
         print_input_panel(console, original_text, title="📝 Text to Process")
 
-        with signal_handling_context(console, logger) as stop_event:
+        with signal_handling_context(console, LOGGER) as stop_event:
             # Define callbacks for voice assistant specific formatting
             def chunk_callback(chunk_text: str) -> None:
                 """Handle transcript chunks as they arrive."""
@@ -129,7 +130,7 @@ async def async_main(
                 asr_server_ip=asr_server_ip,
                 asr_server_port=asr_server_port,
                 device_index=device_index,
-                logger=logger,
+                logger=LOGGER,
                 p=p,
                 stop_event=stop_event,
                 console=console,
@@ -151,7 +152,7 @@ async def async_main(
                 agent_instructions=AGENT_INSTRUCTIONS,
                 model=model,
                 ollama_host=ollama_host,
-                logger=logger,
+                logger=LOGGER,
                 console=console,
                 original_text=original_text,
                 instruction=instruction,

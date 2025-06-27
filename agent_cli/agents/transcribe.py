@@ -27,6 +27,8 @@ from agent_cli.utils import (
 if TYPE_CHECKING:
     import pyaudio
 
+LOGGER = logging.getLogger()
+
 SYSTEM_PROMPT = """
 You are an AI transcription cleanup assistant. Your purpose is to improve and refine raw speech-to-text transcriptions by correcting errors, adding proper punctuation, and enhancing readability while preserving the original meaning and intent.
 
@@ -74,19 +76,18 @@ async def async_main(
     ollama_host: str,
     llm: bool,
     console: Console | None,
-    logger: logging.Logger,
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
     with (
-        signal_handling_context(console, logger) as stop_event,
+        signal_handling_context(console, LOGGER) as stop_event,
         _maybe_live(console) as live,
     ):
         transcript = await asr.transcribe_audio(
             asr_server_ip=asr_server_ip,
             asr_server_port=asr_server_port,
             device_index=device_index,
-            logger=logger,
+            logger=LOGGER,
             p=p,
             stop_event=stop_event,
             console=console,
@@ -101,7 +102,7 @@ async def async_main(
             agent_instructions=AGENT_INSTRUCTIONS,
             model=model,
             ollama_host=ollama_host,
-            logger=logger,
+            logger=LOGGER,
             console=console,
             original_text=transcript,
             instruction=INSTRUCTION,
@@ -124,11 +125,11 @@ async def async_main(
 
         if clipboard:
             pyperclip.copy(transcript)
-            logger.info("Copied transcript to clipboard.")
+            LOGGER.info("Copied transcript to clipboard.")
         else:
-            logger.info("Clipboard copy disabled.")
+            LOGGER.info("Clipboard copy disabled.")
     else:
-        logger.info("Transcript empty.")
+        LOGGER.info("Transcript empty.")
         if not quiet:
             print_status_message(console, "⚠️ No transcript captured.", style="yellow")
 
@@ -192,7 +193,6 @@ def transcribe(
             print_status_message(console, "⚠️  Transcribe is not running.", style="yellow")
         return
 
-    logger = logging.getLogger()
     console = Console() if not quiet else None
 
     with asr.pyaudio_context() as p:
@@ -215,7 +215,6 @@ def transcribe(
                     ollama_host=ollama_host,
                     llm=llm,
                     console=console,
-                    logger=logger,
                     p=p,
                 ),
             )

@@ -39,7 +39,6 @@ async def test_transcribe_main(
             model="",
             ollama_host="",
             console=None,
-            logger=logging.getLogger(),
             p=None,
         )
 
