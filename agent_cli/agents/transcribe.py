@@ -19,6 +19,7 @@ from agent_cli.utils import _print, print_device_index, signal_handling_context
 
 async def async_main(
     device_index: int | None,
+    device_name: str | None,
     asr_server_ip: str,
     asr_server_port: int,
     *,
@@ -34,7 +35,8 @@ async def async_main(
         if list_devices:
             asr.list_input_devices(p, console)
             return
-        print_device_index(console, device_index)
+        device_index, device_name = asr.input_device(p, device_name, device_index)
+        print_device_index(console, device_index, device_name)
 
         with (
             signal_handling_context(console, logger) as stop_event,
@@ -76,6 +78,7 @@ def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
 def transcribe(
     *,
     device_index: int | None = opts.DEVICE_INDEX,
+    device_name: str | None = opts.DEVICE_NAME,
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
@@ -118,6 +121,7 @@ def transcribe(
         asyncio.run(
             async_main(
                 device_index=device_index,
+                device_name=device_name,
                 asr_server_ip=asr_server_ip,
                 asr_server_port=asr_server_port,
                 clipboard=clipboard,

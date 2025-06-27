@@ -26,6 +26,11 @@ DEVICE_INDEX: int | None = typer.Option(
     "--device-index",
     help="Index of the PyAudio input device to use.",
 )
+DEVICE_NAME: str | None = typer.Option(
+    None,
+    "--device-name",
+    help="Name of the PyAudio input device to use.",
+)
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
     "--list-devices",

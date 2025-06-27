@@ -242,3 +242,38 @@ async def transcribe_audio(
         if console:
             console.print(f"[bold red]Transcription error:[/bold red] {e}")
         return None
+
+
+def input_device(
+    p: pyaudio.PyAudio,
+    device_name: str | None,
+    device_index: int | None,
+) -> tuple[int | None, str | None]:
+    """Find an input device by a prioritized, comma-separated list of keywords."""
+    if device_name is None and device_index is None:
+        return None, None
+
+    if device_index is not None:
+        info = p.get_device_info_by_index(device_index)
+        return device_index, info.get("name")
+    assert device_name is not None
+    search_terms = [term.strip().lower() for term in device_name.split(",") if term.strip()]
+
+    if not search_terms:
+        msg = "Device name string is empty or contains only whitespace."
+        raise ValueError(msg)
+
+    input_devices = []
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        device_info_name = info.get("name")
+        if device_info_name:
+            input_devices.append((i, device_info_name))
+
+    for term in search_terms:
+        for index, name in input_devices:
+            if term in name.lower():
+                return index, name
+
+    msg = f"No input device found matching any of the keywords in {device_name!r}"
+    raise ValueError(msg)

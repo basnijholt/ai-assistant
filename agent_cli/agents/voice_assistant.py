@@ -180,6 +180,7 @@ async def async_main(
     *,
     quiet: bool,
     device_index: int | None,
+    device_name: str | None,
     list_devices: bool,
     asr_server_ip: str,
     asr_server_port: int,
@@ -195,12 +196,14 @@ async def async_main(
             asr.list_input_devices(p, console)
             return
 
+        device_index, device_name = asr.input_device(p, device_name, device_index)
+
         original_text = get_clipboard_text(console)
         if not original_text:
             return
 
+        print_device_index(console, device_index, device_name)
         _print(console, Panel(original_text, title="[cyan]📝 Text to Process[/cyan]"))
-        print_device_index(console, device_index)
 
         with signal_handling_context(console, logger) as stop_event:
             # Define callbacks for voice assistant specific formatting
@@ -245,6 +248,7 @@ async def async_main(
 @app.command("voice-assistant")
 def voice_assistant(
     device_index: int | None = opts.DEVICE_INDEX,
+    device_name: str | None = opts.DEVICE_NAME,
     *,
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
@@ -293,6 +297,7 @@ def voice_assistant(
             async_main(
                 quiet=quiet,
                 device_index=device_index,
+                device_name=device_name,
                 list_devices=list_devices,
                 asr_server_ip=asr_server_ip,
                 asr_server_port=asr_server_port,

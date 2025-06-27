@@ -30,6 +30,7 @@ async def test_transcribe_main(
     with caplog.at_level(logging.INFO):
         await transcribe.async_main(
             device_index=None,
+            device_name=None,
             asr_server_ip="localhost",
             asr_server_port=12345,
             clipboard=True,

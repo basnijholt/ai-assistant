@@ -18,25 +18,19 @@ dependencies = [
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
-    { name = "ollama" },
     { name = "pre-commit" },
     { name = "pydantic-ai-slim", extra = ["openai"] },
-    { name = "pyperclip" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
-    { name = "requests" },
     { name = "ruff" },
     { name = "versioningit" },
 ]
 test = [
-    { name = "ollama" },
     { name = "pydantic-ai-slim", extra = ["openai"] },
-    { name = "pyperclip" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
-    { name = "requests" },
 ]
 
 [package.dev-dependencies]
@@ -60,20 +54,17 @@ requires-dist = [
     { name = "agent-cli", extras = ["test"], marker = "extra == 'dev'" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "notebook", marker = "extra == 'dev'" },
-    { name = "ollama", marker = "extra == 'test'" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pyaudio" },
     { name = "pydantic-ai-slim", extras = ["openai"] },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'test'" },
     { name = "pyperclip" },
-    { name = "pyperclip", marker = "extra == 'test'" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.20.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
-    { name = "requests", marker = "extra == 'test'", specifier = ">=2.25.1" },
     { name = "rich" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "typer", extras = ["all"] },
+    { name = "typer" },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "wyoming" },
 ]

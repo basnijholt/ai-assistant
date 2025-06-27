@@ -90,10 +90,14 @@ def signal_handling_context(
         pass
 
 
-def print_device_index(console: Console | None, device_index: int | None) -> None:
+def print_device_index(
+    console: Console | None,
+    device_index: int | None,
+    device_name: str | None,
+) -> None:
     """Print the device index to the console."""
     if device_index is not None:
-        msg = f"🎤 Using device [bold yellow]{device_index}[/bold yellow]"
+        msg = f"🎤 Using device [bold yellow]{device_index}[/bold yellow] ([italic]{device_name}[/italic])"
     else:
         msg = (
             "[bold yellow]⚠️  No --device-index specified. Using default system input.[/bold yellow]"
