@@ -57,11 +57,13 @@ async def async_main(
             if transcript and clipboard:
                 pyperclip.copy(transcript)
                 logger.info("Copied transcript to clipboard.")
-                _print(console, "[italic green]Copied to clipboard.[/italic green]")
+                _print(console, "[italic blue]Copied to clipboard.[/italic blue]")
             elif not transcript:
                 logger.info("Transcript empty.")
             else:
                 logger.info("Clipboard copy disabled.")
+            if not quiet:
+                _print(console, f"[italic green]Transcript: {transcript}[/italic green]")
 
 
 def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
