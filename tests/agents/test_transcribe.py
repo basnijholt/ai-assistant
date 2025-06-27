@@ -37,6 +37,9 @@ async def test_transcribe_main(
             clipboard=True,
             quiet=True,  # To avoid console output in tests
             list_devices=False,
+            llm=False,
+            model="",
+            ollama_host="",
         )
 
     # Assertions
