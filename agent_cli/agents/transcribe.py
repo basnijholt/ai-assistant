@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import AbstractContextManager, nullcontext, suppress
+from typing import TYPE_CHECKING
 
 import pyperclip
 from rich.console import Console
@@ -22,6 +23,9 @@ from agent_cli.utils import (
     print_status_message,
     signal_handling_context,
 )
+
+if TYPE_CHECKING:
+    import pyaudio
 
 SYSTEM_PROMPT = """
 You are an AI transcription cleanup assistant. Your purpose is to improve and refine raw speech-to-text transcriptions by correcting errors, adding proper punctuation, and enhancing readability while preserving the original meaning and intent.
@@ -62,80 +66,71 @@ Please clean up this transcribed text by correcting any speech recognition error
 async def async_main(
     *,
     device_index: int | None,
-    device_name: str | None,
     asr_server_ip: str,
     asr_server_port: int,
     clipboard: bool,
     quiet: bool,
-    list_devices: bool,
     model: str,
     ollama_host: str,
     llm: bool,
+    console: Console | None,
+    logger: logging.Logger,
+    p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
-    logger = logging.getLogger()
-    console = Console() if not quiet else None
+    with (
+        signal_handling_context(console, logger) as stop_event,
+        _maybe_live(console) as live,
+    ):
+        transcript = await asr.transcribe_audio(
+            asr_server_ip=asr_server_ip,
+            asr_server_port=asr_server_port,
+            device_index=device_index,
+            logger=logger,
+            p=p,
+            stop_event=stop_event,
+            console=console,
+            live=live,
+            listening_message="Listening...",
+        )
 
-    with asr.pyaudio_context() as p:
-        if list_devices:
-            asr.list_input_devices(p, console)
-            return
-        device_index, device_name = asr.input_device(p, device_name, device_index)
-        print_device_index(console, device_index, device_name)
+    if llm and model and ollama_host and transcript:
+        print_input_panel(console, transcript, title="📝 Raw Transcript")
+        await process_and_update_clipboard(
+            system_prompt=SYSTEM_PROMPT,
+            agent_instructions=AGENT_INSTRUCTIONS,
+            model=model,
+            ollama_host=ollama_host,
+            logger=logger,
+            console=console,
+            original_text=transcript,
+            instruction=INSTRUCTION,
+            clipboard=clipboard,
+        )
+        return
 
-        with (
-            signal_handling_context(console, logger) as stop_event,
-            _maybe_live(console) as live,
-        ):
-            transcript = await asr.transcribe_audio(
-                asr_server_ip=asr_server_ip,
-                asr_server_port=asr_server_port,
-                device_index=device_index,
-                logger=logger,
-                p=p,
-                stop_event=stop_event,
-                console=console,
-                live=live,
-                listening_message="Listening...",
-            )
-
-        if llm and model and ollama_host and transcript:
-            print_input_panel(console, transcript, title="📝 Raw Transcript")
-            await process_and_update_clipboard(
-                system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
-                model=model,
-                ollama_host=ollama_host,
-                logger=logger,
-                console=console,
-                original_text=transcript,
-                instruction=INSTRUCTION,
-                clipboard=clipboard,
-            )
-            return
-
-        # When not using LLM, show transcript in output panel for consistency
-        if transcript:
-            if quiet:
-                # Quiet mode: print result to stdout for Keyboard Maestro to capture
-                print(transcript)
-            else:
-                print_output_panel(
-                    console,
-                    transcript,
-                    title="📝 Transcript",
-                    subtitle="[dim]Copied to clipboard[/dim]" if clipboard else None,
-                )
-
-            if clipboard:
-                pyperclip.copy(transcript)
-                logger.info("Copied transcript to clipboard.")
-            else:
-                logger.info("Clipboard copy disabled.")
+    # When not using LLM, show transcript in output panel for consistency
+    if transcript:
+        if quiet:
+            # Quiet mode: print result to stdout for Keyboard Maestro to capture
+            print(transcript)
         else:
-            logger.info("Transcript empty.")
-            if not quiet:
-                print_status_message(console, "⚠️ No transcript captured.", style="yellow")
+            print_output_panel(
+                console,
+                transcript,
+                title="📝 Transcript",
+                subtitle="[dim]Copied to clipboard[/dim]" if clipboard else None,
+            )
+
+        if clipboard:
+            pyperclip.copy(transcript)
+            logger.info("Copied transcript to clipboard.")
+        else:
+            logger.info("Clipboard copy disabled.")
+    else:
+        logger.info("Transcript empty.")
+        if not quiet:
+            print_status_message(console, "⚠️ No transcript captured.", style="yellow")
 
 
 def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
@@ -197,19 +192,30 @@ def transcribe(
             print_status_message(console, "⚠️  Transcribe is not running.", style="yellow")
         return
 
-    # Use context manager for PID file management
-    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        asyncio.run(
-            async_main(
-                device_index=device_index,
-                device_name=device_name,
-                asr_server_ip=asr_server_ip,
-                asr_server_port=asr_server_port,
-                clipboard=clipboard,
-                quiet=quiet,
-                list_devices=list_devices,
-                model=model,
-                ollama_host=ollama_host,
-                llm=llm,
-            ),
-        )
+    logger = logging.getLogger()
+    console = Console() if not quiet else None
+
+    with asr.pyaudio_context() as p:
+        if list_devices:
+            asr.list_input_devices(p, console)
+            return
+        device_index, device_name = asr.input_device(p, device_name, device_index)
+        print_device_index(console, device_index, device_name)
+
+        # Use context manager for PID file management
+        with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+            asyncio.run(
+                async_main(
+                    device_index=device_index,
+                    asr_server_ip=asr_server_ip,
+                    asr_server_port=asr_server_port,
+                    clipboard=clipboard,
+                    quiet=quiet,
+                    model=model,
+                    ollama_host=ollama_host,
+                    llm=llm,
+                    console=console,
+                    logger=logger,
+                    p=p,
+                ),
+            )
