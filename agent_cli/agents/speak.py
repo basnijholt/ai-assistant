@@ -11,7 +11,7 @@ from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager, tts
-from agent_cli.asr import list_output_devices, output_device, pyaudio_context  # Reuse ASR utilities
+from agent_cli.asr import list_output_devices, output_device, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
@@ -38,9 +38,9 @@ async def async_main(
     console: Console | None,
 ) -> None:
     """Async entry point for the speak command."""
-    with pyaudio_context() as p:  # Reuse ASR context manager
+    with pyaudio_context() as p:
         if list_output_devices_flag:
-            list_output_devices(p, console)  # Reuse ASR device listing
+            list_output_devices(p, console)
             return
 
         # Get output device info
@@ -50,7 +50,6 @@ async def async_main(
             output_device_index,
         )
         if output_device_index is not None and console:
-            # Show output device info (adapted message for TTS)
             msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
             print_status_message(console, msg)
 

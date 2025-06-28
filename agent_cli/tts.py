@@ -11,7 +11,7 @@ from wyoming.client import AsyncClient
 from wyoming.tts import Synthesize
 
 from agent_cli import config
-from agent_cli.asr import (  # Reuse ASR utilities
+from agent_cli.asr import (
     open_pyaudio_stream,
     pyaudio_context,
 )
@@ -50,11 +50,11 @@ async def synthesize_speech(
         WAV audio data as bytes, or None if error
 
     """
-    uri = f"tcp://{tts_server_ip}:{tts_server_port}"  # Reuse URI pattern from ASR
+    uri = f"tcp://{tts_server_ip}:{tts_server_port}"
     logger.info("Connecting to Wyoming TTS server at %s", uri)
 
     try:
-        async with AsyncClient.from_uri(uri) as client:  # Reuse connection pattern from ASR
+        async with AsyncClient.from_uri(uri) as client:
             logger.info("TTS connection established")
             if console:
                 print_status_message(console, f"🔊 Synthesizing: {text[:50]}...")
@@ -124,7 +124,7 @@ async def synthesize_speech(
             logger.warning("No audio data received from TTS server")
             return None
 
-    except ConnectionRefusedError:  # Reuse error handling pattern from ASR
+    except ConnectionRefusedError:
         print_error_message(
             console,
             "TTS Connection refused.",
@@ -165,7 +165,6 @@ async def play_audio(
             sample_width = wav_file.getsampwidth()
             frames = wav_file.readframes(wav_file.getnframes())
 
-        # Play audio using reused context manager from ASR
         with (
             pyaudio_context() as p,
             open_pyaudio_stream(
@@ -174,8 +173,8 @@ async def play_audio(
                 channels=channels,
                 rate=sample_rate,
                 output=True,
-                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,  # Reuse config from ASR
-                output_device_index=output_device_index,  # Support output device selection
+                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
+                output_device_index=output_device_index,
             ) as stream,
         ):
             # Play in chunks to avoid blocking
