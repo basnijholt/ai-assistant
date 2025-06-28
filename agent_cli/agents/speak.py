@@ -5,13 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
+from pathlib import Path
 
 import typer
 from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager, tts
-from agent_cli.asr import list_output_devices, output_device, pyaudio_context
+from agent_cli.audio import list_output_devices, output_device, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
@@ -80,13 +81,13 @@ async def async_main(
         # Save to file if requested
         if save_file and audio_data:
             try:
-                with open(save_file, "wb") as f:
-                    f.write(audio_data)
+                save_path = Path(save_file)
+                await asyncio.to_thread(save_path.write_bytes, audio_data)
                 if console:
                     print_status_message(console, f"💾 Audio saved to {save_file}")
                 LOGGER.info("Audio saved to %s", save_file)
-            except Exception as e:
-                LOGGER.error("Failed to save audio: %s", e)
+            except (OSError, PermissionError) as e:
+                LOGGER.exception("Failed to save audio")
                 if console:
                     print_status_message(console, f"❌ Failed to save audio: {e}", style="red")
 

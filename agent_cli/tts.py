@@ -11,7 +11,7 @@ from wyoming.client import AsyncClient
 from wyoming.tts import Synthesize
 
 from agent_cli import config
-from agent_cli.asr import (
+from agent_cli.audio import (
     open_pyaudio_stream,
     pyaudio_context,
 )
@@ -21,6 +21,88 @@ if TYPE_CHECKING:
     import logging
 
     from rich.console import Console
+
+
+def _create_synthesis_request(
+    text: str,
+    *,
+    voice_name: str | None = None,
+    language: str | None = None,
+    speaker: str | None = None,
+) -> Synthesize:
+    """Create a synthesis request with optional voice parameters."""
+    synthesize_event = Synthesize(text=text)
+
+    # Add voice parameters if specified
+    if voice_name or language or speaker:
+        voice_data = {}
+        if voice_name:
+            voice_data["name"] = voice_name
+        if language:
+            voice_data["language"] = language
+        if speaker:
+            voice_data["speaker"] = speaker
+        synthesize_event.data["voice"] = voice_data
+
+    return synthesize_event
+
+
+async def _process_audio_events(
+    client: AsyncClient,
+    logger: logging.Logger,
+) -> tuple[bytes, int | None, int | None, int | None]:
+    """Process audio events from TTS server and return audio data with metadata."""
+    audio_data = io.BytesIO()
+    sample_rate = None
+    sample_width = None
+    channels = None
+
+    while True:
+        event = await client.read_event()
+        if event is None:
+            logger.warning("Connection to TTS server lost.")
+            break
+
+        if AudioStart.is_type(event.type):
+            audio_start = AudioStart.from_event(event)
+            sample_rate = audio_start.rate
+            sample_width = audio_start.width
+            channels = audio_start.channels
+            logger.debug(
+                "Audio stream started: %dHz, %d channels, %d bytes/sample",
+                sample_rate,
+                channels,
+                sample_width,
+            )
+
+        elif AudioChunk.is_type(event.type):
+            chunk = AudioChunk.from_event(event)
+            audio_data.write(chunk.audio)
+            logger.debug("Received %d bytes of audio", len(chunk.audio))
+
+        elif AudioStop.is_type(event.type):
+            logger.debug("Audio stream completed")
+            break
+        else:
+            logger.debug("Ignoring event type: %s", event.type)
+
+    return audio_data.getvalue(), sample_rate, sample_width, channels
+
+
+def _create_wav_data(
+    audio_data: bytes,
+    sample_rate: int,
+    sample_width: int,
+    channels: int,
+) -> bytes:
+    """Convert raw audio data to WAV format."""
+    wav_data = io.BytesIO()
+    with wave.open(wav_data, "wb") as wav_file:
+        wav_file.setnchannels(channels)
+        wav_file.setsampwidth(sample_width)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(audio_data)
+    return wav_data.getvalue()
 
 
 async def synthesize_speech(
@@ -59,68 +141,27 @@ async def synthesize_speech(
             if console:
                 print_status_message(console, f"🔊 Synthesizing: {text[:50]}...")
 
-            # Create synthesize request
-            synthesize_event = Synthesize(text=text)
-
-            # Add voice parameters if specified
-            if voice_name or language or speaker:
-                voice_data = {}
-                if voice_name:
-                    voice_data["name"] = voice_name
-                if language:
-                    voice_data["language"] = language
-                if speaker:
-                    voice_data["speaker"] = speaker
-                synthesize_event.data["voice"] = voice_data
-
+            # Create and send synthesis request
+            synthesize_event = _create_synthesis_request(
+                text,
+                voice_name=voice_name,
+                language=language,
+                speaker=speaker,
+            )
             await client.write_event(synthesize_event.event())
 
-            # Collect audio data
-            audio_data = io.BytesIO()
-            sample_rate = None
-            sample_width = None
-            channels = None
+            # Process audio events
+            audio_data, sample_rate, sample_width, channels = await _process_audio_events(
+                client,
+                logger,
+            )
 
-            while True:
-                event = await client.read_event()
-                if event is None:
-                    logger.warning("Connection to TTS server lost.")
-                    break
+            # Convert to WAV format if we have valid audio data and metadata
+            if sample_rate and sample_width and channels and audio_data:
+                wav_data = _create_wav_data(audio_data, sample_rate, sample_width, channels)
+                logger.info("Speech synthesis completed: %d bytes", len(wav_data))
+                return wav_data
 
-                if AudioStart.is_type(event.type):
-                    audio_start = AudioStart.from_event(event)
-                    sample_rate = audio_start.rate
-                    sample_width = audio_start.width
-                    channels = audio_start.channels
-                    logger.debug(
-                        "Audio stream started: %dHz, %d channels, %d bytes/sample",
-                        sample_rate,
-                        channels,
-                        sample_width,
-                    )
-
-                elif AudioChunk.is_type(event.type):
-                    chunk = AudioChunk.from_event(event)
-                    audio_data.write(chunk.audio)
-                    logger.debug("Received %d bytes of audio", len(chunk.audio))
-
-                elif AudioStop.is_type(event.type):
-                    logger.debug("Audio stream completed")
-                    break
-                else:
-                    logger.debug("Ignoring event type: %s", event.type)
-
-            # Convert to WAV format
-            if sample_rate and sample_width and channels and audio_data.tell() > 0:
-                wav_data = io.BytesIO()
-                with wave.open(wav_data, "wb") as wav_file:
-                    wav_file.setnchannels(channels)
-                    wav_file.setsampwidth(sample_width)
-                    wav_file.setframerate(sample_rate)
-                    wav_file.writeframes(audio_data.getvalue())
-
-                logger.info("Speech synthesis completed: %d bytes", wav_data.tell())
-                return wav_data.getvalue()
             logger.warning("No audio data received from TTS server")
             return None
 

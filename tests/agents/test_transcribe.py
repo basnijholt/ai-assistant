@@ -13,7 +13,11 @@ from agent_cli.agents import transcribe
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.asr")
 @patch("agent_cli.agents.transcribe.pyperclip")
+@patch("agent_cli.agents.transcribe.pyaudio_context")
+@patch("agent_cli.agents.transcribe.input_device")
 async def test_transcribe_main(
+    mock_input_device: MagicMock,
+    mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
     mock_asr: MagicMock,
     caplog: pytest.LogCaptureFixture,
@@ -21,11 +25,11 @@ async def test_transcribe_main(
     """Test the main function of the transcribe agent."""
     # Mock the pyaudio context manager
     mock_pyaudio_instance = MagicMock()
-    mock_asr.pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
+    mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
 
     # Mock the unified transcribe_audio function
     mock_asr.transcribe_audio = AsyncMock(return_value="hello world")
-    mock_asr.input_device = MagicMock(return_value=(None, None))
+    mock_input_device.return_value = (None, None)
 
     # The function we are testing
     with caplog.at_level(logging.INFO):

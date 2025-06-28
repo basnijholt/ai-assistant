@@ -39,10 +39,12 @@ import asyncio
 import logging
 from contextlib import suppress
 
+import pyperclip
 from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager, tts
+from agent_cli.audio import input_device, list_input_devices, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
@@ -106,12 +108,12 @@ async def async_main(
     """Main async function, consumes parsed arguments."""
     console = Console() if not quiet else None
 
-    with asr.pyaudio_context() as p:
+    with pyaudio_context() as p:
         if list_devices:
-            asr.list_input_devices(p, console)
+            list_input_devices(p, console)
             return
 
-        device_index, device_name = asr.input_device(p, device_name, device_index)
+        device_index, device_name = input_device(p, device_name, device_index)
 
         original_text = get_clipboard_text(console)
         if not original_text:
@@ -171,8 +173,6 @@ async def async_main(
             if enable_tts and clipboard:
                 # Get the result from clipboard (the LLM response)
                 try:
-                    import pyperclip
-
                     response_text = pyperclip.paste()
                     if response_text and response_text.strip():
                         print_status_message(console, "🔊 Speaking response...", style="blue")

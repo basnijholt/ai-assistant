@@ -14,6 +14,7 @@ from rich.text import Text
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
+from agent_cli.audio import input_device, list_input_devices, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
@@ -195,11 +196,11 @@ def transcribe(
 
     console = Console() if not quiet else None
 
-    with asr.pyaudio_context() as p:
+    with pyaudio_context() as p:
         if list_devices:
-            asr.list_input_devices(p, console)
+            list_input_devices(p, console)
             return
-        device_index, device_name = asr.input_device(p, device_name, device_index)
+        device_index, device_name = input_device(p, device_name, device_index)
         print_device_index(console, device_index, device_name)
 
         # Use context manager for PID file management
