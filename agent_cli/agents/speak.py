@@ -5,14 +5,18 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from pathlib import Path
 
 import typer
 from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import process_manager, tts
-from agent_cli.audio import list_output_devices, output_device, pyaudio_context
+from agent_cli import process_manager
+from agent_cli.agents._tts_common import (
+    handle_device_listing,
+    handle_tts_playback,
+    setup_output_device,
+)
+from agent_cli.audio import pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
@@ -25,34 +29,37 @@ LOGGER = logging.getLogger()
 
 async def async_main(
     *,
+    # General
+    quiet: bool,
+    console: Console | None,
+    # Text input
     text: str | None,
+    # TTS parameters
     tts_server_ip: str,
     tts_server_port: int,
     voice_name: str | None,
     tts_language: str | None,
     speaker: str | None,
+    # Output device
     output_device_index: int | None,
     output_device_name: str | None,
     list_output_devices_flag: bool,
+    # Output file
     save_file: str | None,
-    quiet: bool,
-    console: Console | None,
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
-        if list_output_devices_flag:
-            list_output_devices(p, console)
+        # Handle device listing
+        if handle_device_listing(p, console, list_output_devices_flag=list_output_devices_flag):
             return
 
-        # Get output device info
-        output_device_index, output_device_name = output_device(
+        # Setup output device
+        output_device_index, output_device_name = setup_output_device(
             p,
+            console,
             output_device_name,
             output_device_index,
         )
-        if output_device_index is not None and console:
-            msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
-            print_status_message(console, msg)
 
         # Get text from argument or clipboard
         if text is None:
@@ -64,39 +71,29 @@ async def async_main(
         elif not quiet and console:
             print_input_panel(console, text, title="📝 Text to Speak")
 
-        # Synthesize and play speech
-        audio_data = await tts.speak_text(
-            text=text,
+        # Handle TTS playback and saving
+        await handle_tts_playback(
+            text,
             tts_server_ip=tts_server_ip,
             tts_server_port=tts_server_port,
-            logger=LOGGER,
             voice_name=voice_name,
-            language=tts_language,
+            tts_language=tts_language,
             speaker=speaker,
             output_device_index=output_device_index,
+            save_file=save_file,
             console=console,
-            play_audio_flag=not save_file,  # Don't play if saving to file
+            logger=LOGGER,
+            play_audio=not save_file,  # Don't play if saving to file
+            status_message="🔊 Synthesizing speech..." if console else "",
+            description="Audio",
         )
-
-        # Save to file if requested
-        if save_file and audio_data:
-            try:
-                save_path = Path(save_file)
-                await asyncio.to_thread(save_path.write_bytes, audio_data)
-                if console:
-                    print_status_message(console, f"💾 Audio saved to {save_file}")
-                LOGGER.info("Audio saved to %s", save_file)
-            except (OSError, PermissionError) as e:
-                LOGGER.exception("Failed to save audio")
-                if console:
-                    print_status_message(console, f"❌ Failed to save audio: {e}", style="red")
 
 
 @app.command("speak")
 def speak(
     text: str | None = None,
     *,
-    # TTS
+    # TTS parameters
     tts_server_ip: str = opts.TTS_SERVER_IP,
     tts_server_port: int = opts.TTS_SERVER_PORT,
     voice_name: str | None = opts.VOICE_NAME,
@@ -106,7 +103,7 @@ def speak(
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
-    # Output
+    # Output file
     save_file: str | None = typer.Option(
         None,
         "--save-file",
@@ -154,17 +151,22 @@ def speak(
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
         asyncio.run(
             async_main(
+                # General
+                quiet=quiet,
+                console=console,
+                # Text input
                 text=text,
+                # TTS parameters
                 tts_server_ip=tts_server_ip,
                 tts_server_port=tts_server_port,
                 voice_name=voice_name,
                 tts_language=tts_language,
                 speaker=speaker,
+                # Output device
                 output_device_index=output_device_index,
                 output_device_name=output_device_name,
                 list_output_devices_flag=list_output_devices_flag,
+                # Output file
                 save_file=save_file,
-                quiet=quiet,
-                console=console,
             ),
         )

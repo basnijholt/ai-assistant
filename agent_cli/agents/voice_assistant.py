@@ -38,7 +38,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pyperclip
@@ -46,12 +45,15 @@ import typer
 from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager, tts
+from agent_cli import asr, process_manager
+from agent_cli.agents._tts_common import (
+    handle_device_listing,
+    handle_tts_playback,
+    setup_output_device,
+)
 from agent_cli.audio import (
     input_device,
     list_input_devices,
-    list_output_devices,
-    output_device,
     pyaudio_context,
 )
 from agent_cli.cli import app, setup_logging
@@ -97,110 +99,30 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 # --- Main Application Logic ---
 
 
-def _setup_devices(
+def _setup_input_device(
     p: pyaudio.PyAudio,
     console: Console | None,
     device_name: str | None,
     device_index: int | None,
-    *,
-    enable_tts: bool,
-    output_device_name: str | None,
-    output_device_index: int | None,
-) -> tuple[int | None, str | None, int | None, str | None]:
-    """Setup input and output audio devices."""
+) -> tuple[int | None, str | None]:
+    """Setup input device for ASR."""
     device_index, device_name = input_device(p, device_name, device_index)
-
-    # Get output device info for TTS if enabled
-    tts_output_device_index = output_device_index
-    tts_output_device_name = output_device_name
-    if enable_tts and (output_device_name or output_device_index):
-        tts_output_device_index, tts_output_device_name = output_device(
-            p,
-            output_device_name,
-            output_device_index,
-        )
-
-    # Print device info
     print_device_index(console, device_index, device_name)
-    if enable_tts and tts_output_device_index is not None and console:
-        msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
-        print_status_message(console, msg)
-
-    return device_index, device_name, tts_output_device_index, tts_output_device_name
-
-
-async def _save_tts_audio(
-    audio_data: bytes,
-    save_file: str,
-    console: Console | None,
-    logger: logging.Logger,
-) -> None:
-    """Save TTS audio data to file."""
-    try:
-        save_path = Path(save_file)
-        await asyncio.to_thread(save_path.write_bytes, audio_data)
-        if console:
-            print_status_message(console, f"💾 TTS audio saved to {save_file}")
-        logger.info("TTS audio saved to %s", save_file)
-    except (OSError, PermissionError) as e:
-        logger.exception("Failed to save TTS audio")
-        if console:
-            print_status_message(console, f"❌ Failed to save TTS audio: {e}", style="red")
-
-
-async def _handle_tts_response(
-    *,
-    enable_tts: bool,
-    clipboard: bool,
-    tts_server_ip: str,
-    tts_server_port: int,
-    voice_name: str | None,
-    tts_language: str | None,
-    speaker: str | None,
-    save_file: str | None,
-    tts_output_device_index: int | None,
-    console: Console | None,
-    logger: logging.Logger,
-) -> None:
-    """Handle TTS response generation and playback."""
-    if not (enable_tts and clipboard):
-        return
-
-    try:
-        response_text = pyperclip.paste()
-        if response_text and response_text.strip():
-            print_status_message(console, "🔊 Speaking response...", style="blue")
-            audio_data = await tts.speak_text(
-                text=response_text,
-                tts_server_ip=tts_server_ip,
-                tts_server_port=tts_server_port,
-                logger=logger,
-                voice_name=voice_name,
-                language=tts_language,
-                speaker=speaker,
-                console=console,
-                play_audio_flag=not save_file,  # Don't play if saving to file
-                output_device_index=tts_output_device_index,
-            )
-
-            # Save TTS audio to file if requested
-            if save_file and audio_data:
-                await _save_tts_audio(audio_data, save_file, console, logger)
-
-    except (OSError, ConnectionError, TimeoutError) as e:
-        logger.warning("Failed to speak response: %s", e)
-        if console:
-            print_status_message(console, f"⚠️ TTS failed: {e}", style="yellow")
+    return device_index, device_name
 
 
 async def async_main(
     *,
-    quiet: bool,
+    # General
+    console: Console | None,
+    # ASR input device
     device_index: int | None,
     device_name: str | None,
     list_devices: bool,
+    # ASR parameters
     asr_server_ip: str,
     asr_server_port: int,
+    # LLM parameters
     model: str,
     ollama_host: str,
     clipboard: bool,
@@ -211,32 +133,35 @@ async def async_main(
     voice_name: str | None,
     tts_language: str | None,
     speaker: str | None,
+    # Output device
     output_device_index: int | None,
     output_device_name: str | None,
     list_output_devices_flag: bool,
+    # Output file
     save_file: str | None,
 ) -> None:
     """Main async function, consumes parsed arguments."""
-    console = Console() if not quiet else None
-
     with pyaudio_context() as p:
+        # Handle device listing
         if list_devices:
             list_input_devices(p, console)
             return
 
-        if list_output_devices_flag:
-            list_output_devices(p, console)
+        if handle_device_listing(p, console, list_output_devices_flag=list_output_devices_flag):
             return
 
-        device_index, device_name, tts_output_device_index, tts_output_device_name = _setup_devices(
-            p,
-            console,
-            device_name,
-            device_index,
-            enable_tts=enable_tts,
-            output_device_name=output_device_name,
-            output_device_index=output_device_index,
-        )
+        # Setup input device for ASR
+        device_index, device_name = _setup_input_device(p, console, device_name, device_index)
+
+        # Setup output device for TTS if enabled
+        tts_output_device_index = output_device_index
+        if enable_tts and (output_device_name or output_device_index):
+            tts_output_device_index, _ = setup_output_device(
+                p,
+                console,
+                output_device_name,
+                output_device_index,
+            )
 
         original_text = get_clipboard_text(console)
         if not original_text:
@@ -291,20 +216,25 @@ async def async_main(
                 clipboard=clipboard,
             )
 
-            # Handle TTS response
-            await _handle_tts_response(
-                enable_tts=enable_tts,
-                clipboard=clipboard,
-                tts_server_ip=tts_server_ip,
-                tts_server_port=tts_server_port,
-                voice_name=voice_name,
-                tts_language=tts_language,
-                speaker=speaker,
-                save_file=save_file,
-                tts_output_device_index=tts_output_device_index,
-                console=console,
-                logger=LOGGER,
-            )
+            # Handle TTS response if enabled
+            if enable_tts and clipboard:
+                response_text = pyperclip.paste()
+                if response_text and response_text.strip():
+                    await handle_tts_playback(
+                        response_text,
+                        tts_server_ip=tts_server_ip,
+                        tts_server_port=tts_server_port,
+                        voice_name=voice_name,
+                        tts_language=tts_language,
+                        speaker=speaker,
+                        output_device_index=tts_output_device_index,
+                        save_file=save_file,
+                        console=console,
+                        logger=LOGGER,
+                        play_audio=not save_file,  # Don't play if saving to file
+                        status_message="🔊 Speaking response...",
+                        description="TTS audio",
+                    )
 
 
 @app.command("voice-assistant")
@@ -377,12 +307,16 @@ def voice_assistant(
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
         asyncio.run(
             async_main(
-                quiet=quiet,
+                # General
+                console=console,
+                # ASR input device
                 device_index=device_index,
                 device_name=device_name,
                 list_devices=list_devices,
+                # ASR parameters
                 asr_server_ip=asr_server_ip,
                 asr_server_port=asr_server_port,
+                # LLM parameters
                 model=model,
                 ollama_host=ollama_host,
                 clipboard=clipboard,
@@ -393,9 +327,11 @@ def voice_assistant(
                 voice_name=voice_name,
                 tts_language=tts_language,
                 speaker=speaker,
+                # Output device
                 output_device_index=output_device_index,
                 output_device_name=output_device_name,
                 list_output_devices_flag=list_output_devices_flag,
+                # Output file
                 save_file=save_file,
             ),
         )
