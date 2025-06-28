@@ -46,14 +46,12 @@ from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
-from agent_cli.agents._tts_common import (
-    handle_device_listing,
-    handle_tts_playback,
-    setup_output_device,
-)
+from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import (
     input_device,
     list_input_devices,
+    list_output_devices,
+    output_device,
     pyaudio_context,
 )
 from agent_cli.cli import app, setup_logging
@@ -105,7 +103,6 @@ def _setup_input_device(
     device_name: str | None,
     device_index: int | None,
 ) -> tuple[int | None, str | None]:
-    """Setup input device for ASR."""
     device_index, device_name = input_device(p, device_name, device_index)
     print_device_index(console, device_index, device_name)
     return device_index, device_name
@@ -147,7 +144,8 @@ async def async_main(
             list_input_devices(p, console)
             return
 
-        if handle_device_listing(p, console, list_output_devices_flag=list_output_devices_flag):
+        if list_output_devices_flag:
+            list_output_devices(p, console)
             return
 
         # Setup input device for ASR
@@ -156,12 +154,14 @@ async def async_main(
         # Setup output device for TTS if enabled
         tts_output_device_index = output_device_index
         if enable_tts and (output_device_name or output_device_index):
-            tts_output_device_index, _ = setup_output_device(
+            tts_output_device_index, tts_output_device_name = output_device(
                 p,
-                console,
                 output_device_name,
                 output_device_index,
             )
+            if tts_output_device_index is not None and console:
+                msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
+                print_status_message(console, msg)
 
         original_text = get_clipboard_text(console)
         if not original_text:

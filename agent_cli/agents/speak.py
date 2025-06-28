@@ -11,12 +11,8 @@ from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager
-from agent_cli.agents._tts_common import (
-    handle_device_listing,
-    handle_tts_playback,
-    setup_output_device,
-)
-from agent_cli.audio import pyaudio_context
+from agent_cli.agents._tts_common import handle_tts_playback
+from agent_cli.audio import list_output_devices, output_device, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
@@ -50,16 +46,19 @@ async def async_main(
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
         # Handle device listing
-        if handle_device_listing(p, console, list_output_devices_flag=list_output_devices_flag):
+        if list_output_devices_flag:
+            list_output_devices(p, console)
             return
 
         # Setup output device
-        output_device_index, output_device_name = setup_output_device(
+        output_device_index, output_device_name = output_device(
             p,
-            console,
             output_device_name,
             output_device_index,
         )
+        if output_device_index is not None and console:
+            msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
+            print_status_message(console, msg)
 
         # Get text from argument or clipboard
         if text is None:
