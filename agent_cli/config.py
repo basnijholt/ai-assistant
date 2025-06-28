@@ -10,6 +10,10 @@ import pyaudio
 ASR_SERVER_IP = os.getenv("ASR_SERVER_IP", "192.168.1.143")
 ASR_SERVER_PORT = 10300
 
+# --- TTS (Wyoming Piper) Configuration ---
+TTS_SERVER_IP = os.getenv("TTS_SERVER_IP", "192.168.1.143")
+TTS_SERVER_PORT = 10200
+
 # --- Ollama LLM Configuration ---
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = "devstral:24b"

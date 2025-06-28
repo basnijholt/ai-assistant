@@ -42,7 +42,7 @@ from contextlib import suppress
 from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager
+from agent_cli import asr, process_manager, tts
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
@@ -94,6 +94,14 @@ async def async_main(
     model: str,
     ollama_host: str,
     clipboard: bool,
+    # TTS parameters
+    enable_tts: bool,
+    tts_server_ip: str,
+    tts_server_port: int,
+    voice_name: str | None,
+    tts_language: str | None,
+    speaker: str | None,
+    output_device_index: int | None,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     console = Console() if not quiet else None
@@ -159,6 +167,32 @@ async def async_main(
                 clipboard=clipboard,
             )
 
+            # Speak the response if TTS is enabled
+            if enable_tts and clipboard:
+                # Get the result from clipboard (the LLM response)
+                try:
+                    import pyperclip
+
+                    response_text = pyperclip.paste()
+                    if response_text and response_text.strip():
+                        print_status_message(console, "🔊 Speaking response...", style="blue")
+                        await tts.speak_text(
+                            text=response_text,
+                            tts_server_ip=tts_server_ip,
+                            tts_server_port=tts_server_port,
+                            logger=LOGGER,
+                            voice_name=voice_name,
+                            language=tts_language,
+                            speaker=speaker,
+                            console=console,
+                            play_audio_flag=True,
+                            output_device_index=output_device_index,
+                        )
+                except (OSError, ConnectionError, TimeoutError) as e:
+                    LOGGER.warning("Failed to speak response: %s", e)
+                    if console:
+                        print_status_message(console, f"⚠️ TTS failed: {e}", style="yellow")
+
 
 @app.command("voice-assistant")
 def voice_assistant(
@@ -180,6 +214,14 @@ def voice_assistant(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
+    # TTS parameters
+    enable_tts: bool = opts.ENABLE_TTS,
+    tts_server_ip: str = opts.TTS_SERVER_IP,
+    tts_server_port: int = opts.TTS_SERVER_PORT,
+    voice_name: str | None = opts.VOICE_NAME,
+    tts_language: str | None = opts.TTS_LANGUAGE,
+    speaker: str | None = opts.SPEAKER,
+    output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
 ) -> None:
     """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
 
@@ -221,5 +263,13 @@ def voice_assistant(
                 model=model,
                 ollama_host=ollama_host,
                 clipboard=clipboard,
+                # TTS parameters
+                enable_tts=enable_tts,
+                tts_server_ip=tts_server_ip,
+                tts_server_port=tts_server_port,
+                voice_name=voice_name,
+                tts_language=tts_language,
+                speaker=speaker,
+                output_device_index=output_device_index,
             ),
         )

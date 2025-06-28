@@ -58,6 +58,36 @@ def list_input_devices(p: pyaudio.PyAudio, console: Console | None) -> None:
                 console.print(f"  [yellow]{i}[/yellow]: {info['name']}")
 
 
+def list_output_devices(p: pyaudio.PyAudio, console: Console | None) -> None:
+    """Print a numbered list of available output devices."""
+    if console:
+        console.print("[bold]Available output devices:[/bold]")
+        for i in range(p.get_device_count()):
+            info = p.get_device_info_by_index(i)
+            if info.get("maxOutputChannels", 0) > 0 and console:
+                console.print(f"  [yellow]{i}[/yellow]: {info['name']}")
+
+
+def list_all_devices(p: pyaudio.PyAudio, console: Console | None) -> None:
+    """Print a numbered list of all available audio devices with their capabilities."""
+    if console:
+        console.print("[bold]All available audio devices:[/bold]")
+        for i in range(p.get_device_count()):
+            info = p.get_device_info_by_index(i)
+            input_channels = info.get("maxInputChannels", 0)
+            output_channels = info.get("maxOutputChannels", 0)
+
+            capabilities = []
+            if input_channels > 0:
+                capabilities.append(f"{input_channels} input")
+            if output_channels > 0:
+                capabilities.append(f"{output_channels} output")
+
+            if capabilities:
+                cap_str = " (" + ", ".join(capabilities) + ")"
+                console.print(f"  [yellow]{i}[/yellow]: {info['name']}{cap_str}")
+
+
 async def send_audio(
     client: AsyncClient,
     stream: pyaudio.Stream,
@@ -268,7 +298,7 @@ def input_device(
     for i in range(p.get_device_count()):
         info = p.get_device_info_by_index(i)
         device_info_name = info.get("name")
-        if device_info_name:
+        if device_info_name and info.get("maxInputChannels", 0) > 0:
             input_devices.append((i, device_info_name))
 
     for term in search_terms:
@@ -277,4 +307,39 @@ def input_device(
                 return index, name
 
     msg = f"No input device found matching any of the keywords in {device_name!r}"
+    raise ValueError(msg)
+
+
+def output_device(
+    p: pyaudio.PyAudio,
+    device_name: str | None,
+    device_index: int | None,
+) -> tuple[int | None, str | None]:
+    """Find an output device by a prioritized, comma-separated list of keywords."""
+    if device_name is None and device_index is None:
+        return None, None
+
+    if device_index is not None:
+        info = p.get_device_info_by_index(device_index)
+        return device_index, info.get("name")
+    assert device_name is not None
+    search_terms = [term.strip().lower() for term in device_name.split(",") if term.strip()]
+
+    if not search_terms:
+        msg = "Device name string is empty or contains only whitespace."
+        raise ValueError(msg)
+
+    output_devices = []
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+        device_info_name = info.get("name")
+        if device_info_name and info.get("maxOutputChannels", 0) > 0:
+            output_devices.append((i, device_info_name))
+
+    for term in search_terms:
+        for index, name in output_devices:
+            if term in name.lower():
+                return index, name
+
+    msg = f"No output device found matching any of the keywords in {device_name!r}"
     raise ValueError(msg)

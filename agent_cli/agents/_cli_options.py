@@ -54,6 +54,55 @@ ASR_SERVER_PORT: int = typer.Option(
 )
 
 
+# --- TTS (Text-to-Speech) Options ---
+TTS_SERVER_IP: str = typer.Option(
+    config.TTS_SERVER_IP,
+    "--tts-server-ip",
+    help="Wyoming TTS server IP address.",
+)
+TTS_SERVER_PORT: int = typer.Option(
+    config.TTS_SERVER_PORT,
+    "--tts-server-port",
+    help="Wyoming TTS server port.",
+)
+VOICE_NAME: str | None = typer.Option(
+    None,
+    "--voice",
+    help="Voice name to use for TTS (e.g., 'en_US-lessac-medium').",
+)
+TTS_LANGUAGE: str | None = typer.Option(
+    None,
+    "--tts-language",
+    help="Language for TTS (e.g., 'en_US').",
+)
+SPEAKER: str | None = typer.Option(
+    None,
+    "--speaker",
+    help="Speaker name for TTS voice.",
+)
+OUTPUT_DEVICE_INDEX: int | None = typer.Option(
+    None,
+    "--output-device-index",
+    help="Index of the PyAudio output device to use for TTS.",
+)
+OUTPUT_DEVICE_NAME: str | None = typer.Option(
+    None,
+    "--output-device-name",
+    help="Output device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
+)
+LIST_OUTPUT_DEVICES: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--list-output-devices",
+    help="List available audio output devices and exit.",
+    is_eager=True,
+)
+ENABLE_TTS: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--tts/--no-tts",
+    help="Enable text-to-speech for responses.",
+)
+
+
 # --- Process Management Options ---
 STOP: bool = typer.Option(
     False,  # noqa: FBT003
