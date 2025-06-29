@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -12,8 +13,6 @@ from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockASRClient
 
 if TYPE_CHECKING:
-    import asyncio
-
     from rich.console import Console
 
 
@@ -27,7 +26,6 @@ async def test_transcribe_e2e(
     mock_signal_handling_context: MagicMock,
     mock_pyaudio_device_info: list[dict],
     mock_console: Console,
-    test_stop_event: asyncio.Event,
 ) -> None:
     """Test end-to-end transcription with simplified mocks."""
     # Setup mock PyAudio
@@ -38,7 +36,11 @@ async def test_transcribe_e2e(
     transcript_text = "This is a test transcription."
     mock_asr_client = MockASRClient(transcript_text)
     mock_async_client_class.from_uri.return_value = mock_asr_client
-    mock_signal_handling_context.return_value.__enter__.return_value = test_stop_event
+
+    # Setup stop event
+    stop_event = asyncio.Event()
+    mock_signal_handling_context.return_value.__enter__.return_value = stop_event
+    asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
     await async_main(
         device_index=0,
