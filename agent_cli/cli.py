@@ -46,4 +46,4 @@ def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
 
 
 # Import commands from other modules to register them
-from .agents import autocorrect, speak, transcribe, voice_assistant  # noqa: E402, F401
+from .agents import autocorrect, interactive, speak, transcribe, voice_assistant  # noqa: E402, F401

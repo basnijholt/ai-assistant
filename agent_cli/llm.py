@@ -52,6 +52,37 @@ INPUT_TEMPLATE = """
 """
 
 
+async def get_llm_response(
+    *,
+    system_prompt: str,
+    agent_instructions: str,
+    user_input: str,
+    model: str,
+    ollama_host: str,
+    logger: logging.Logger,
+    console: Console | None,
+) -> str | None:
+    """Get a response from the LLM."""
+    agent = build_agent(
+        model=model,
+        ollama_host=ollama_host,
+        system_prompt=system_prompt,
+        instructions=agent_instructions,
+    )
+    try:
+        with _maybe_status(console, model):
+            result = await agent.run(user_input)
+        return result.output
+    except Exception as e:
+        logger.exception("An error occurred during LLM processing.")
+        print_error_message(
+            console,
+            f"An unexpected LLM error occurred: {e}",
+            f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
+        )
+        return None
+
+
 async def process_with_llm(
     agent: Agent,
     original_text: str,

@@ -14,6 +14,7 @@ from rich.panel import Panel
 if TYPE_CHECKING:
     import logging
     from collections.abc import Generator
+    from datetime import timedelta
 
     from rich.align import Align
     from rich.console import Console
@@ -165,3 +166,19 @@ def print_error_message(
         console.print(f"[bold red]❌ {message}[/bold red]")
         if detail:
             console.print(f"   {detail}")
+
+
+def format_timedelta_to_ago(td: timedelta) -> str:
+    """Format a timedelta into a human-readable 'ago' string."""
+    seconds = int(td.total_seconds())
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+
+    if days > 0:
+        return f"{days} day{'s' if days != 1 else ''} ago"
+    if hours > 0:
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    if minutes > 0:
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    return f"{seconds} second{'s' if seconds != 1 else ''} ago"
