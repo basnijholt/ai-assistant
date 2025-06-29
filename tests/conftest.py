@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import io
 import logging
-import wave
 
 import pytest
 from rich.console import Console
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Set default timeout for all tests."""
+    for item in items:
+        with contextlib.suppress(AttributeError):
+            item.add_marker(pytest.mark.timeout(3))
 
 
 @pytest.fixture
@@ -38,28 +45,6 @@ def timeout_seconds() -> float:
 
 
 @pytest.fixture
-def synthetic_audio_data() -> bytes:
-    """Generate synthetic WAV audio data for testing."""
-    # Create a simple sine wave audio data
-    sample_rate = 16000
-    duration = 1.0  # 1 second
-    samples = int(sample_rate * duration)
-
-    # Generate simple audio data (silence for simplicity)
-    audio_frames = b"\x00\x00" * samples  # 16-bit silence
-
-    # Create WAV data
-    wav_data = io.BytesIO()
-    with wave.open(wav_data, "wb") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(audio_frames)
-
-    return wav_data.getvalue()
-
-
-@pytest.fixture
 def mock_pyaudio_device_info() -> list[dict]:
     """Mock PyAudio device info for testing."""
     return [
@@ -85,17 +70,6 @@ def mock_pyaudio_device_info() -> list[dict]:
             "defaultSampleRate": 44100.0,
         },
     ]
-
-
-@pytest.fixture
-def transcript_responses() -> dict[str, str]:
-    """Predefined transcript responses for testing."""
-    return {
-        "hello": "Hello there!",
-        "test": "This is a test transcription.",
-        "question": "What is the meaning of life?",
-        "long": "This is a longer transcription that spans multiple words and should test the chunking functionality properly.",
-    }
 
 
 @pytest.fixture

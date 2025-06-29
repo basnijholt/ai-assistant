@@ -30,19 +30,16 @@ def test_get_all_devices_caching(
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
 
-    # First call should hit PyAudio
-    devices1 = audio.get_all_devices()
+    with audio.pyaudio_context() as p:
+        # First call should hit PyAudio
+        devices1 = audio.get_all_devices(p)
 
-    # Second call should use cached results (PyAudio not called again)
-    devices2 = audio.get_all_devices()
+        # Second call should use cached results
+        devices2 = audio.get_all_devices(p)
 
-    # Results should be identical
-    assert devices1 == devices2
-    assert len(devices1) == len(mock_pyaudio_device_info)
-
-    # Verify the cache is working by checking that terminate was only called once
-    # (indicating only one PyAudio instance was created)
-    assert mock_pyaudio_class.call_count == 1
+        # Results should be identical
+        assert devices1 == devices2
+        assert len(devices1) == len(mock_pyaudio_device_info)
 
 
 @patch("agent_cli.audio.pyaudio.PyAudio")
@@ -56,8 +53,9 @@ def test_list_input_devices(
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
 
-    # Test listing input devices
-    audio.list_input_devices(mock_console)
+    with audio.pyaudio_context() as p:
+        # Test listing input devices
+        audio.list_input_devices(p, mock_console)
 
     # Verify console output contains device information
     # This is more of an integration test to ensure no exceptions are raised
@@ -74,8 +72,9 @@ def test_list_output_devices(
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
 
-    # Test listing output devices
-    audio.list_output_devices(mock_console)
+    with audio.pyaudio_context() as p:
+        # Test listing output devices
+        audio.list_output_devices(p, mock_console)
 
     # Verify no exceptions are raised
 
@@ -91,8 +90,9 @@ def test_list_all_devices(
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
 
-    # Test listing all devices
-    audio.list_all_devices(mock_console)
+    with audio.pyaudio_context() as p:
+        # Test listing all devices
+        audio.list_all_devices(p, mock_console)
 
     # Verify no exceptions are raised
 
@@ -109,15 +109,15 @@ def test_input_device_by_index(
 
     with audio.pyaudio_context() as p:
         # Test getting device by valid index
-        device_info = audio.input_device(p, device_index=0)
+        device_index, device_name = audio.input_device(p, device_name=None, device_index=0)
 
         # Should return the first input-capable device
         expected_device = next(
             dev for dev in mock_pyaudio_device_info if dev["maxInputChannels"] > 0
         )
 
-        assert device_info["name"] == expected_device["name"]
-        assert device_info["index"] == expected_device["index"]
+        assert device_name == expected_device["name"]
+        assert device_index == expected_device["index"]
 
 
 @patch("agent_cli.audio.pyaudio.PyAudio")
@@ -135,10 +135,14 @@ def test_input_device_by_name(
         input_device = next(dev for dev in mock_pyaudio_device_info if dev["maxInputChannels"] > 0)
 
         # Test getting device by name
-        device_info = audio.input_device(p, device_name=input_device["name"])
+        device_index, device_name = audio.input_device(
+            p,
+            device_name=input_device["name"],
+            device_index=None,
+        )
 
-        assert device_info["name"] == input_device["name"]
-        assert device_info["index"] == input_device["index"]
+        assert device_name == input_device["name"]
+        assert device_index == input_device["index"]
 
 
 @patch("agent_cli.audio.pyaudio.PyAudio")
@@ -153,7 +157,7 @@ def test_output_device_by_index(
 
     with audio.pyaudio_context() as p:
         # Test getting device by valid index
-        device_info = audio.output_device(p, device_index=1)
+        device_index, device_name = audio.output_device(p, device_name=None, device_index=1)
 
         # Should return the device at index 1 if it has output channels
         expected_device = next(
@@ -162,8 +166,8 @@ def test_output_device_by_index(
             if dev["index"] == 1 and dev["maxOutputChannels"] > 0
         )
 
-        assert device_info["name"] == expected_device["name"]
-        assert device_info["index"] == expected_device["index"]
+        assert device_name == expected_device["name"]
+        assert device_index == expected_device["index"]
 
 
 @patch("agent_cli.audio.pyaudio.PyAudio")
@@ -183,10 +187,14 @@ def test_output_device_by_name(
         )
 
         # Test getting device by name
-        device_info = audio.output_device(p, device_name=output_device["name"])
+        device_index, device_name = audio.output_device(
+            p,
+            device_name=output_device["name"],
+            device_index=None,
+        )
 
-        assert device_info["name"] == output_device["name"]
-        assert device_info["index"] == output_device["index"]
+        assert device_name == output_device["name"]
+        assert device_index == output_device["index"]
 
 
 @patch("agent_cli.audio.pyaudio.PyAudio")
@@ -206,6 +214,7 @@ def test_input_device_invalid_index(
     ):
         audio.input_device(
             p,
+            device_name=None,
             device_index=999,
         )
 
@@ -220,16 +229,15 @@ def test_input_device_invalid_name(
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
 
-    with audio.pyaudio_context() as p:
-        # Try to get device with invalid name - should raise ValueError
-        with pytest.raises(ValueError, match="No input device found"):
-            audio.input_device(
-                p,
-                device_name="NonExistentDevice",
-            )
+    with audio.pyaudio_context() as p, pytest.raises(ValueError, match="No input device found"):
+        audio.input_device(
+            p,
+            device_name="NonExistentDevice",
+            device_index=None,
+        )
 
 
-@patch("agent_cli.audio.pyAudio.PyAudio")
+@patch("agent_cli.audio.pyaudio.PyAudio")
 def test_output_device_invalid_name(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -239,11 +247,22 @@ def test_output_device_invalid_name(
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
 
+    # Try to get device with invalid index - should raise ValueError
+    with (
+        audio.pyaudio_context() as p,
+        pytest.raises(ValueError, match="Device index 999 not found"),
+    ):
+        audio.input_device(
+            p,
+            device_name=None,
+            device_index=999,
+        )
     # Try to get device with invalid name - should raise ValueError
     with audio.pyaudio_context() as p, pytest.raises(ValueError, match="No output device found"):
         audio.output_device(
             p,
             device_name="NonExistentOutputDevice",
+            device_index=None,
         )
 
 
@@ -280,11 +299,12 @@ def test_open_pyaudio_stream_context_manager(
         # Test input stream
         with audio.open_pyaudio_stream(
             p,
-            is_input=True,
+            input=True,
             device_index=0,
         ) as stream:
             assert stream is not None
             assert stream.is_input
+            assert not stream.is_output
 
         # Test output stream
         with audio.open_pyaudio_stream(
@@ -293,13 +313,13 @@ def test_open_pyaudio_stream_context_manager(
             device_index=1,
         ) as stream:
             assert stream is not None
+            assert not stream.is_input
             assert stream.is_output
 
 
 @patch("agent_cli.audio.pyaudio.PyAudio")
 def test_device_filtering_by_capabilities(
     mock_pyaudio_class: Mock,
-    mock_console: Console,
 ) -> None:
     """Test that devices are properly filtered by input/output capabilities."""
     # Create devices with specific capabilities
@@ -316,16 +336,32 @@ def test_device_filtering_by_capabilities(
 
     with audio.pyaudio_context() as p:
         # Test input device filtering
-        input_device = audio.input_device(p, device_index=0)  # Input Only
-        assert input_device["name"] == "Input Only"
+        input_device_index, input_device_name = audio.input_device(
+            p,
+            device_name=None,
+            device_index=0,
+        )  # Input Only
+        assert input_device_name == "Input Only"
 
         # Should skip "Output Only" and find "Both" for input
-        mixed_input = audio.input_device(p, device_index=2)  # Both
-        assert mixed_input["name"] == "Both"
+        mixed_input_index, mixed_input_name = audio.input_device(
+            p,
+            device_name=None,
+            device_index=2,
+        )  # Both
+        assert mixed_input_name == "Both"
 
         # Test output device filtering
-        output_device = audio.output_device(p, device_index=1)  # Output Only
-        assert output_device["name"] == "Output Only"
+        output_device_index, output_device_name = audio.output_device(
+            p,
+            device_name=None,
+            device_index=1,
+        )  # Output Only
+        assert output_device_name == "Output Only"
 
-        mixed_output = audio.output_device(p, device_index=2)  # Both
-        assert mixed_output["name"] == "Both"
+        mixed_output_index, mixed_output_name = audio.output_device(
+            p,
+            device_name=None,
+            device_index=2,
+        )  # Both
+        assert mixed_output_name == "Both"

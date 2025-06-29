@@ -2,55 +2,26 @@
 
 from __future__ import annotations
 
-import threading
-import time
 from typing import Any, Self
 
 
 class MockAudioStream:
     """Mock audio stream for testing."""
 
-    def __init__(
-        self,
-        *,
-        is_input: bool = False,
-        is_output: bool = False,
-        simulate_delay: float = 0.0,
-    ) -> None:
-        """Initialize mock audio stream.
-
-        Args:
-            is_input: Whether this is an input stream
-            is_output: Whether this is an output stream
-            simulate_delay: Delay to simulate in operations
-
-        """
+    def __init__(self, *, is_input: bool = False, is_output: bool = False) -> None:
+        """Initialize mock audio stream."""
         self.is_input = is_input
         self.is_output = is_output
-        self.simulate_delay = min(simulate_delay, 0.01)  # Cap at 10ms for tests
-        self.input_data: list[bytes] = []
         self.written_data: list[bytes] = []
         self.is_active = True
-        self._lock = threading.Lock()
 
     def read(self, num_frames: int, *, exception_on_overflow: bool = True) -> bytes:  # noqa: ARG002
         """Simulate reading from audio input device."""
-        if self.simulate_delay > 0:
-            time.sleep(self.simulate_delay)
-
-        # Generate synthetic audio data
-        data = b"\x00\x01" * num_frames  # 16-bit audio data
-        with self._lock:
-            self.input_data.append(data)
-        return data
+        return b"\x00\x01" * num_frames  # 16-bit audio data
 
     def write(self, frames: bytes) -> None:
         """Simulate writing to audio output device."""
-        if self.simulate_delay > 0:
-            time.sleep(self.simulate_delay)
-
-        with self._lock:
-            self.written_data.append(frames)
+        self.written_data.append(frames)
 
     def start_stream(self) -> None:
         """Start the mock stream."""
@@ -66,8 +37,7 @@ class MockAudioStream:
 
     def get_written_data(self) -> bytes:
         """Get all written data concatenated."""
-        with self._lock:
-            return b"".join(self.written_data)
+        return b"".join(self.written_data)
 
     def __enter__(self) -> Self:
         """Context manager entry."""
@@ -93,7 +63,7 @@ class MockPyAudio:
     def get_device_info_by_index(self, device_index: int) -> dict[str, Any]:
         """Get device info by index."""
         if 0 <= device_index < len(self.device_info):
-            return self.device_info[device_index].copy()
+            return self.device_info[device_index]
         msg = f"Invalid device index: {device_index}"
         raise ValueError(msg)
 
@@ -104,30 +74,18 @@ class MockPyAudio:
 
     def open(
         self,
-        *,
-        audio_format: str | None = None,  # noqa: ARG002
-        channels: int = 1,  # noqa: ARG002
-        rate: int = 44100,  # noqa: ARG002
-        is_input: bool = False,  # Renamed from 'input'
-        output: bool = False,
-        input_device_index: int | None = None,  # noqa: ARG002
-        output_device_index: int | None = None,  # noqa: ARG002
-        frames_per_buffer: int = 1024,  # noqa: ARG002
-        **kwargs: Any,  # noqa: ARG002
+        **kwargs: Any,
     ) -> MockAudioStream:
         """Open a mock audio stream."""
         stream = MockAudioStream(
-            is_input=is_input,
-            is_output=output,
-            simulate_delay=0.001,
+            is_input=kwargs.get("input", False),
+            is_output=kwargs.get("output", False),
         )
         self.streams.append(stream)
         return stream
 
     def terminate(self) -> None:
         """Terminate PyAudio."""
-        for stream in self.streams:
-            stream.close()
 
     def __enter__(self) -> Self:
         """Context manager entry."""
@@ -136,20 +94,3 @@ class MockPyAudio:
     def __exit__(self, *args: object) -> None:
         """Context manager exit."""
         self.terminate()
-
-
-def mock_pyaudio_context() -> MockPyAudio:
-    """Create a mock PyAudio context for testing."""
-    return MockPyAudio([])
-
-
-def create_mock_audio_input(
-    *,
-    duration: float = 1.0,
-    sample_rate: int = 16000,
-    channels: int = 1,
-) -> bytes:
-    """Generate mock audio input data for testing."""
-    samples = int(duration * sample_rate)
-    # Generate simple sine wave pattern
-    return b"\x00\x01" * samples * channels
