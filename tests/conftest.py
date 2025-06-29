@@ -5,16 +5,10 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-import time
 import wave
-from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from rich.console import Console
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
 
 
 @pytest.fixture
@@ -37,15 +31,6 @@ def stop_event() -> asyncio.Event:
     return asyncio.Event()
 
 
-@pytest.fixture(autouse=True)
-def setup_test_timeouts() -> None:
-    """Automatically set up timeouts for all tests."""
-    # Set a default timeout for asyncio operations
-    import asyncio
-    # This will affect all asyncio operations in tests
-    asyncio.get_event_loop().set_debug(True)
-
-
 @pytest.fixture
 def timeout_seconds() -> float:
     """Default timeout for async operations in tests."""
@@ -59,10 +44,10 @@ def synthetic_audio_data() -> bytes:
     sample_rate = 16000
     duration = 1.0  # 1 second
     samples = int(sample_rate * duration)
-    
+
     # Generate simple audio data (silence for simplicity)
-    audio_frames = b'\x00\x00' * samples  # 16-bit silence
-    
+    audio_frames = b"\x00\x00" * samples  # 16-bit silence
+
     # Create WAV data
     wav_data = io.BytesIO()
     with wave.open(wav_data, "wb") as wav_file:
@@ -70,7 +55,7 @@ def synthetic_audio_data() -> bytes:
         wav_file.setsampwidth(2)
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(audio_frames)
-    
+
     return wav_data.getvalue()
 
 
@@ -121,4 +106,4 @@ def llm_responses() -> dict[str, str]:
         "hello": "Hello! How can I help you today?",
         "question": "The meaning of life is 42, according to The Hitchhiker's Guide to the Galaxy.",
         "default": "I understand your request and here is my response.",
-    } 
+    }

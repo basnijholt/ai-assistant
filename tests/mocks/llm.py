@@ -13,14 +13,14 @@ if TYPE_CHECKING:
 
 class MockLLMResult:
     """Mock result from LLM agent."""
-    
+
     def __init__(self, output: str, *, metadata: dict[str, Any] | None = None) -> None:
         """Initialize mock LLM result.
-        
+
         Args:
             output: The response text
             metadata: Optional metadata about the response
-            
+
         """
         self.output = output
         self.metadata = metadata or {}
@@ -28,7 +28,7 @@ class MockLLMResult:
 
 class MockLLMAgent:
     """Mock PydanticAI Agent for testing."""
-    
+
     def __init__(
         self,
         *,
@@ -38,13 +38,13 @@ class MockLLMAgent:
         model_name: str = "mock-model",
     ) -> None:
         """Initialize mock LLM agent.
-        
+
         Args:
             responses: Mapping of input patterns to responses
             default_response: Default response for unmatched inputs
             simulate_delay: Delay to simulate processing time
             model_name: Name of the mock model
-            
+
         """
         self.responses = responses or {}
         self.default_response = default_response
@@ -52,26 +52,26 @@ class MockLLMAgent:
         self.model = MagicMock()
         self.model.model_name = model_name
         self.call_history: list[str] = []
-    
+
     async def run(self, user_input: str) -> MockLLMResult:
         """Run the mock agent with user input.
-        
+
         Args:
             user_input: Input text to process
-            
+
         Returns:
             Mock LLM result
-            
+
         """
         self.call_history.append(user_input)
-        
+
         # Simulate processing delay
         if self.simulate_delay > 0:
             await asyncio.sleep(self.simulate_delay)
-        
+
         # Find matching response
         response = self._find_response(user_input)
-        
+
         return MockLLMResult(
             output=response,
             metadata={
@@ -80,32 +80,32 @@ class MockLLMAgent:
                 "timestamp": time.time(),
             },
         )
-    
+
     def _find_response(self, user_input: str) -> str:
         """Find appropriate response for the input."""
         input_lower = user_input.lower()
-        
+
         # Check for exact pattern matches first
         for pattern, response in self.responses.items():
             if pattern.lower() in input_lower:
                 return response
-        
+
         # Check for common instruction patterns
         if "correct" in input_lower or "fix" in input_lower:
             return self.responses.get("correct", "Corrected text here.")
-        
+
         if "question" in input_lower or "?" in user_input:
             return self.responses.get("question", "Here is my answer to your question.")
-        
+
         if "hello" in input_lower or "hi" in input_lower:
             return self.responses.get("hello", "Hello! How can I help you?")
-        
+
         return self.default_response
 
 
 class MockLLMProvider:
     """Mock LLM provider for testing."""
-    
+
     def __init__(
         self,
         *,
@@ -113,11 +113,11 @@ class MockLLMProvider:
         responses: dict[str, str] | None = None,
     ) -> None:
         """Initialize mock provider.
-        
+
         Args:
             base_url: Mock base URL
             responses: Response mappings
-            
+
         """
         self.base_url = base_url
         self.responses = responses or {}
@@ -125,7 +125,7 @@ class MockLLMProvider:
 
 class MockLLMModel:
     """Mock LLM model for testing."""
-    
+
     def __init__(
         self,
         *,
@@ -133,11 +133,11 @@ class MockLLMModel:
         provider: MockLLMProvider | None = None,
     ) -> None:
         """Initialize mock model.
-        
+
         Args:
             model_name: Name of the mock model
             provider: Mock provider instance
-            
+
         """
         self.model_name = model_name
         self.provider = provider or MockLLMProvider()
@@ -153,7 +153,7 @@ def mock_build_agent(
     simulate_delay: float = 0.1,
 ) -> MockLLMAgent:
     """Create a mock LLM agent that mimics build_agent behavior.
-    
+
     Args:
         model: Model name
         ollama_host: Ollama host URL
@@ -161,22 +161,22 @@ def mock_build_agent(
         instructions: Instructions (stored but not used in mock)
         responses: Custom response mappings
         simulate_delay: Processing delay simulation
-        
+
     Returns:
         Mock LLM agent
-        
+
     """
     agent = MockLLMAgent(
         responses=responses,
         simulate_delay=simulate_delay,
         model_name=model,
     )
-    
+
     # Store prompt information for verification
     agent.system_prompt = system_prompt
     agent.instructions = instructions
     agent.ollama_host = ollama_host
-    
+
     return agent
 
 
@@ -214,4 +214,4 @@ def create_conversation_responses() -> dict[str, str]:
         "What's the weather like?": "I don't have access to current weather data, but you can check a weather app or website for accurate information.",
         "How are you?": "I'm doing well, thank you for asking! I'm here to help with any questions you might have.",
         "What can you do?": "I can help with a variety of tasks including answering questions, providing information, and having conversations. What would you like to know?",
-    } 
+    }

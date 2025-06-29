@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from unittest.mock import patch
 
 import pytest
@@ -21,20 +20,20 @@ def test_get_all_devices_caching(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear any existing cache
     audio.get_all_devices.cache_clear()
-    
+
     # Create PyAudio instance
     with audio.pyaudio_context() as p:
         # First call should populate cache
         devices1 = audio.get_all_devices(p)
         assert len(devices1) == len(mock_pyaudio_device_info)
-        
+
         # Second call should use cache
         devices2 = audio.get_all_devices(p)
         assert devices1 == devices2
-        
+
         # Verify device info structure
         for i, device in enumerate(devices1):
             assert device["index"] == i
@@ -51,14 +50,14 @@ def test_list_input_devices(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # List input devices
     with audio.pyaudio_context() as p:
         audio.list_input_devices(p, console=mock_console)
-    
+
     # Verify console output
     console_output = mock_console.file.getvalue()
     assert "Mock Input Device" in console_output
@@ -77,14 +76,14 @@ def test_list_output_devices(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # List output devices
     with audio.pyaudio_context() as p:
         audio.list_output_devices(p, console=mock_console)
-    
+
     # Verify console output
     console_output = mock_console.file.getvalue()
     assert "Mock Output Device" in console_output
@@ -103,14 +102,14 @@ def test_list_all_devices(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # List all devices
     with audio.pyaudio_context() as p:
         audio.list_all_devices(p, console=mock_console)
-    
+
     # Verify console output contains all devices
     console_output = mock_console.file.getvalue()
     assert "Mock Input Device" in console_output
@@ -128,10 +127,10 @@ def test_input_device_by_index(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Get input device by index
     with audio.pyaudio_context() as p:
         device_index, device_name = audio.input_device(
@@ -139,13 +138,13 @@ def test_input_device_by_index(
             device_name=None,
             device_index=0,
         )
-    
+
     # Verify correct device is returned
     assert device_index == 0
     assert device_name == "Mock Input Device"
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio") 
+@patch("agent_cli.audio.pyaudio.PyAudio")
 def test_input_device_by_name(
     mock_pyaudio_class,
     mock_console: Console,
@@ -155,10 +154,10 @@ def test_input_device_by_name(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Get input device by name
     with audio.pyaudio_context() as p:
         device_index, device_name = audio.input_device(
@@ -166,7 +165,7 @@ def test_input_device_by_name(
             device_name="Mock Combined Device",
             device_index=None,
         )
-    
+
     # Verify correct device is returned
     assert device_index == 2
     assert device_name == "Mock Combined Device"
@@ -182,10 +181,10 @@ def test_output_device_by_index(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Get output device by index
     with audio.pyaudio_context() as p:
         device_index, device_name = audio.output_device(
@@ -193,7 +192,7 @@ def test_output_device_by_index(
             device_name=None,
             device_index=1,
         )
-    
+
     # Verify correct device is returned
     assert device_index == 1
     assert device_name == "Mock Output Device"
@@ -209,10 +208,10 @@ def test_output_device_by_name(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Get output device by name
     with audio.pyaudio_context() as p:
         device_index, device_name = audio.output_device(
@@ -220,7 +219,7 @@ def test_output_device_by_name(
             device_name="Mock Combined Device",
             device_index=None,
         )
-    
+
     # Verify correct device is returned
     assert device_index == 2
     assert device_name == "Mock Combined Device"
@@ -236,10 +235,10 @@ def test_input_device_invalid_index(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Try to get device with invalid index - should raise ValueError
     with audio.pyaudio_context() as p:
         with pytest.raises(ValueError, match="Device index 999 not found"):
@@ -260,10 +259,10 @@ def test_input_device_invalid_name(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Try to get device with invalid name - should raise ValueError
     with audio.pyaudio_context() as p:
         with pytest.raises(ValueError, match="No input device found"):
@@ -284,10 +283,10 @@ def test_output_device_invalid_name(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Try to get device with invalid name - should raise ValueError
     with audio.pyaudio_context() as p:
         with pytest.raises(ValueError, match="No output device found"):
@@ -307,12 +306,12 @@ def test_pyaudio_context_manager(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Test context manager
     with audio.pyaudio_context() as p:
         assert p is mock_pyaudio
         assert len(p.streams) == 0  # No streams created yet
-    
+
     # Verify terminate was called
     assert len(mock_pyaudio.streams) == 0  # All streams should be closed
 
@@ -326,7 +325,7 @@ def test_open_pyaudio_stream_context_manager(
     # Setup mock PyAudio
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Test stream context manager
     with audio.pyaudio_context() as p:
         with audio.open_pyaudio_stream(
@@ -341,7 +340,7 @@ def test_open_pyaudio_stream_context_manager(
             assert stream is not None
             assert len(p.streams) == 1
             assert stream.is_active
-        
+
         # Stream should be closed after context
         assert not stream.is_active
 
@@ -384,36 +383,38 @@ def test_device_filtering_by_capabilities(
             "defaultSampleRate": 44100.0,
         },
     ]
-    
+
     mock_pyaudio = MockPyAudio(custom_devices)
     mock_pyaudio_class.return_value = mock_pyaudio
-    
+
     # Clear cache
     audio.get_all_devices.cache_clear()
-    
+
     # Test input device filtering
     with audio.pyaudio_context() as p:
         audio.list_input_devices(p, console=mock_console)
     console_output = mock_console.file.getvalue()
-    
+
     # Should include input-capable devices
     assert "Input Only Device" in console_output
     assert "Combined Device" in console_output
-    
+
     # Should not include output-only or no-channel devices in main list
-    lines = console_output.split('\n')
-    input_device_lines = [line for line in lines if "Input Only Device" in line or "Combined Device" in line]
+    lines = console_output.split("\n")
+    input_device_lines = [
+        line for line in lines if "Input Only Device" in line or "Combined Device" in line
+    ]
     assert len(input_device_lines) >= 2
-    
+
     # Clear console for next test
     mock_console.file.truncate(0)
     mock_console.file.seek(0)
-    
+
     # Test output device filtering
     with audio.pyaudio_context() as p:
         audio.list_output_devices(p, console=mock_console)
     console_output = mock_console.file.getvalue()
-    
+
     # Should include output-capable devices
     assert "Output Only Device" in console_output
-    assert "Combined Device" in console_output 
+    assert "Combined Device" in console_output
