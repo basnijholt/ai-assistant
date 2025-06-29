@@ -110,17 +110,12 @@ def test_kill_process_success(mock_os_kill: MagicMock) -> None:
     current_pid = os.getpid()
     pid_file.write_text(str(current_pid))
 
-    # Mock the process to be killed immediately
-    def kill_side_effect(pid: int, sig: int) -> None:  # noqa: ARG001
-        if sig == signal.SIGTERM:
-            # Simulate process death by removing PID file
-            pid_file.unlink()
-
-    mock_os_kill.side_effect = kill_side_effect
-
     result = process_manager.kill_process(process_name)
     assert result is True
-    mock_os_kill.assert_called_with(current_pid, signal.SIGTERM)
+    # The first call is to check if the process is running
+    mock_os_kill.assert_any_call(current_pid, 0)
+    # The second call is to kill the process
+    mock_os_kill.assert_any_call(current_pid, signal.SIGTERM)
     assert not pid_file.exists()
 
 

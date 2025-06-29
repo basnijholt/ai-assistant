@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -13,13 +13,15 @@ from tests.mocks.wyoming import MockASRClient, MockTTSClient
 
 
 @pytest.mark.asyncio
-@patch("wyoming.client.AsyncClient")
+@patch("agent_cli.tts.AsyncClient")
+@patch("agent_cli.asr.AsyncClient")
 @patch("agent_cli.llm.build_agent")
 @patch("agent_cli.audio.pyaudio.PyAudio")
 async def test_voice_assistant_e2e(
     mock_pyaudio_class: MagicMock,
     mock_build_agent: MagicMock,
-    mock_async_client_class: MagicMock,
+    mock_asr_client_class: MagicMock,
+    mock_tts_client_class: MagicMock,
     mock_pyaudio_device_info: list[dict],
     llm_responses: dict[str, str],
 ) -> None:
@@ -39,26 +41,48 @@ async def test_voice_assistant_e2e(
             return mock_asr_client
         return mock_tts_client
 
-    mock_async_client_class.from_uri.side_effect = from_uri_side_effect
+    mock_asr_client_class.from_uri.side_effect = from_uri_side_effect
+    mock_tts_client_class.from_uri.side_effect = from_uri_side_effect
 
-    await async_main(
-        console=None,
-        device_index=0,
-        device_name=None,
-        list_devices=False,
-        asr_server_ip="mock-host",
-        asr_server_port=10300,
-        model="test-model",
-        ollama_host="http://localhost:11434",
-        clipboard=False,
-        enable_tts=False,
-        tts_server_ip="mock-host",
-        tts_server_port=10200,
-        voice_name=None,
-        tts_language=None,
-        speaker=None,
-        output_device_index=None,
-        output_device_name=None,
-        list_output_devices_flag=False,
-        save_file=None,
-    )
+    with (
+        patch(
+            "agent_cli.agents.voice_assistant.get_clipboard_text",
+            return_value="test clipboard text",
+        ),
+        patch("asyncio.Event.wait", new_callable=AsyncMock),
+        patch(
+            "agent_cli.asr.send_audio",
+            new_callable=AsyncMock,
+        ) as mock_send_audio,
+        patch(
+            "agent_cli.asr.receive_text",
+            new_callable=AsyncMock,
+        ) as mock_receive_text,
+    ):
+        mock_receive_text.return_value = "this is a test"
+        await async_main(
+            console=None,
+            device_index=0,
+            device_name=None,
+            list_devices=False,
+            asr_server_ip="mock-host",
+            asr_server_port=10300,
+            model="test-model",
+            ollama_host="http://localhost:11434",
+            clipboard=True,
+            enable_tts=True,
+            tts_server_ip="mock-host",
+            tts_server_port=10200,
+            voice_name=None,
+            tts_language=None,
+            speaker=None,
+            output_device_index=None,
+            output_device_name=None,
+            list_output_devices_flag=False,
+            save_file=None,
+        )
+    mock_build_agent.assert_called_once()
+    mock_asr_client_class.from_uri.assert_called()
+    mock_tts_client_class.from_uri.assert_called()
+    mock_send_audio.assert_awaited_once()
+    mock_receive_text.assert_awaited_once()

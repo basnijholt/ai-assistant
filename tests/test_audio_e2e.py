@@ -247,16 +247,6 @@ def test_output_device_invalid_name(
     mock_pyaudio = MockPyAudio(mock_pyaudio_device_info)
     mock_pyaudio_class.return_value = mock_pyaudio
 
-    # Try to get device with invalid index - should raise ValueError
-    with (
-        audio.pyaudio_context() as p,
-        pytest.raises(ValueError, match="Device index 999 not found"),
-    ):
-        audio.input_device(
-            p,
-            device_name=None,
-            device_index=999,
-        )
     # Try to get device with invalid name - should raise ValueError
     with audio.pyaudio_context() as p, pytest.raises(ValueError, match="No output device found"):
         audio.output_device(

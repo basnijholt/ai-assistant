@@ -20,7 +20,7 @@ async def test_send_audio() -> None:
     stream = MagicMock()
     stop_event = asyncio.Event()
 
-    def read_and_stop() -> bytes:
+    def read_and_stop(*args, **kwargs) -> bytes:  # noqa: ARG001
         # This function will be called by stream.read()
         # It stops the loop after the first chunk.
         stop_event.set()
