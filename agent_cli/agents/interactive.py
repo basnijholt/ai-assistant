@@ -190,7 +190,7 @@ async def async_main(
             )
 
         # Load conversation history
-        history_path = Path(history_dir)
+        history_path = Path(history_dir).expanduser()
         history_path.mkdir(parents=True, exist_ok=True)
         history_file = history_path / "conversation.json"
         conversation_history = _load_conversation_history(history_file)
