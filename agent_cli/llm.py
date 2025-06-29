@@ -35,7 +35,7 @@ def build_agent(
         model=ollama_model,
         system_prompt=system_prompt or (),
         instructions=instructions,
-        model_settings=OpenAIResponsesModelSettings(extra_body={"think": True}),
+        model_settings=OpenAIResponsesModelSettings(extra_body={"think": False}),
     )
 
 
