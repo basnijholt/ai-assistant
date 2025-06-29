@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import io
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, Self
 
 from wyoming.asr import Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.event import Event
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+
+    from wyoming.event import Event
 
 
 class MockWyomingEvent:
@@ -85,7 +86,7 @@ class MockASRClient:
                 self._event_generator = self._generate_streaming_events(transcript_text)
             else:
                 # Simple non-streaming response
-                async def simple_response():
+                async def simple_response() -> AsyncGenerator[Event, None]:
                     yield Transcript(text=transcript_text).event()
 
                 self._event_generator = simple_response()
@@ -141,7 +142,7 @@ class MockASRClient:
         # Final transcript
         yield Transcript(text=final_text).event()
 
-    async def __aenter__(self) -> MockASRClient:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         return self
 
@@ -245,11 +246,9 @@ class MockTTSClient:
 
         # Create a simple pattern based on text hash
         pattern = hash(text) % 256
-        audio_frames = bytes([pattern, pattern ^ 255] * samples)
+        return bytes([pattern, pattern ^ 255] * samples)
 
-        return audio_frames
-
-    async def __aenter__(self) -> MockTTSClient:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         return self
 
@@ -261,9 +260,9 @@ class MockTTSClient:
 class MockWyomingAsyncClient:
     """Mock Wyoming AsyncClient that can act as either ASR or TTS client."""
 
-    _asr_responses: dict[str, str] = {}
-    _tts_responses: dict[str, bytes] = {}
-    _simulate_delay: float = 0.1
+    _asr_responses: ClassVar[dict[str, str]] = {}
+    _tts_responses: ClassVar[dict[str, bytes]] = {}
+    _simulate_delay: ClassVar[float] = 0.1
 
     @classmethod
     def from_uri(
@@ -316,6 +315,4 @@ def create_mock_audio_data(text: str, sample_rate: int = 22050) -> bytes:
 
     # Create pattern based on text
     pattern = hash(text) % 128
-    audio_data = bytes([pattern, 255 - pattern] * samples)
-
-    return audio_data
+    return bytes([pattern, 255 - pattern] * samples)
