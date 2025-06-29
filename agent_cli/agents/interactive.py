@@ -35,6 +35,7 @@ from agent_cli.audio import (
 )
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import get_llm_response
+from agent_cli.tools import ExecuteCodeTool, ReadFileTool
 from agent_cli.utils import (
     format_timedelta_to_ago,
     print_device_index,
@@ -64,6 +65,10 @@ class ConversationEntry(TypedDict):
 
 SYSTEM_PROMPT = """\
 You are a helpful and friendly conversational AI. Your role is to assist the user with their questions and tasks.
+
+You have access to the following tools:
+- read_file: Read the content of a file.
+- execute_code: Execute a shell command.
 
 - The user is interacting with you through voice, so keep your responses concise and natural.
 - A summary of the previous conversation is provided for context. This context may or may not be relevant to the current query.
@@ -240,6 +245,7 @@ async def async_main(
 """
 
                 # 4. Get LLM response
+                tools = [ReadFileTool, ExecuteCodeTool]
                 response_text = await get_llm_response(
                     system_prompt=SYSTEM_PROMPT,
                     agent_instructions=AGENT_INSTRUCTIONS,
@@ -248,6 +254,7 @@ async def async_main(
                     ollama_host=ollama_host,
                     logger=LOGGER,
                     console=console,
+                    tools=tools,
                 )
 
                 if not response_text:

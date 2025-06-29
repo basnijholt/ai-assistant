@@ -18,6 +18,7 @@ from agent_cli.utils import print_error_message, print_output_panel
 if TYPE_CHECKING:
     import logging
 
+    from pydantic import BaseModel
     from rich.console import Console
 
 
@@ -27,6 +28,7 @@ def build_agent(
     *,
     system_prompt: str | None = None,
     instructions: str | None = None,
+    tools: list[BaseModel] | None = None,
 ) -> Agent:
     """Construct and return a PydanticAI agent configured for local Ollama."""
     ollama_provider = OpenAIProvider(base_url=f"{ollama_host}/v1")
@@ -35,6 +37,7 @@ def build_agent(
         model=ollama_model,
         system_prompt=system_prompt or (),
         instructions=instructions,
+        tools=tools or [],
         model_settings=OpenAIResponsesModelSettings(extra_body={"think": False}),
     )
 
@@ -61,6 +64,7 @@ async def get_llm_response(
     ollama_host: str,
     logger: logging.Logger,
     console: Console | None,
+    tools: list[BaseModel] | None = None,
 ) -> str | None:
     """Get a response from the LLM."""
     agent = build_agent(
@@ -68,6 +72,7 @@ async def get_llm_response(
         ollama_host=ollama_host,
         system_prompt=system_prompt,
         instructions=agent_instructions,
+        tools=tools,
     )
     try:
         with _maybe_status(console, model):
