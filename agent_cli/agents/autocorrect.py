@@ -109,20 +109,16 @@ def _display_result(
         )
 
 
-@app.command("autocorrect")
-def autocorrect(
+async def async_autocorrect(
     *,
-    text: str | None = typer.Argument(
-        None,
-        help="The text to correct. If not provided, reads from clipboard.",
-    ),
-    model: str = opts.MODEL,
-    ollama_host: str = opts.OLLAMA_HOST,
-    log_level: str = opts.LOG_LEVEL,
-    log_file: str | None = opts.LOG_FILE,
-    quiet: bool = opts.QUIET,
+    text: str | None,
+    model: str,
+    ollama_host: str,
+    log_level: str,
+    log_file: str | None,
+    quiet: bool,
 ) -> None:
-    """Correct text from clipboard using a local Ollama model."""
+    """Asynchronous version of the autocorrect command."""
     setup_logging(log_level, log_file, quiet=quiet)
     console = Console() if not quiet else None
     original_text = text if text is not None else get_clipboard_text(console)
@@ -134,9 +130,7 @@ def autocorrect(
 
     try:
         if quiet:
-            corrected_text, elapsed = asyncio.run(
-                process_text(original_text, model, ollama_host),
-            )
+            corrected_text, elapsed = await process_text(original_text, model, ollama_host)
         else:
             with Status(
                 f"[bold yellow]🤖 Correcting with {model}...[/bold yellow]",
@@ -146,9 +140,7 @@ def autocorrect(
                 status.update(
                     f"[bold yellow]🤖 Correcting with {model}...{maybe_log}[/bold yellow]",
                 )
-                corrected_text, elapsed = asyncio.run(
-                    process_text(original_text, model, ollama_host),
-                )
+                corrected_text, elapsed = await process_text(original_text, model, ollama_host)
 
         _display_result(
             corrected_text,
@@ -168,3 +160,29 @@ def autocorrect(
                 f"Please check that your Ollama server is running at [bold cyan]{ollama_host}[/bold cyan]",
             )
         sys.exit(1)
+
+
+@app.command("autocorrect")
+def autocorrect(
+    *,
+    text: str | None = typer.Argument(
+        None,
+        help="The text to correct. If not provided, reads from clipboard.",
+    ),
+    model: str = opts.MODEL,
+    ollama_host: str = opts.OLLAMA_HOST,
+    log_level: str = opts.LOG_LEVEL,
+    log_file: str | None = opts.LOG_FILE,
+    quiet: bool = opts.QUIET,
+) -> None:
+    """Correct text from clipboard using a local Ollama model."""
+    asyncio.run(
+        async_autocorrect(
+            text=text,
+            model=model,
+            ollama_host=ollama_host,
+            log_level=log_level,
+            log_file=log_file,
+            quiet=quiet,
+        ),
+    )

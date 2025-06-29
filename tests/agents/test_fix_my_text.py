@@ -140,19 +140,24 @@ def test_configuration_constants():
     assert isinstance(config.DEFAULT_MODEL, str)
 
 
-@patch("agent_cli.agents.autocorrect.process_text", new_callable=AsyncMock)
+@pytest.mark.asyncio
+@patch("agent_cli.agents.autocorrect.build_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
-def test_autocorrect_command_with_text(
+async def test_autocorrect_command_with_text(
     mock_get_clipboard: MagicMock,
-    mock_process_text: AsyncMock,
+    mock_build_agent: MagicMock,
 ) -> None:
     """Test the autocorrect command with text provided as an argument."""
     # Setup
     mock_get_clipboard.return_value = "from clipboard"
-    mock_process_text.return_value = ("Corrected text.", 0.1)
+    mock_agent = MagicMock()
+    mock_result = MagicMock()
+    mock_result.output = "Corrected text."
+    mock_agent.run = AsyncMock(return_value=mock_result)
+    mock_build_agent.return_value = mock_agent
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
-        autocorrect.autocorrect(
+        await autocorrect.async_autocorrect(
             text="input text",
             model=config.DEFAULT_MODEL,
             ollama_host=config.OLLAMA_HOST,
@@ -163,26 +168,33 @@ def test_autocorrect_command_with_text(
 
     # Assertions
     mock_get_clipboard.assert_not_called()
-    mock_process_text.assert_called_once_with(
-        "input text",
-        config.DEFAULT_MODEL,
-        config.OLLAMA_HOST,
+    mock_build_agent.assert_called_once_with(
+        model=config.DEFAULT_MODEL,
+        ollama_host=config.OLLAMA_HOST,
+        system_prompt=autocorrect.SYSTEM_PROMPT,
+        instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
+    mock_agent.run.assert_called_once_with("input text")
 
 
-@patch("agent_cli.agents.autocorrect.process_text", new_callable=AsyncMock)
+@pytest.mark.asyncio
+@patch("agent_cli.agents.autocorrect.build_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
-def test_autocorrect_command_from_clipboard(
+async def test_autocorrect_command_from_clipboard(
     mock_get_clipboard: MagicMock,
-    mock_process_text: AsyncMock,
+    mock_build_agent: MagicMock,
 ) -> None:
     """Test the autocorrect command reading from the clipboard."""
     # Setup
     mock_get_clipboard.return_value = "clipboard text"
-    mock_process_text.return_value = ("Corrected clipboard text.", 0.1)
+    mock_agent = MagicMock()
+    mock_result = MagicMock()
+    mock_result.output = "Corrected clipboard text."
+    mock_agent.run = AsyncMock(return_value=mock_result)
+    mock_build_agent.return_value = mock_agent
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
-        autocorrect.autocorrect(
+        await autocorrect.async_autocorrect(
             text=None,  # No text argument provided
             model=config.DEFAULT_MODEL,
             ollama_host=config.OLLAMA_HOST,
@@ -193,8 +205,10 @@ def test_autocorrect_command_from_clipboard(
 
     # Assertions
     mock_get_clipboard.assert_called_once()
-    mock_process_text.assert_called_once_with(
-        "clipboard text",
-        config.DEFAULT_MODEL,
-        config.OLLAMA_HOST,
+    mock_build_agent.assert_called_once_with(
+        model=config.DEFAULT_MODEL,
+        ollama_host=config.OLLAMA_HOST,
+        system_prompt=autocorrect.SYSTEM_PROMPT,
+        instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
+    mock_agent.run.assert_called_once_with("clipboard text")
