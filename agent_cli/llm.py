@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 from rich.status import Status
 
@@ -35,6 +35,7 @@ def build_agent(
         model=ollama_model,
         system_prompt=system_prompt or (),
         instructions=instructions,
+        model_settings=OpenAIResponsesModelSettings(openai_think=False),
     )
 
 

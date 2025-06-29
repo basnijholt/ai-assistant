@@ -74,6 +74,7 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+timeout = 10
 addopts = [
     "--cov=agent_cli",
     "--cov-report=term",
