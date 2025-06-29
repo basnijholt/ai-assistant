@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,26 +11,34 @@ from agent_cli.agents.speak import async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockTTSClient
 
+if TYPE_CHECKING:
+    from rich.console import Console
+
 
 @pytest.mark.asyncio
+@patch("agent_cli.tts.pyaudio_context")
+@patch("agent_cli.agents.speak.pyaudio_context")
 @patch("agent_cli.tts.AsyncClient")
-@patch("agent_cli.audio.pyaudio.PyAudio")
 async def test_speak_e2e(
-    mock_pyaudio_class: MagicMock,
     mock_async_client_class: MagicMock,
+    mock_pyaudio_context_speak: MagicMock,
+    mock_pyaudio_context_tts: MagicMock,
     mock_pyaudio_device_info: list[dict],
+    mock_console: Console,
 ) -> None:
     """Test end-to-end speech synthesis with simplified mocks."""
     # Setup mock PyAudio
-    mock_pyaudio_class.return_value = MockPyAudio(mock_pyaudio_device_info)
+    mock_pyaudio_instance = MockPyAudio(mock_pyaudio_device_info)
+    mock_pyaudio_context_speak.return_value.__enter__.return_value = mock_pyaudio_instance
+    mock_pyaudio_context_tts.return_value.__enter__.return_value = mock_pyaudio_instance
 
     # Setup mock Wyoming client
     mock_tts_client = MockTTSClient(b"fake audio data")
     mock_async_client_class.from_uri.return_value.__aenter__.return_value = mock_tts_client
 
     await async_main(
-        quiet=True,
-        console=None,
+        quiet=False,
+        console=mock_console,
         text="Hello, world!",
         tts_server_ip="mock-host",
         tts_server_port=10200,
@@ -43,4 +52,5 @@ async def test_speak_e2e(
     )
 
     # Verify that the audio was "played"
-    assert mock_pyaudio_class.return_value.streams[0].get_written_data()
+    mock_async_client_class.from_uri.assert_called_once_with("tcp://mock-host:10200")
+    assert mock_pyaudio_instance.streams[0].get_written_data()
