@@ -245,51 +245,102 @@ The process management features make it perfect for hotkey toggles. Use `--statu
  Usage: - Run in foreground: agent-cli voice-assistant --device-index 1 - Run   
  in background: agent-cli voice-assistant --device-index 1 & - Check status:    
  agent-cli voice-assistant --status - Stop background process: agent-cli        
- voice-assistant --stop                                                         
+ voice-assistant --stop - List output devices: agent-cli voice-assistant        
+ --list-output-devices - Save TTS to file: agent-cli voice-assistant --tts      
+ --save-file response.wav                                                       
                                                                                 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --device-index                           INTEGER  Index of the PyAudio input │
-│                                                   device to use.             │
-│                                                   [default: None]            │
-│ --device-name                            TEXT     Device name keywords for   │
-│                                                   partial matching. Supports │
-│                                                   comma-separated list where │
-│                                                   each term can partially    │
-│                                                   match device names         │
-│                                                   (case-insensitive). First  │
-│                                                   matching device is         │
-│                                                   selected.                  │
-│                                                   [default: None]            │
-│ --list-devices                                    List available audio input │
-│                                                   devices and exit.          │
-│ --asr-server-ip                          TEXT     Wyoming ASR server IP      │
-│                                                   address.                   │
-│                                                   [default: 192.168.1.143]   │
-│ --asr-server-port                        INTEGER  Wyoming ASR server port.   │
-│                                                   [default: 10300]           │
-│ --model            -m                    TEXT     The Ollama model to use.   │
-│                                                   Default is devstral:24b.   │
-│                                                   [default: devstral:24b]    │
-│ --ollama-host                            TEXT     The Ollama server host.    │
-│                                                   Default is                 │
-│                                                   http://localhost:11434.    │
-│                                                   [default:                  │
-│                                                   http://localhost:11434]    │
-│ --stop                                            Stop any running           │
-│                                                   background process.        │
-│ --status                                          Check if a background      │
-│                                                   process is running.        │
-│ --clipboard            --no-clipboard             Copy result to clipboard.  │
-│                                                   [default: clipboard]       │
-│ --log-level                              TEXT     Set logging level.         │
-│                                                   [default: WARNING]         │
-│ --log-file                               TEXT     Path to a file to write    │
-│                                                   logs to.                   │
-│                                                   [default: None]            │
-│ --quiet            -q                             Suppress console output    │
-│                                                   from rich.                 │
-│ --help                                            Show this message and      │
-│                                                   exit.                      │
+│ --device-index                               INTEGER  Index of the PyAudio   │
+│                                                       input device to use.   │
+│                                                       [default: None]        │
+│ --device-name                                TEXT     Device name keywords   │
+│                                                       for partial matching.  │
+│                                                       Supports               │
+│                                                       comma-separated list   │
+│                                                       where each term can    │
+│                                                       partially match device │
+│                                                       names                  │
+│                                                       (case-insensitive).    │
+│                                                       First matching device  │
+│                                                       is selected.           │
+│                                                       [default: None]        │
+│ --list-devices                                        List available audio   │
+│                                                       input devices and      │
+│                                                       exit.                  │
+│ --asr-server-ip                              TEXT     Wyoming ASR server IP  │
+│                                                       address.               │
+│                                                       [default:              │
+│                                                       192.168.1.143]         │
+│ --asr-server-port                            INTEGER  Wyoming ASR server     │
+│                                                       port.                  │
+│                                                       [default: 10300]       │
+│ --model                -m                    TEXT     The Ollama model to    │
+│                                                       use. Default is        │
+│                                                       devstral:24b.          │
+│                                                       [default:              │
+│                                                       devstral:24b]          │
+│ --ollama-host                                TEXT     The Ollama server      │
+│                                                       host. Default is       │
+│                                                       http://localhost:1143… │
+│                                                       [default:              │
+│                                                       http://localhost:1143… │
+│ --stop                                                Stop any running       │
+│                                                       background process.    │
+│ --status                                              Check if a background  │
+│                                                       process is running.    │
+│ --clipboard                --no-clipboard             Copy result to         │
+│                                                       clipboard.             │
+│                                                       [default: clipboard]   │
+│ --log-level                                  TEXT     Set logging level.     │
+│                                                       [default: WARNING]     │
+│ --log-file                                   TEXT     Path to a file to      │
+│                                                       write logs to.         │
+│                                                       [default: None]        │
+│ --quiet                -q                             Suppress console       │
+│                                                       output from rich.      │
+│ --tts                      --no-tts                   Enable text-to-speech  │
+│                                                       for responses.         │
+│                                                       [default: no-tts]      │
+│ --tts-server-ip                              TEXT     Wyoming TTS server IP  │
+│                                                       address.               │
+│                                                       [default:              │
+│                                                       192.168.1.143]         │
+│ --tts-server-port                            INTEGER  Wyoming TTS server     │
+│                                                       port.                  │
+│                                                       [default: 10200]       │
+│ --voice                                      TEXT     Voice name to use for  │
+│                                                       TTS (e.g.,             │
+│                                                       'en_US-lessac-medium'… │
+│                                                       [default: None]        │
+│ --tts-language                               TEXT     Language for TTS       │
+│                                                       (e.g., 'en_US').       │
+│                                                       [default: None]        │
+│ --speaker                                    TEXT     Speaker name for TTS   │
+│                                                       voice.                 │
+│                                                       [default: None]        │
+│ --output-device-index                        INTEGER  Index of the PyAudio   │
+│                                                       output device to use   │
+│                                                       for TTS.               │
+│                                                       [default: None]        │
+│ --output-device-name                         TEXT     Output device name     │
+│                                                       keywords for partial   │
+│                                                       matching. Supports     │
+│                                                       comma-separated list   │
+│                                                       where each term can    │
+│                                                       partially match device │
+│                                                       names                  │
+│                                                       (case-insensitive).    │
+│                                                       First matching device  │
+│                                                       is selected.           │
+│                                                       [default: None]        │
+│ --list-output-devices                                 List available audio   │
+│                                                       output devices and     │
+│                                                       exit.                  │
+│ --save-file                                  TEXT     Save TTS response      │
+│                                                       audio to WAV file.     │
+│                                                       [default: None]        │
+│ --help                                                Show this message and  │
+│                                                       exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
