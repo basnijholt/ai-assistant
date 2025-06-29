@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
-from wyoming.tts import Synthesize
+from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import config
 from agent_cli.audio import (
@@ -35,14 +35,11 @@ def _create_synthesis_request(
 
     # Add voice parameters if specified
     if voice_name or language or speaker:
-        voice_data = {}
-        if voice_name:
-            voice_data["name"] = voice_name
-        if language:
-            voice_data["language"] = language
-        if speaker:
-            voice_data["speaker"] = speaker
-        synthesize_event.data["voice"] = voice_data
+        synthesize_event.voice = SynthesizeVoice(
+            name=voice_name,
+            language=language,
+            speaker=speaker,
+        )
 
     return synthesize_event
 
