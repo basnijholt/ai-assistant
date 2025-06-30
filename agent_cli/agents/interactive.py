@@ -49,6 +49,7 @@ from agent_cli.utils import (
     print_input_panel,
     print_status_message,
     signal_handling_context,
+    stop_or_status,
 )
 
 if TYPE_CHECKING:
@@ -372,23 +373,8 @@ def interactive(
         quiet=quiet,
         clipboard=False,  # Not used in interactive mode
     )
-    console = general_cfg.console
-
     process_name = "interactive"
-
-    if stop:
-        if process_manager.kill_process(process_name):
-            print_status_message(console, "✅ Interactive agent stopped.")
-        else:
-            print_status_message(console, "⚠️  No interactive agent is running.", style="yellow")
-        return
-
-    if status:
-        if process_manager.is_process_running(process_name):
-            pid = process_manager.read_pid_file(process_name)
-            print_status_message(console, f"✅ Interactive agent is running (PID: {pid}).")
-        else:
-            print_status_message(console, "⚠️  Interactive agent is not running.", style="yellow")
+    if stop_or_status(process_name, "interactive agent", general_cfg.console, stop, status):
         return
 
     # Use context manager for PID file management

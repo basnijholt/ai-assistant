@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Protocol
 import pyperclip
 from rich.panel import Panel
 
+from agent_cli import process_manager
+
 if TYPE_CHECKING:
     import logging
     from collections.abc import Generator
@@ -223,3 +225,29 @@ def format_timedelta_to_ago(td: timedelta) -> str:
     if minutes > 0:
         return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
     return f"{seconds} second{'s' if seconds != 1 else ''} ago"
+
+
+def stop_or_status(
+    process_name: str,
+    which: str,
+    console: Console,
+    stop: bool,  # noqa: FBT001
+    status: bool,  # noqa: FBT001
+) -> bool:
+    """Handle process control for a given process name."""
+    if stop:
+        if process_manager.kill_process(process_name):
+            print_status_message(console, f"✅ {which.capitalize()} stopped.")
+        else:
+            print_status_message(console, f"⚠️  No {which} is running.", style="yellow")
+        return True
+
+    if status:
+        if process_manager.is_process_running(process_name):
+            pid = process_manager.read_pid_file(process_name)
+            print_status_message(console, f"✅ {which.capitalize()} is running (PID: {pid}).")
+        else:
+            print_status_message(console, f"⚠️ {which.capitalize()} is not running.", style="yellow")
+        return True
+
+    return False

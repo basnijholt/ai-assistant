@@ -19,6 +19,7 @@ from agent_cli.utils import (
     get_clipboard_text,
     print_input_panel,
     print_status_message,
+    stop_or_status,
 )
 
 LOGGER = logging.getLogger()
@@ -120,23 +121,8 @@ def speak(
     """
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
-    console = general_cfg.console
-
     process_name = "speak"
-
-    if stop:
-        if process_manager.kill_process(process_name):
-            print_status_message(console, "✅ Speak stopped.")
-        else:
-            print_status_message(console, "⚠️  No speak process is running.", style="yellow")
-        return
-
-    if status:
-        if process_manager.is_process_running(process_name):
-            pid = process_manager.read_pid_file(process_name)
-            print_status_message(console, f"✅ Speak is running (PID: {pid}).")
-        else:
-            print_status_message(console, "⚠️  Speak is not running.", style="yellow")
+    if stop_or_status(process_name, "speak process", general_cfg.console, stop, status):
         return
 
     # Use context manager for PID file management

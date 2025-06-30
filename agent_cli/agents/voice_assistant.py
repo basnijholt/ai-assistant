@@ -69,6 +69,7 @@ from agent_cli.utils import (
     print_input_panel,
     print_status_message,
     signal_handling_context,
+    stop_or_status,
 )
 
 if TYPE_CHECKING:
@@ -278,22 +279,8 @@ def voice_assistant(
         quiet=quiet,
         clipboard=clipboard,
     )
-    console = general_cfg.console
     process_name = "voice-assistant"
-
-    if stop:
-        if process_manager.kill_process(process_name):
-            print_status_message(console, "✅ Voice assistant stopped.")
-        else:
-            print_status_message(console, "⚠️  No voice assistant is running.", style="yellow")
-        return
-
-    if status:
-        if process_manager.is_process_running(process_name):
-            pid = process_manager.read_pid_file(process_name)
-            print_status_message(console, f"✅ Voice assistant is running (PID: {pid}).")
-        else:
-            print_status_message(console, "⚠️  Voice assistant is not running.", style="yellow")
+    if stop_or_status(process_name, "voice assistant", general_cfg.console, stop, status):
         return
 
     # Use context manager for PID file management

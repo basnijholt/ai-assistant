@@ -23,6 +23,7 @@ from agent_cli.utils import (
     print_output_panel,
     print_status_message,
     signal_handling_context,
+    stop_or_status,
 )
 
 if TYPE_CHECKING:
@@ -182,30 +183,16 @@ def transcribe(
         quiet=quiet,
         clipboard=clipboard,
     )
-    console = general_cfg.console
     process_name = "transcribe"
-
-    if stop:
-        if process_manager.kill_process(process_name):
-            print_status_message(console, "✅ Transcribe stopped.")
-        else:
-            print_status_message(console, "⚠️  No transcribe is running.", style="yellow")
-        return
-
-    if status:
-        if process_manager.is_process_running(process_name):
-            pid = process_manager.read_pid_file(process_name)
-            print_status_message(console, f"✅ Transcribe is running (PID: {pid}).")
-        else:
-            print_status_message(console, "⚠️  Transcribe is not running.", style="yellow")
+    if stop_or_status(process_name, "transcribe", general_cfg.console, stop, status):
         return
 
     with pyaudio_context() as p:
         if list_devices:
-            list_input_devices(p, console)
+            list_input_devices(p, general_cfg.console)
             return
         device_index, device_name = input_device(p, device_name, device_index)
-        print_device_index(console, device_index, device_name)
+        print_device_index(general_cfg.console, device_index, device_name)
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):

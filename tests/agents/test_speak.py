@@ -25,7 +25,7 @@ def test_speak_stop(mock_kill_process: MagicMock) -> None:
     mock_kill_process.return_value = True
     result = runner.invoke(app, ["speak", "--stop"])
     assert result.exit_code == 0
-    assert "Speak stopped" in result.stdout
+    assert "Speak process stopped" in result.stdout
     mock_kill_process.assert_called_once_with("speak")
 
 
@@ -45,7 +45,7 @@ def test_speak_status_running(mock_is_process_running: MagicMock) -> None:
     with patch("agent_cli.agents.speak.process_manager.read_pid_file", return_value=123):
         result = runner.invoke(app, ["speak", "--status"])
     assert result.exit_code == 0
-    assert "Speak is running" in result.stdout
+    assert "Speak process is running" in result.stdout
 
 
 @patch("agent_cli.agents.speak.process_manager.is_process_running")
@@ -54,4 +54,4 @@ def test_speak_status_not_running(mock_is_process_running: MagicMock) -> None:
     mock_is_process_running.return_value = False
     result = runner.invoke(app, ["speak", "--status"])
     assert result.exit_code == 0
-    assert "Speak is not running" in result.stdout
+    assert "Speak process is not running" in result.stdout
