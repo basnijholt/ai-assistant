@@ -116,6 +116,9 @@ To stop the services, run:
 docker-compose -f examples/docker-compose.yml down
 ```
 
+> [!WARNING]
+> The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-assistant`, or `interactive` agents, you may need to increase the memory allocated to Docker.
+
 </details>
 
 ## Installation
