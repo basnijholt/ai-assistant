@@ -41,6 +41,9 @@ dev = [
     "ruff",
     "notebook",
 ]
+speed = [
+    "audiostretchy>=1.3.0",
+]
 
 # Duplicate of test+dev optional-dependencies groups
 [dependency-groups]

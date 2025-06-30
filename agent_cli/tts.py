@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import io
 import wave
 from typing import TYPE_CHECKING
@@ -22,6 +23,8 @@ if TYPE_CHECKING:
     import logging
 
     from rich.console import Console
+
+has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
 
 def _create_synthesis_request(
@@ -176,6 +179,42 @@ async def synthesize_speech(
         return None
 
 
+def _apply_speed_adjustment(
+    audio_data: io.BytesIO,
+    speed: float,
+) -> tuple[io.BytesIO, bool]:
+    """Apply speed adjustment to audio data using AudioStretchy or sample rate fallback.
+
+    Args:
+        audio_data: WAV audio data as BytesIO
+        speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
+
+    Returns:
+        Tuple of (speed-adjusted WAV audio data as BytesIO, bool indicating if speed was changed)
+
+    """
+    if speed == 1.0 or not has_audiostretchy:
+        return audio_data, False
+
+    # Try AudioStretchy first (high-quality pitch-preserving method)
+    from audiostretchy.stretch import AudioStretch
+
+    # AudioStretchy closes the input BytesIO during open_wav, so make a copy
+    audio_data.seek(0)
+    input_copy = io.BytesIO(audio_data.read())
+
+    # Use AudioStretchy for high-quality time stretching
+    audio_stretch = AudioStretch()
+    audio_stretch.open(file=input_copy, format="wav")
+    audio_stretch.stretch(ratio=1 / speed)
+
+    # Save to output BytesIO with close=False to keep it open
+    out = io.BytesIO()
+    audio_stretch.save_wav(out, close=False)
+    out.seek(0)  # Reset position for reading
+    return out, True
+
+
 async def play_audio(
     audio_data: bytes,
     logger: logging.Logger,
@@ -198,22 +237,25 @@ async def play_audio(
     """
     try:
         if console:
-            if speed != 1.0:
-                print_status_message(console, f"🔊 Playing audio at {speed}x speed...")
-            else:
-                print_status_message(console, "🔊 Playing audio...")
+            msg = (
+                f"🔊 Playing audio at {speed}x speed..." if speed != 1.0 else "🔊 Playing audio..."
+            )
+            print_status_message(console, msg)
+
+        # Apply high-quality speed adjustment if possible
+        wav_io = io.BytesIO(audio_data)
+        wav_io, speed_changed = _apply_speed_adjustment(wav_io, speed)
 
         # Parse WAV file
-        wav_io = io.BytesIO(audio_data)
         with wave.open(wav_io, "rb") as wav_file:
-            original_sample_rate = wav_file.getframerate()
+            sample_rate = wav_file.getframerate()
             channels = wav_file.getnchannels()
             sample_width = wav_file.getsampwidth()
             frames = wav_file.readframes(wav_file.getnframes())
 
-        # Calculate effective sample rate for speed control
-        # Higher sample rate = faster playback
-        effective_sample_rate = int(original_sample_rate * speed)
+        # Calculate effective sample rate for fallback method
+        if not speed_changed:
+            sample_rate = int(sample_rate * speed)
 
         with (
             pyaudio_context() as p,
@@ -221,7 +263,7 @@ async def play_audio(
                 p,
                 format=p.get_format_from_width(sample_width),
                 channels=channels,
-                rate=effective_sample_rate,
+                rate=sample_rate,
                 output=True,
                 frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
                 output_device_index=output_device_index,
