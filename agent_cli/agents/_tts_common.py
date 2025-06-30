@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from agent_cli import tts
-from agent_cli.utils import print_status_message
+from agent_cli.utils import Stoppable, print_status_message
 
 if TYPE_CHECKING:
     import logging
@@ -54,6 +54,7 @@ async def handle_tts_playback(
     play_audio: bool = True,
     status_message: str = "🔊 Speaking...",
     description: str = "Audio",
+    stop_event: Stoppable | None = None,
 ) -> bytes | None:
     """Handle TTS synthesis, playback, and file saving."""
     try:
@@ -71,6 +72,7 @@ async def handle_tts_playback(
             output_device_index=output_device_index,
             console=console,
             play_audio_flag=play_audio,
+            stop_event=stop_event,
         )
 
         if save_file and audio_data:

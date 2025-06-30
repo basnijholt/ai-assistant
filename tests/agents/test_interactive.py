@@ -224,6 +224,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         # Simulate a single loop by controlling the mock stop_event's is_set method
         mock_stop_event = MagicMock(spec=InteractiveStopEvent)
         mock_stop_event.is_set.side_effect = [False, True]  # Run loop once, then stop
+        mock_stop_event.clear = MagicMock()  # Mock the clear method
 
         mock_transcribe.return_value = "Mocked instruction"
         mock_llm_response.return_value = "Mocked response"
@@ -240,7 +241,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         # Verify that the core functions were called
         mock_transcribe.assert_called_once()
         mock_llm_response.assert_called_once()
-        mock_stop_event.clear.assert_called_once()
+        assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
             "Mocked response",
             tts_server_ip="localhost",
@@ -253,6 +254,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             console=mock_tts.call_args[1]["console"],
             logger=mock_tts.call_args[1]["logger"],
             play_audio=True,
+            stop_event=mock_stop_event,
         )
 
         # Verify that history was saved

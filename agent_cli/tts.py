@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import wave
 from typing import TYPE_CHECKING
@@ -15,7 +16,7 @@ from agent_cli.audio import (
     open_pyaudio_stream,
     pyaudio_context,
 )
-from agent_cli.utils import print_error_message, print_status_message
+from agent_cli.utils import Stoppable, print_error_message, print_status_message
 
 if TYPE_CHECKING:
     import logging
@@ -181,6 +182,7 @@ async def play_audio(
     *,
     output_device_index: int | None = None,
     console: Console | None = None,
+    stop_event: Stoppable | None = None,
 ) -> None:
     """Play WAV audio data using PyAudio with proper resource management.
 
@@ -189,6 +191,7 @@ async def play_audio(
         logger: Logger instance
         output_device_index: Optional output device index
         console: Rich console for messages
+        stop_event: Optional stop event to interrupt playback
 
     """
     try:
@@ -218,12 +221,26 @@ async def play_audio(
             # Play in chunks to avoid blocking
             chunk_size = config.PYAUDIO_CHUNK_SIZE
             for i in range(0, len(frames), chunk_size):
+                # Check for interruption
+                if stop_event and stop_event.is_set():
+                    logger.info("Audio playback interrupted")
+                    if console:
+                        print_status_message(
+                            console,
+                            "⏹️ Audio playback interrupted",
+                            style="yellow",
+                        )
+                    break
                 chunk = frames[i : i + chunk_size]
                 stream.write(chunk)
 
-        logger.info("Audio playback completed")
-        if console:
-            print_status_message(console, "✅ Audio playback finished")
+                # Yield control to the event loop so signal handlers can run
+                await asyncio.sleep(0)
+
+        if not (stop_event and stop_event.is_set()):
+            logger.info("Audio playback completed")
+            if console:
+                print_status_message(console, "✅ Audio playback finished")
 
     except Exception as e:
         logger.exception("Error during audio playback")
@@ -242,6 +259,7 @@ async def speak_text(
     output_device_index: int | None = None,
     console: Console | None = None,
     play_audio_flag: bool = True,
+    stop_event: Stoppable | None = None,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text.
 
@@ -256,6 +274,7 @@ async def speak_text(
         output_device_index: Optional output device index
         console: Rich console for messages
         play_audio_flag: Whether to play the audio immediately
+        stop_event: Optional stop event to interrupt playback
 
     Returns:
         WAV audio data as bytes, or None if error
@@ -280,6 +299,7 @@ async def speak_text(
             logger,
             output_device_index=output_device_index,
             console=console,
+            stop_event=stop_event,
         )
 
     return audio_data

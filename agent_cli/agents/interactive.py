@@ -181,6 +181,9 @@ async def _handle_conversation_turn(
         console=general_cfg.console,
     )
 
+    # Clear the stop event after ASR completes - it was only meant to stop recording
+    stop_event.clear()
+
     if not instruction or not instruction.strip():
         print_status_message(
             general_cfg.console,
@@ -254,9 +257,10 @@ async def _handle_conversation_turn(
             console=general_cfg.console,
             logger=LOGGER,
             play_audio=not file_config.save_file,
+            stop_event=stop_event,
         )
 
-    # 8. Reset stop_event for next iteration
+    # Reset stop_event for next iteration
     stop_event.clear()
 
 
