@@ -83,7 +83,12 @@ async def test_receive_text() -> None:
 async def test_transcribe_audio() -> None:
     """Test the main transcribe_audio function."""
     # Arrange
-    with patch("agent_cli.asr.AsyncClient.from_uri") as mock_from_uri:
+    with (
+        patch("agent_cli.asr.AsyncClient.from_uri") as mock_from_uri,
+        patch(
+            "agent_cli.audio.pyaudio_context",
+        ) as mock_pyaudio_context,
+    ):
         mock_client = AsyncMock()
         mock_client.read_event.side_effect = [
             Transcript(text="test transcription").event(),
@@ -92,6 +97,7 @@ async def test_transcribe_audio() -> None:
         mock_from_uri.return_value.__aenter__.return_value = mock_client
 
         p = MagicMock()
+        mock_pyaudio_context.return_value.__enter__.return_value = p
         stream = MagicMock()
         p.open.return_value.__enter__.return_value = stream
         stop_event = asyncio.Event()
@@ -99,7 +105,15 @@ async def test_transcribe_audio() -> None:
 
         # Act
         transcribe_task = asyncio.create_task(
-            asr.transcribe_audio("localhost", 12345, 0, logger, p, stop_event),
+            asr.transcribe_audio(
+                "localhost",
+                12345,
+                0,
+                logger,
+                p,
+                stop_event,
+                console=MagicMock(),
+            ),
         )
         # Give the task a moment to start up
         await asyncio.sleep(0.1)
@@ -110,3 +124,36 @@ async def test_transcribe_audio() -> None:
 
         # Assert
         assert result == "test transcription"
+
+
+@pytest.mark.asyncio
+async def test_transcribe_audio_connection_error() -> None:
+    """Test the main transcribe_audio function with a connection error."""
+    # Arrange
+    with (
+        patch(
+            "agent_cli.asr.AsyncClient.from_uri",
+            side_effect=ConnectionRefusedError,
+        ),
+        patch("agent_cli.audio.pyaudio_context") as mock_pyaudio_context,
+    ):
+        p = MagicMock()
+        mock_pyaudio_context.return_value.__enter__.return_value = p
+        stream = MagicMock()
+        p.open.return_value.__enter__.return_value = stream
+        stop_event = asyncio.Event()
+        logger = MagicMock()
+
+        # Act
+        result = await asr.transcribe_audio(
+            "localhost",
+            12345,
+            0,
+            logger,
+            p,
+            stop_event,
+            console=MagicMock(),
+        )
+
+        # Assert
+        assert result is None

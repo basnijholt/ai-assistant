@@ -91,7 +91,7 @@ def _display_result(
     pyperclip.copy(corrected_text)
 
     if simple_output:
-        if corrected_text.strip() == original_text.strip():
+        if original_text and corrected_text.strip() == original_text.strip():
             print("✅ No correction needed.")
         else:
             print(corrected_text)
@@ -124,7 +124,7 @@ async def async_autocorrect(
     original_text = text if text is not None else get_clipboard_text(console)
 
     if original_text is None:
-        sys.exit(0)
+        return
 
     display_original_text(original_text, console)
 

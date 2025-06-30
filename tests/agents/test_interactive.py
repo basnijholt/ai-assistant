@@ -71,6 +71,72 @@ def test_format_conversation_for_llm() -> None:
 
 
 @pytest.mark.asyncio
+async def test_async_main_list_devices(tmp_path: Path) -> None:
+    """Test the async_main function with list_devices=True."""
+    with (
+        patch("agent_cli.agents.interactive.pyaudio_context"),
+        patch(
+            "agent_cli.agents.interactive.list_input_devices",
+        ) as mock_list_input_devices,
+    ):
+        await async_main(
+            console=MagicMock(),
+            device_index=None,
+            device_name=None,
+            list_devices=True,
+            asr_server_ip="localhost",
+            asr_server_port=1234,
+            model="test-model",
+            ollama_host="localhost",
+            enable_tts=False,
+            tts_server_ip="localhost",
+            tts_server_port=5678,
+            voice_name=None,
+            tts_language=None,
+            speaker=None,
+            output_device_index=None,
+            output_device_name=None,
+            list_output_devices_flag=False,
+            save_file=None,
+            history_dir=str(tmp_path),
+        )
+        mock_list_input_devices.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_main_list_output_devices(tmp_path: Path) -> None:
+    """Test the async_main function with list_output_devices_flag=True."""
+    with (
+        patch("agent_cli.agents.interactive.pyaudio_context"),
+        patch(
+            "agent_cli.agents.interactive.list_output_devices",
+        ) as mock_list_output_devices,
+    ):
+        await async_main(
+            console=MagicMock(),
+            device_index=None,
+            device_name=None,
+            list_devices=False,
+            asr_server_ip="localhost",
+            asr_server_port=1234,
+            model="test-model",
+            ollama_host="localhost",
+            enable_tts=False,
+            tts_server_ip="localhost",
+            tts_server_port=5678,
+            voice_name=None,
+            tts_language=None,
+            speaker=None,
+            output_device_index=None,
+            output_device_name=None,
+            list_output_devices_flag=True,
+            save_file=None,
+            history_dir=str(tmp_path),
+        )
+        mock_list_output_devices.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_async_main_full_loop(tmp_path: Path) -> None:
     """Test a full loop of the interactive agent's async_main function."""
     history_dir = tmp_path / "history"

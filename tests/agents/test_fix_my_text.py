@@ -212,3 +212,23 @@ async def test_autocorrect_command_from_clipboard(
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
     mock_agent.run.assert_called_once_with("clipboard text")
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.agents.autocorrect.process_text", new_callable=AsyncMock)
+@patch("agent_cli.agents.autocorrect.get_clipboard_text", return_value=None)
+async def test_async_autocorrect_no_text(
+    mock_get_clipboard_text: MagicMock,
+    mock_process_text: AsyncMock,
+) -> None:
+    """Test the async_autocorrect function when no text is provided."""
+    await autocorrect.async_autocorrect(
+        text=None,
+        model="test",
+        ollama_host="test",
+        quiet=True,
+        log_file=None,
+        log_level="WARNING",
+    )
+    mock_process_text.assert_not_called()
+    mock_get_clipboard_text.assert_called_once()
