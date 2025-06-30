@@ -90,7 +90,10 @@ async def async_main(
 
 @app.command("speak")
 def speak(
-    text: str | None = None,
+    text: str | None = typer.Argument(
+        None,
+        help="Text to speak. Reads from clipboard if not provided.",
+    ),
     *,
     # TTS parameters
     tts_server_ip: str = opts.TTS_SERVER_IP,

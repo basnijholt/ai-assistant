@@ -1,0 +1,46 @@
+"""Tests for the TTS common module."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from agent_cli.agents._tts_common import handle_tts_playback
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.agents._tts_common.tts.speak_text", new_callable=AsyncMock)
+async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
+    """Test the handle_tts_playback function."""
+    mock_speak_text.return_value = b"audio data"
+    await handle_tts_playback(
+        text="hello",
+        tts_server_ip="localhost",
+        tts_server_port=1234,
+        voice_name="test-voice",
+        tts_language="en",
+        speaker=None,
+        output_device_index=1,
+        save_file=None,
+        console=MagicMock(),
+        logger=MagicMock(),
+        play_audio=True,
+    )
+    mock_speak_text.assert_called_once()
+
+    # Test with save_file
+    await handle_tts_playback(
+        text="hello",
+        tts_server_ip="localhost",
+        tts_server_port=1234,
+        voice_name="test-voice",
+        tts_language="en",
+        speaker=None,
+        output_device_index=1,
+        save_file="test.wav",
+        console=MagicMock(),
+        logger=MagicMock(),
+        play_audio=False,
+    )
+    assert mock_speak_text.call_count == 2

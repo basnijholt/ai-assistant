@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agent_cli.tools import ExecuteCodeTool, ReadFileTool
+from agent_cli.tools import execute_code, read_file
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,20 +15,16 @@ def test_read_file_tool(tmp_path: Path) -> None:
     # 1. Test reading a file that exists
     file = tmp_path / "test.txt"
     file.write_text("hello")
-    tool = ReadFileTool(path=str(file))
-    assert tool.run() == "hello"
+    assert read_file(path=str(file)) == "hello"
 
     # 2. Test reading a file that does not exist
-    tool = ReadFileTool(path="non_existent_file.txt")
-    assert "Error: File not found" in tool.run()
+    assert "Error: File not found" in read_file(path="non_existent_file.txt")
 
 
 def test_execute_code_tool() -> None:
     """Test the ExecuteCodeTool."""
     # 1. Test a simple command
-    tool = ExecuteCodeTool(code="echo hello")
-    assert tool.run().strip() == "hello"
+    assert execute_code(code="echo hello").strip() == "hello"
 
     # 2. Test a command that fails
-    tool = ExecuteCodeTool(code="non_existent_command")
-    assert "Error: Command not found" in tool.run()
+    assert "Error: Command not found" in execute_code(code="non_existent_command")
