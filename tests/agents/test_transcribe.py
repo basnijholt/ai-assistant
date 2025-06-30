@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agent_cli.agents import transcribe
+from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
 from tests.mocks.wyoming import MockASRClient
 
 
@@ -43,16 +44,26 @@ async def test_transcribe_main(
 
     # The function we are testing
     with caplog.at_level(logging.INFO):
-        await transcribe.async_main(
+        asr_config = ASRConfig(
+            server_ip="localhost",
+            server_port=12345,
             device_index=None,
-            asr_server_ip="localhost",
-            asr_server_port=12345,
-            clipboard=True,
-            quiet=True,  # To avoid console output in tests
-            llm=False,
-            model="",
-            ollama_host="",
+            device_name=None,
+            list_devices=False,
+        )
+        general_config = GeneralConfig(
+            log_level="INFO",
+            log_file=None,
+            quiet=True,
             console=None,
+            clipboard=True,
+        )
+        llm_config = LLMConfig(model="", ollama_host="")
+        await transcribe.async_main(
+            asr_config=asr_config,
+            general_config=general_config,
+            llm_config=llm_config,
+            llm_enabled=False,
             p=mock_pyaudio_instance,
         )
 

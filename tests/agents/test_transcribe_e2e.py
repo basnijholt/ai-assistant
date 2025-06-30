@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
 from agent_cli.agents.transcribe import async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockASRClient
@@ -42,16 +43,27 @@ async def test_transcribe_e2e(
     mock_signal_handling_context.return_value.__enter__.return_value = stop_event
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
-    await async_main(
+    asr_config = ASRConfig(
+        server_ip="mock-host",
+        server_port=10300,
         device_index=0,
-        asr_server_ip="mock-host",
-        asr_server_port=10300,
-        clipboard=False,
+        device_name=None,
+        list_devices=False,
+    )
+    general_config = GeneralConfig(
+        log_level="INFO",
+        log_file=None,
         quiet=False,
-        llm=False,
-        model="",
-        ollama_host="",
         console=mock_console,
+        clipboard=False,
+    )
+    llm_config = LLMConfig(model="", ollama_host="")
+
+    await async_main(
+        asr_config=asr_config,
+        general_config=general_config,
+        llm_config=llm_config,
+        llm_enabled=False,
         p=mock_pyaudio_instance,
     )
 

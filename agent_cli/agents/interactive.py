@@ -25,6 +25,13 @@ from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
+from agent_cli.agents._config import (
+    ASRConfig,
+    FileConfig,
+    GeneralConfig,
+    LLMConfig,
+    TTSConfig,
+)
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import (
     input_device,
@@ -37,6 +44,7 @@ from agent_cli.cli import app, setup_logging
 from agent_cli.llm import get_llm_response
 from agent_cli.tools import ExecuteCodeTool, ReadFileTool
 from agent_cli.utils import (
+    InteractiveStopEvent,
     format_timedelta_to_ago,
     print_device_index,
     print_input_panel,
@@ -48,7 +56,7 @@ if TYPE_CHECKING:
     import pyaudio
 
 
-LOGGER = logging.getLogger()
+LOGGER = logging.getLogger(__name__)
 
 # --- Conversation History ---
 
@@ -135,6 +143,7 @@ def _save_conversation_history(history_file: Path, history: list[ConversationEnt
 
 
 def _format_conversation_for_llm(history: list[ConversationEntry]) -> str:
+    """Format the conversation history for the LLM."""
     if not history:
         return "No previous conversation."
 
@@ -147,156 +156,174 @@ def _format_conversation_for_llm(history: list[ConversationEntry]) -> str:
     return "\n".join(formatted_lines)
 
 
+async def _handle_conversation_turn(
+    *,
+    p: pyaudio.PyAudio,
+    stop_event: InteractiveStopEvent,
+    conversation_history: list[ConversationEntry],
+    general_config: GeneralConfig,
+    asr_config: ASRConfig,
+    llm_config: LLMConfig,
+    tts_config: TTSConfig,
+    file_config: FileConfig,
+) -> None:
+    """Handles a single turn of the conversation."""
+    # 1. Transcribe user's command
+    print_status_message(general_config.console, "Listening for your command...", style="bold cyan")
+    instruction = await asr.transcribe_audio(
+        asr_server_ip=asr_config.server_ip,
+        asr_server_port=asr_config.server_port,
+        device_index=asr_config.device_index,
+        logger=LOGGER,
+        p=p,
+        stop_event=stop_event,
+        console=general_config.console,
+    )
+
+    if not instruction or not instruction.strip():
+        print_status_message(
+            general_config.console,
+            "No instruction, listening again.",
+            style="yellow",
+        )
+        return
+
+    print_input_panel(general_config.console, instruction, title="You")
+
+    # 2. Add user message to history
+    conversation_history.append(
+        {
+            "role": "user",
+            "content": instruction,
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+    )
+
+    # 3. Format conversation for LLM
+    formatted_history = _format_conversation_for_llm(conversation_history)
+    user_message_with_context = USER_MESSAGE_WITH_CONTEXT_TEMPLATE.format(
+        formatted_history=formatted_history,
+        instruction=instruction,
+    )
+
+    # 4. Get LLM response
+    tools = [ReadFileTool, ExecuteCodeTool]
+    response_text = await get_llm_response(
+        system_prompt=SYSTEM_PROMPT,
+        agent_instructions=AGENT_INSTRUCTIONS,
+        user_input=user_message_with_context,
+        model=llm_config.model,
+        ollama_host=llm_config.ollama_host,
+        logger=LOGGER,
+        console=general_config.console,
+        tools=tools,
+    )
+
+    if not response_text:
+        print_status_message(general_config.console, "No response from LLM.", style="yellow")
+        return
+
+    print_input_panel(general_config.console, response_text, title="AI")
+
+    # 5. Add AI response to history
+    conversation_history.append(
+        {
+            "role": "assistant",
+            "content": response_text,
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+    )
+
+    # 6. Save history
+    if file_config.history_dir:
+        history_file = file_config.history_dir / "conversation.json"
+        _save_conversation_history(history_file, conversation_history)
+
+    # 7. Handle TTS playback
+    if tts_config.enabled:
+        await handle_tts_playback(
+            response_text,
+            tts_server_ip=tts_config.server_ip,
+            tts_server_port=tts_config.server_port,
+            voice_name=tts_config.voice_name,
+            tts_language=tts_config.language,
+            speaker=tts_config.speaker,
+            output_device_index=tts_config.output_device_index,
+            save_file=file_config.save_file,
+            console=general_config.console,
+            logger=LOGGER,
+            play_audio=not file_config.save_file,
+        )
+
+    # 8. Reset stop_event for next iteration
+    stop_event.clear()
+
+
 # --- Main Application Logic ---
 
 
 async def async_main(
     *,
-    # General
-    console: Console | None,
-    # ASR input device
-    device_index: int | None,
-    device_name: str | None,
-    list_devices: bool,
-    # ASR parameters
-    asr_server_ip: str,
-    asr_server_port: int,
-    # LLM parameters
-    model: str,
-    ollama_host: str,
-    # TTS parameters
-    enable_tts: bool,
-    tts_server_ip: str,
-    tts_server_port: int,
-    voice_name: str | None,
-    tts_language: str | None,
-    speaker: str | None,
-    # Output device
-    output_device_index: int | None,
-    output_device_name: str | None,
-    list_output_devices_flag: bool,
-    # Output file
-    save_file: str | None,
-    # History
-    history_dir: str,
+    general_config: GeneralConfig,
+    asr_config: ASRConfig,
+    llm_config: LLMConfig,
+    tts_config: TTSConfig,
+    file_config: FileConfig,
 ) -> None:
     """Main async function, consumes parsed arguments."""
-    with pyaudio_context() as p:
-        # Handle device listing
-        if list_devices:
-            list_input_devices(p, console)
-            return
+    try:
+        with pyaudio_context() as p:
+            # Handle device listing
+            if asr_config.list_devices:
+                list_input_devices(p, general_config.console)
+                return
 
-        if list_output_devices_flag:
-            list_output_devices(p, console)
-            return
+            if tts_config.list_output_devices:
+                list_output_devices(p, general_config.console)
+                return
 
-        # Setup devices
-        device_index, _ = _setup_input_device(p, console, device_name, device_index)
-        tts_output_device_index = output_device_index
-        if enable_tts:
-            tts_output_device_index, _ = _setup_output_device(
+            # Setup devices
+            device_index, _ = _setup_input_device(
                 p,
-                console,
-                output_device_name,
-                output_device_index,
+                general_config.console,
+                asr_config.device_name,
+                asr_config.device_index,
             )
+            asr_config.device_index = device_index  # Update with the selected index
 
-        # Load conversation history
-        history_path = Path(history_dir).expanduser()
-        history_path.mkdir(parents=True, exist_ok=True)
-        history_file = history_path / "conversation.json"
-        conversation_history = _load_conversation_history(history_file)
-
-        with signal_handling_context(console, LOGGER) as stop_event:
-            while not stop_event.is_set():
-                # 1. Transcribe user's command
-                print_status_message(console, "Listening for your command...", style="bold cyan")
-                instruction = await asr.transcribe_audio(
-                    asr_server_ip=asr_server_ip,
-                    asr_server_port=asr_server_port,
-                    device_index=device_index,
-                    logger=LOGGER,
-                    p=p,
-                    stop_event=stop_event,
-                    console=console,
+            if tts_config.enabled:
+                tts_output_device_index, _ = _setup_output_device(
+                    p,
+                    general_config.console,
+                    tts_config.output_device_name,
+                    tts_config.output_device_index,
                 )
+                # Update with the selected index
+                tts_config.output_device_index = tts_output_device_index
 
-                if not instruction or not instruction.strip():
-                    print_status_message(
-                        console,
-                        "No instruction, listening again.",
-                        style="yellow",
+            # Load conversation history
+            if file_config.history_dir:
+                history_path = Path(file_config.history_dir).expanduser()
+                history_path.mkdir(parents=True, exist_ok=True)
+                history_file = history_path / "conversation.json"
+                conversation_history = _load_conversation_history(history_file)
+
+            with signal_handling_context(general_config.console, LOGGER) as stop_event:
+                while not stop_event.is_set():
+                    await _handle_conversation_turn(
+                        p=p,
+                        stop_event=stop_event,
+                        conversation_history=conversation_history,
+                        general_config=general_config,
+                        asr_config=asr_config,
+                        llm_config=llm_config,
+                        tts_config=tts_config,
+                        file_config=file_config,
                     )
-                    continue
-
-                print_input_panel(console, instruction, title="You")
-
-                # 2. Add user message to history
-                conversation_history.append(
-                    {
-                        "role": "user",
-                        "content": instruction,
-                        "timestamp": datetime.now(UTC).isoformat(),
-                    },
-                )
-
-                # 3. Format conversation for LLM
-                formatted_history = _format_conversation_for_llm(conversation_history)
-                user_message_with_context = USER_MESSAGE_WITH_CONTEXT_TEMPLATE.format(
-                    formatted_history=formatted_history,
-                    instruction=instruction,
-                )
-
-                # 4. Get LLM response
-                tools = [ReadFileTool, ExecuteCodeTool]
-                response_text = await get_llm_response(
-                    system_prompt=SYSTEM_PROMPT,
-                    agent_instructions=AGENT_INSTRUCTIONS,
-                    user_input=user_message_with_context,
-                    model=model,
-                    ollama_host=ollama_host,
-                    logger=LOGGER,
-                    console=console,
-                    tools=tools,
-                )
-
-                if not response_text:
-                    print_status_message(console, "No response from LLM.", style="yellow")
-                    continue
-
-                print_input_panel(console, response_text, title="AI")
-
-                # 5. Add AI response to history
-                conversation_history.append(
-                    {
-                        "role": "assistant",
-                        "content": response_text,
-                        "timestamp": datetime.now(UTC).isoformat(),
-                    },
-                )
-
-                # 6. Save history
-                _save_conversation_history(history_file, conversation_history)
-
-                # 7. Handle TTS playback
-                if enable_tts:
-                    await handle_tts_playback(
-                        response_text,
-                        tts_server_ip=tts_server_ip,
-                        tts_server_port=tts_server_port,
-                        voice_name=voice_name,
-                        tts_language=tts_language,
-                        speaker=speaker,
-                        output_device_index=tts_output_device_index,
-                        save_file=save_file,
-                        console=console,
-                        logger=LOGGER,
-                        play_audio=not save_file,
-                    )
-
-                # 8. Reset stop_event for next iteration
-                stop_event.clear()
+    except Exception:
+        if general_config.console:
+            general_config.console.print_exception()
+        raise
 
 
 @app.command("interactive")
@@ -329,13 +356,9 @@ def interactive(
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
     # Output
-    save_file: str | None = typer.Option(
-        None,
-        "--save-file",
-        help="Save TTS response audio to WAV file.",
-    ),
+    save_file: Path | None = opts.SAVE_FILE,
     # History
-    history_dir: str = typer.Option(
+    history_dir: Path = typer.Option(  # noqa: B008
         "~/.config/agent-cli/history",
         "--history-dir",
         help="Directory to store conversation history.",
@@ -363,34 +386,40 @@ def interactive(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        general_config = GeneralConfig(
+            log_level=log_level,
+            log_file=log_file,
+            quiet=quiet,
+            console=console,
+            clipboard=False,  # Not used in interactive mode
+        )
+        asr_config = ASRConfig(
+            server_ip=asr_server_ip,
+            server_port=asr_server_port,
+            device_index=device_index,
+            device_name=device_name,
+            list_devices=list_devices,
+        )
+        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+        tts_config = TTSConfig(
+            enabled=enable_tts,
+            server_ip=tts_server_ip,
+            server_port=tts_server_port,
+            voice_name=voice_name,
+            language=tts_language,
+            speaker=speaker,
+            output_device_index=output_device_index,
+            output_device_name=output_device_name,
+            list_output_devices=list_output_devices_flag,
+        )
+        file_config = FileConfig(save_file=save_file, history_dir=history_dir)
+
         asyncio.run(
             async_main(
-                # General
-                console=console,
-                # ASR input device
-                device_index=device_index,
-                device_name=device_name,
-                list_devices=list_devices,
-                # ASR parameters
-                asr_server_ip=asr_server_ip,
-                asr_server_port=asr_server_port,
-                # LLM parameters
-                model=model,
-                ollama_host=ollama_host,
-                # TTS parameters
-                enable_tts=enable_tts,
-                tts_server_ip=tts_server_ip,
-                tts_server_port=tts_server_port,
-                voice_name=voice_name,
-                tts_language=tts_language,
-                speaker=speaker,
-                # Output device
-                output_device_index=output_device_index,
-                output_device_name=output_device_name,
-                list_output_devices_flag=list_output_devices_flag,
-                # Output file
-                save_file=save_file,
-                # History
-                history_dir=history_dir,
+                general_config=general_config,
+                asr_config=asr_config,
+                llm_config=llm_config,
+                tts_config=tts_config,
+                file_config=file_config,
             ),
         )

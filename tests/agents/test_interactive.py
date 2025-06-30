@@ -9,6 +9,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from agent_cli.agents._config import (
+    ASRConfig,
+    FileConfig,
+    GeneralConfig,
+    LLMConfig,
+    TTSConfig,
+)
 from agent_cli.agents.interactive import (
     ConversationEntry,
     _format_conversation_for_llm,
@@ -73,6 +80,34 @@ def test_format_conversation_for_llm() -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_devices=True."""
+    general_config = GeneralConfig(
+        log_level="INFO",
+        log_file=None,
+        quiet=False,
+        console=MagicMock(),
+        clipboard=False,
+    )
+    asr_config = ASRConfig(
+        server_ip="localhost",
+        server_port=1234,
+        device_index=None,
+        device_name=None,
+        list_devices=True,
+    )
+    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    tts_config = TTSConfig(
+        enabled=False,
+        server_ip="localhost",
+        server_port=5678,
+        voice_name=None,
+        language=None,
+        speaker=None,
+        output_device_index=None,
+        output_device_name=None,
+        list_output_devices=False,
+    )
+    file_config = FileConfig(save_file=None, history_dir=tmp_path)
+
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
         patch(
@@ -80,25 +115,11 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         ) as mock_list_input_devices,
     ):
         await async_main(
-            console=MagicMock(),
-            device_index=None,
-            device_name=None,
-            list_devices=True,
-            asr_server_ip="localhost",
-            asr_server_port=1234,
-            model="test-model",
-            ollama_host="localhost",
-            enable_tts=False,
-            tts_server_ip="localhost",
-            tts_server_port=5678,
-            voice_name=None,
-            tts_language=None,
-            speaker=None,
-            output_device_index=None,
-            output_device_name=None,
-            list_output_devices_flag=False,
-            save_file=None,
-            history_dir=str(tmp_path),
+            general_config=general_config,
+            asr_config=asr_config,
+            llm_config=llm_config,
+            tts_config=tts_config,
+            file_config=file_config,
         )
         mock_list_input_devices.assert_called_once()
 
@@ -106,6 +127,34 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_output_devices_flag=True."""
+    general_config = GeneralConfig(
+        log_level="INFO",
+        log_file=None,
+        quiet=False,
+        console=MagicMock(),
+        clipboard=False,
+    )
+    asr_config = ASRConfig(
+        server_ip="localhost",
+        server_port=1234,
+        device_index=None,
+        device_name=None,
+        list_devices=False,
+    )
+    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    tts_config = TTSConfig(
+        enabled=False,
+        server_ip="localhost",
+        server_port=5678,
+        voice_name=None,
+        language=None,
+        speaker=None,
+        output_device_index=None,
+        output_device_name=None,
+        list_output_devices=True,
+    )
+    file_config = FileConfig(save_file=None, history_dir=tmp_path)
+
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
         patch(
@@ -113,25 +162,11 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         ) as mock_list_output_devices,
     ):
         await async_main(
-            console=MagicMock(),
-            device_index=None,
-            device_name=None,
-            list_devices=False,
-            asr_server_ip="localhost",
-            asr_server_port=1234,
-            model="test-model",
-            ollama_host="localhost",
-            enable_tts=False,
-            tts_server_ip="localhost",
-            tts_server_port=5678,
-            voice_name=None,
-            tts_language=None,
-            speaker=None,
-            output_device_index=None,
-            output_device_name=None,
-            list_output_devices_flag=True,
-            save_file=None,
-            history_dir=str(tmp_path),
+            general_config=general_config,
+            asr_config=asr_config,
+            llm_config=llm_config,
+            tts_config=tts_config,
+            file_config=file_config,
         )
         mock_list_output_devices.assert_called_once()
 
@@ -141,6 +176,34 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     """Test a full loop of the interactive agent's async_main function."""
     history_dir = tmp_path / "history"
     history_dir.mkdir()
+
+    general_config = GeneralConfig(
+        log_level="INFO",
+        log_file=None,
+        quiet=False,
+        console=MagicMock(),
+        clipboard=False,
+    )
+    asr_config = ASRConfig(
+        server_ip="localhost",
+        server_port=1234,
+        device_index=1,
+        device_name=None,
+        list_devices=False,
+    )
+    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    tts_config = TTSConfig(
+        enabled=True,
+        server_ip="localhost",
+        server_port=5678,
+        voice_name="test-voice",
+        language="en",
+        speaker=None,
+        output_device_index=1,
+        output_device_name=None,
+        list_output_devices=False,
+    )
+    file_config = FileConfig(save_file=None, history_dir=history_dir)
 
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
@@ -169,25 +232,11 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
         await async_main(
-            console=MagicMock(),
-            device_index=1,
-            device_name=None,
-            list_devices=False,
-            asr_server_ip="localhost",
-            asr_server_port=1234,
-            model="test-model",
-            ollama_host="localhost",
-            enable_tts=True,
-            tts_server_ip="localhost",
-            tts_server_port=5678,
-            voice_name="test-voice",
-            tts_language="en",
-            speaker=None,
-            output_device_index=1,
-            output_device_name=None,
-            list_output_devices_flag=False,
-            save_file=None,
-            history_dir=str(history_dir),
+            general_config=general_config,
+            asr_config=asr_config,
+            llm_config=llm_config,
+            tts_config=tts_config,
+            file_config=file_config,
         )
 
         # Verify that the core functions were called

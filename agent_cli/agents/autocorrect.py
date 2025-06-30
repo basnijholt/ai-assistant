@@ -30,6 +30,7 @@ from rich.console import Console
 from rich.status import Status
 
 import agent_cli.agents._cli_options as opts
+from agent_cli.agents._config import GeneralConfig, LLMConfig
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
 from agent_cli.utils import (
@@ -112,15 +113,12 @@ def _display_result(
 async def async_autocorrect(
     *,
     text: str | None,
-    model: str,
-    ollama_host: str,
-    log_level: str,
-    log_file: str | None,
-    quiet: bool,
+    llm_config: LLMConfig,
+    general_config: GeneralConfig,
 ) -> None:
     """Asynchronous version of the autocorrect command."""
-    setup_logging(log_level, log_file, quiet=quiet)
-    console = Console() if not quiet else None
+    setup_logging(general_config.log_level, general_config.log_file, quiet=general_config.quiet)
+    console = Console() if not general_config.quiet else None
     original_text = text if text is not None else get_clipboard_text(console)
 
     if original_text is None:
@@ -129,35 +127,47 @@ async def async_autocorrect(
     display_original_text(original_text, console)
 
     try:
-        if quiet:
-            corrected_text, elapsed = await process_text(original_text, model, ollama_host)
+        if general_config.quiet:
+            corrected_text, elapsed = await process_text(
+                original_text,
+                llm_config.model,
+                llm_config.ollama_host,
+            )
         else:
             with Status(
-                f"[bold yellow]🤖 Correcting with {model}...[/bold yellow]",
+                f"[bold yellow]🤖 Correcting with {llm_config.model}...[/bold yellow]",
                 console=console,
             ) as status:
-                maybe_log = f" (see [dim]log at {log_file}[/dim])" if log_file else ""
-                status.update(
-                    f"[bold yellow]🤖 Correcting with {model}...{maybe_log}[/bold yellow]",
+                maybe_log = (
+                    f" (see [dim]log at {general_config.log_file}[/dim])"
+                    if general_config.log_file
+                    else ""
                 )
-                corrected_text, elapsed = await process_text(original_text, model, ollama_host)
+                status.update(
+                    f"[bold yellow]🤖 Correcting with {llm_config.model}...{maybe_log}[/bold yellow]",
+                )
+                corrected_text, elapsed = await process_text(
+                    original_text,
+                    llm_config.model,
+                    llm_config.ollama_host,
+                )
 
         _display_result(
             corrected_text,
             original_text,
             elapsed,
-            simple_output=quiet,
+            simple_output=general_config.quiet,
             console=console,
         )
 
     except (httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
-        if quiet:
+        if general_config.quiet:
             print(f"❌ {e}")
         else:
             print_error_message(
                 console,
                 str(e),
-                f"Please check that your Ollama server is running at [bold cyan]{ollama_host}[/bold cyan]",
+                f"Please check that your Ollama server is running at [bold cyan]{llm_config.ollama_host}[/bold cyan]",
             )
         sys.exit(1)
 
@@ -176,13 +186,17 @@ def autocorrect(
     quiet: bool = opts.QUIET,
 ) -> None:
     """Correct text from clipboard using a local Ollama model."""
+    llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+    general_config = GeneralConfig(
+        log_level=log_level,
+        log_file=log_file,
+        quiet=quiet,
+        console=None,  # Console is created in async_autocorrect
+    )
     asyncio.run(
         async_autocorrect(
             text=text,
-            model=model,
-            ollama_host=ollama_host,
-            log_level=log_level,
-            log_file=log_file,
-            quiet=quiet,
+            llm_config=llm_config,
+            general_config=general_config,
         ),
     )

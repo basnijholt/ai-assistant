@@ -1,6 +1,6 @@
 """Shared Typer options for the Agent CLI agents."""
 
-from __future__ import annotations
+from pathlib import Path
 
 import typer
 
@@ -138,4 +138,9 @@ QUIET: bool = typer.Option(
     "-q",
     "--quiet",
     help="Suppress console output from rich.",
+)
+SAVE_FILE: Path | None = typer.Option(
+    None,
+    "--save-file",
+    help="Save TTS response audio to WAV file.",
 )

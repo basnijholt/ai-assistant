@@ -14,6 +14,7 @@ from rich.text import Text
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
+from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
 from agent_cli.audio import input_device, list_input_devices, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
@@ -68,71 +69,70 @@ Please clean up this transcribed text by correcting any speech recognition error
 
 async def async_main(
     *,
-    device_index: int | None,
-    asr_server_ip: str,
-    asr_server_port: int,
-    clipboard: bool,
-    quiet: bool,
-    model: str,
-    ollama_host: str,
-    llm: bool,
-    console: Console | None,
+    asr_config: ASRConfig,
+    general_config: GeneralConfig,
+    llm_config: LLMConfig,
+    llm_enabled: bool,
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
     with (
-        signal_handling_context(console, LOGGER) as stop_event,
-        _maybe_live(console) as live,
+        signal_handling_context(general_config.console, LOGGER) as stop_event,
+        _maybe_live(general_config.console) as live,
     ):
         transcript = await asr.transcribe_audio(
-            asr_server_ip=asr_server_ip,
-            asr_server_port=asr_server_port,
-            device_index=device_index,
+            asr_server_ip=asr_config.server_ip,
+            asr_server_port=asr_config.server_port,
+            device_index=asr_config.device_index,
             logger=LOGGER,
             p=p,
             stop_event=stop_event,
-            console=console,
+            console=general_config.console,
             live=live,
             listening_message="Listening...",
         )
 
-    if llm and model and ollama_host and transcript:
-        print_input_panel(console, transcript, title="📝 Raw Transcript")
+    if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
+        print_input_panel(general_config.console, transcript, title="📝 Raw Transcript")
         await process_and_update_clipboard(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
-            model=model,
-            ollama_host=ollama_host,
+            model=llm_config.model,
+            ollama_host=llm_config.ollama_host,
             logger=LOGGER,
-            console=console,
+            console=general_config.console,
             original_text=transcript,
             instruction=INSTRUCTION,
-            clipboard=clipboard,
+            clipboard=general_config.clipboard,
         )
         return
 
     # When not using LLM, show transcript in output panel for consistency
     if transcript:
-        if quiet:
+        if general_config.quiet:
             # Quiet mode: print result to stdout for Keyboard Maestro to capture
             print(transcript)
         else:
             print_output_panel(
-                console,
+                general_config.console,
                 transcript,
                 title="📝 Transcript",
-                subtitle="[dim]Copied to clipboard[/dim]" if clipboard else None,
+                subtitle="[dim]Copied to clipboard[/dim]" if general_config.clipboard else None,
             )
 
-        if clipboard:
+        if general_config.clipboard:
             pyperclip.copy(transcript)
             LOGGER.info("Copied transcript to clipboard.")
         else:
             LOGGER.info("Clipboard copy disabled.")
     else:
         LOGGER.info("Transcript empty.")
-        if not quiet:
-            print_status_message(console, "⚠️ No transcript captured.", style="yellow")
+        if not general_config.quiet:
+            print_status_message(
+                general_config.console,
+                "⚠️ No transcript captured.",
+                style="yellow",
+            )
 
 
 def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
@@ -205,17 +205,28 @@ def transcribe(
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+            asr_config = ASRConfig(
+                server_ip=asr_server_ip,
+                server_port=asr_server_port,
+                device_index=device_index,
+                device_name=device_name,
+                list_devices=list_devices,
+            )
+            general_config = GeneralConfig(
+                log_level=log_level,
+                log_file=log_file,
+                quiet=quiet,
+                console=console,
+                clipboard=clipboard,
+            )
+            llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+
             asyncio.run(
                 async_main(
-                    device_index=device_index,
-                    asr_server_ip=asr_server_ip,
-                    asr_server_port=asr_server_port,
-                    clipboard=clipboard,
-                    quiet=quiet,
-                    model=model,
-                    ollama_host=ollama_host,
-                    llm=llm,
-                    console=console,
+                    asr_config=asr_config,
+                    general_config=general_config,
+                    llm_config=llm_config,
+                    llm_enabled=llm,
                     p=p,
                 ),
             )

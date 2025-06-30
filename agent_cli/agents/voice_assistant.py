@@ -38,14 +38,21 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import pyperclip
-import typer
 from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
+from agent_cli.agents._config import (
+    ASRConfig,
+    FileConfig,
+    GeneralConfig,
+    LLMConfig,
+    TTSConfig,
+)
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import (
     input_device,
@@ -110,87 +117,71 @@ def _setup_input_device(
 
 async def async_main(
     *,
-    # General
-    console: Console | None,
-    # ASR input device
-    device_index: int | None,
-    device_name: str | None,
-    list_devices: bool,
-    # ASR parameters
-    asr_server_ip: str,
-    asr_server_port: int,
-    # LLM parameters
-    model: str,
-    ollama_host: str,
-    clipboard: bool,
-    # TTS parameters
-    enable_tts: bool,
-    tts_server_ip: str,
-    tts_server_port: int,
-    voice_name: str | None,
-    tts_language: str | None,
-    speaker: str | None,
-    # Output device
-    output_device_index: int | None,
-    output_device_name: str | None,
-    list_output_devices_flag: bool,
-    # Output file
-    save_file: str | None,
+    general_config: GeneralConfig,
+    asr_config: ASRConfig,
+    llm_config: LLMConfig,
+    tts_config: TTSConfig,
+    file_config: FileConfig,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     with pyaudio_context() as p:
         # Handle device listing
-        if list_devices:
-            list_input_devices(p, console)
+        if asr_config.list_devices:
+            list_input_devices(p, general_config.console)
             return
 
-        if list_output_devices_flag:
-            list_output_devices(p, console)
+        if tts_config.list_output_devices:
+            list_output_devices(p, general_config.console)
             return
 
         # Setup input device for ASR
-        device_index, device_name = _setup_input_device(p, console, device_name, device_index)
+        device_index, device_name = _setup_input_device(
+            p,
+            general_config.console,
+            asr_config.device_name,
+            asr_config.device_index,
+        )
 
         # Setup output device for TTS if enabled
-        tts_output_device_index = output_device_index
-        if enable_tts and (output_device_name or output_device_index):
+        tts_output_device_index = tts_config.output_device_index
+        if tts_config.enabled and (tts_config.output_device_name or tts_config.output_device_index):
             tts_output_device_index, tts_output_device_name = output_device(
                 p,
-                output_device_name,
-                output_device_index,
+                tts_config.output_device_name,
+                tts_config.output_device_index,
             )
-            if tts_output_device_index is not None and console:
+            if tts_output_device_index is not None and general_config.console:
                 msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
-                print_status_message(console, msg)
+                print_status_message(general_config.console, msg)
 
-        original_text = get_clipboard_text(console)
+        original_text = get_clipboard_text(general_config.console)
         if not original_text:
             return
 
-        print_input_panel(console, original_text, title="📝 Text to Process")
+        print_input_panel(general_config.console, original_text, title="📝 Text to Process")
 
-        with signal_handling_context(console, LOGGER) as stop_event:
+        with signal_handling_context(general_config.console, LOGGER) as stop_event:
             # Define callbacks for voice assistant specific formatting
             def chunk_callback(chunk_text: str) -> None:
                 """Handle transcript chunks as they arrive."""
-                _print(console, chunk_text, end="")
+                _print(general_config.console, chunk_text, end="")
 
             def final_callback(transcript_text: str) -> None:
                 """Format the final instruction result."""
                 print_status_message(
-                    console,
+                    general_config.console,
                     f"\n🎯 Instruction: {transcript_text}",
                     style="bold green",
                 )
 
             instruction = await asr.transcribe_audio(
-                asr_server_ip=asr_server_ip,
-                asr_server_port=asr_server_port,
+                asr_server_ip=asr_config.server_ip,
+                asr_server_port=asr_config.server_port,
                 device_index=device_index,
                 logger=LOGGER,
                 p=p,
                 stop_event=stop_event,
-                console=console,
+                console=general_config.console,
                 listening_message="Listening for your command...",
                 chunk_callback=chunk_callback,
                 final_callback=final_callback,
@@ -198,7 +189,7 @@ async def async_main(
 
             if not instruction or not instruction.strip():
                 print_status_message(
-                    console,
+                    general_config.console,
                     "No instruction was transcribed. Exiting.",
                     style="yellow",
                 )
@@ -207,31 +198,31 @@ async def async_main(
             await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
-                model=model,
-                ollama_host=ollama_host,
+                model=llm_config.model,
+                ollama_host=llm_config.ollama_host,
                 logger=LOGGER,
-                console=console,
+                console=general_config.console,
                 original_text=original_text,
                 instruction=instruction,
-                clipboard=clipboard,
+                clipboard=general_config.clipboard,
             )
 
             # Handle TTS response if enabled
-            if enable_tts and clipboard:
+            if tts_config.enabled and general_config.clipboard:
                 response_text = pyperclip.paste()
                 if response_text and response_text.strip():
                     await handle_tts_playback(
                         response_text,
-                        tts_server_ip=tts_server_ip,
-                        tts_server_port=tts_server_port,
-                        voice_name=voice_name,
-                        tts_language=tts_language,
-                        speaker=speaker,
+                        tts_server_ip=tts_config.server_ip,
+                        tts_server_port=tts_config.server_port,
+                        voice_name=tts_config.voice_name,
+                        tts_language=tts_config.language,
+                        speaker=tts_config.speaker,
                         output_device_index=tts_output_device_index,
-                        save_file=save_file,
-                        console=console,
+                        save_file=file_config.save_file,
+                        console=general_config.console,
                         logger=LOGGER,
-                        play_audio=not save_file,  # Don't play if saving to file
+                        play_audio=not file_config.save_file,  # Don't play if saving to file
                         status_message="🔊 Speaking response...",
                         description="TTS audio",
                     )
@@ -268,11 +259,7 @@ def voice_assistant(
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
     # Output
-    save_file: str | None = typer.Option(
-        None,
-        "--save-file",
-        help="Save TTS response audio to WAV file.",
-    ),
+    save_file: Path | None = opts.SAVE_FILE,
 ) -> None:
     """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
 
@@ -305,33 +292,40 @@ def voice_assistant(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        general_config = GeneralConfig(
+            log_level=log_level,
+            log_file=log_file,
+            quiet=quiet,
+            console=console,
+            clipboard=clipboard,
+        )
+        asr_config = ASRConfig(
+            server_ip=asr_server_ip,
+            server_port=asr_server_port,
+            device_index=device_index,
+            device_name=device_name,
+            list_devices=list_devices,
+        )
+        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+        tts_config = TTSConfig(
+            enabled=enable_tts,
+            server_ip=tts_server_ip,
+            server_port=tts_server_port,
+            voice_name=voice_name,
+            language=tts_language,
+            speaker=speaker,
+            output_device_index=output_device_index,
+            output_device_name=output_device_name,
+            list_output_devices=list_output_devices_flag,
+        )
+        file_config = FileConfig(save_file=save_file)
+
         asyncio.run(
             async_main(
-                # General
-                console=console,
-                # ASR input device
-                device_index=device_index,
-                device_name=device_name,
-                list_devices=list_devices,
-                # ASR parameters
-                asr_server_ip=asr_server_ip,
-                asr_server_port=asr_server_port,
-                # LLM parameters
-                model=model,
-                ollama_host=ollama_host,
-                clipboard=clipboard,
-                # TTS parameters
-                enable_tts=enable_tts,
-                tts_server_ip=tts_server_ip,
-                tts_server_port=tts_server_port,
-                voice_name=voice_name,
-                tts_language=tts_language,
-                speaker=speaker,
-                # Output device
-                output_device_index=output_device_index,
-                output_device_name=output_device_name,
-                list_output_devices_flag=list_output_devices_flag,
-                # Output file
-                save_file=save_file,
+                general_config=general_config,
+                asr_config=asr_config,
+                llm_config=llm_config,
+                tts_config=tts_config,
+                file_config=file_config,
             ),
         )

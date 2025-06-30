@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 async def _save_audio_file(
     audio_data: bytes,
-    save_file: str,
+    save_file: Path,
     console: Console | None,
     logger: logging.Logger,
     *,
@@ -48,7 +48,7 @@ async def handle_tts_playback(
     tts_language: str | None,
     speaker: str | None,
     output_device_index: int | None,
-    save_file: str | None,
+    save_file: Path | None,
     console: Console | None,
     logger: logging.Logger,
     play_audio: bool = True,

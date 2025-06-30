@@ -8,6 +8,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from agent_cli.agents._config import (
+    ASRConfig,
+    FileConfig,
+    GeneralConfig,
+    LLMConfig,
+    TTSConfig,
+)
 from agent_cli.agents.voice_assistant import async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.llm import MockLLMAgent
@@ -63,26 +70,40 @@ async def test_voice_assistant_e2e(
         "agent_cli.agents.voice_assistant.get_clipboard_text",
         return_value="test clipboard text",
     ):
-        await async_main(
+        general_config = GeneralConfig(
+            log_level="INFO",
+            log_file=None,
+            quiet=False,
             console=mock_console,
+            clipboard=True,
+        )
+        asr_config = ASRConfig(
+            server_ip="mock-asr-host",
+            server_port=10300,
             device_index=0,
             device_name=None,
             list_devices=False,
-            asr_server_ip="mock-asr-host",
-            asr_server_port=10300,
-            model="test-model",
-            ollama_host="http://localhost:11434",
-            clipboard=True,
-            enable_tts=True,
-            tts_server_ip="mock-tts-host",
-            tts_server_port=10200,
+        )
+        llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
+        tts_config = TTSConfig(
+            enabled=True,
+            server_ip="mock-tts-host",
+            server_port=10200,
             voice_name=None,
-            tts_language=None,
+            language=None,
             speaker=None,
             output_device_index=None,
             output_device_name=None,
-            list_output_devices_flag=False,
-            save_file=None,
+            list_output_devices=False,
+        )
+        file_config = FileConfig(save_file=None)
+
+        await async_main(
+            general_config=general_config,
+            asr_config=asr_config,
+            llm_config=llm_config,
+            tts_config=tts_config,
+            file_config=file_config,
         )
 
     # Assertions

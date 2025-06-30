@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
+from pathlib import Path  # noqa: TC003
 
 import typer
 from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager
+from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import list_output_devices, output_device, pyaudio_context
 from agent_cli.cli import app, setup_logging
@@ -25,65 +27,52 @@ LOGGER = logging.getLogger()
 
 async def async_main(
     *,
-    # General
-    quiet: bool,
-    console: Console | None,
-    # Text input
+    general_config: GeneralConfig,
     text: str | None,
-    # TTS parameters
-    tts_server_ip: str,
-    tts_server_port: int,
-    voice_name: str | None,
-    tts_language: str | None,
-    speaker: str | None,
-    # Output device
-    output_device_index: int | None,
-    output_device_name: str | None,
-    list_output_devices_flag: bool,
-    # Output file
-    save_file: str | None,
+    tts_config: TTSConfig,
+    file_config: FileConfig,
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
         # Handle device listing
-        if list_output_devices_flag:
-            list_output_devices(p, console)
+        if tts_config.list_output_devices:
+            list_output_devices(p, general_config.console)
             return
 
         # Setup output device
         output_device_index, output_device_name = output_device(
             p,
-            output_device_name,
-            output_device_index,
+            tts_config.output_device_name,
+            tts_config.output_device_index,
         )
-        if output_device_index is not None and console:
+        if output_device_index is not None and general_config.console:
             msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
-            print_status_message(console, msg)
+            print_status_message(general_config.console, msg)
 
         # Get text from argument or clipboard
         if text is None:
-            text = get_clipboard_text(console)
+            text = get_clipboard_text(general_config.console)
             if not text:
                 return
-            if not quiet and console:
-                print_input_panel(console, text, title="📋 Text from Clipboard")
-        elif not quiet and console:
-            print_input_panel(console, text, title="📝 Text to Speak")
+            if not general_config.quiet and general_config.console:
+                print_input_panel(general_config.console, text, title="📋 Text from Clipboard")
+        elif not general_config.quiet and general_config.console:
+            print_input_panel(general_config.console, text, title="📝 Text to Speak")
 
         # Handle TTS playback and saving
         await handle_tts_playback(
             text,
-            tts_server_ip=tts_server_ip,
-            tts_server_port=tts_server_port,
-            voice_name=voice_name,
-            tts_language=tts_language,
-            speaker=speaker,
+            tts_server_ip=tts_config.server_ip,
+            tts_server_port=tts_config.server_port,
+            voice_name=tts_config.voice_name,
+            tts_language=tts_config.language,
+            speaker=tts_config.speaker,
             output_device_index=output_device_index,
-            save_file=save_file,
-            console=console,
+            save_file=file_config.save_file,
+            console=general_config.console,
             logger=LOGGER,
-            play_audio=not save_file,  # Don't play if saving to file
-            status_message="🔊 Synthesizing speech..." if console else "",
+            play_audio=not file_config.save_file,  # Don't play if saving to file
+            status_message="🔊 Synthesizing speech..." if general_config.console else "",
             description="Audio",
         )
 
@@ -106,7 +95,7 @@ def speak(
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
     # Output file
-    save_file: str | None = typer.Option(
+    save_file: Path | None = typer.Option(  # noqa: B008
         None,
         "--save-file",
         help="Save audio to WAV file instead of playing it.",
@@ -151,24 +140,30 @@ def speak(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        general_config = GeneralConfig(
+            log_level=log_level,
+            log_file=log_file,
+            quiet=quiet,
+            console=console,
+        )
+        tts_config = TTSConfig(
+            enabled=True,  # Implied for speak command
+            server_ip=tts_server_ip,
+            server_port=tts_server_port,
+            voice_name=voice_name,
+            language=tts_language,
+            speaker=speaker,
+            output_device_index=output_device_index,
+            output_device_name=output_device_name,
+            list_output_devices=list_output_devices_flag,
+        )
+        file_config = FileConfig(save_file=save_file)
+
         asyncio.run(
             async_main(
-                # General
-                quiet=quiet,
-                console=console,
-                # Text input
+                general_config=general_config,
                 text=text,
-                # TTS parameters
-                tts_server_ip=tts_server_ip,
-                tts_server_port=tts_server_port,
-                voice_name=voice_name,
-                tts_language=tts_language,
-                speaker=speaker,
-                # Output device
-                output_device_index=output_device_index,
-                output_device_name=output_device_name,
-                list_output_devices_flag=list_output_devices_flag,
-                # Output file
-                save_file=save_file,
+                tts_config=tts_config,
+                file_config=file_config,
             ),
         )
