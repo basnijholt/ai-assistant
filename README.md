@@ -341,7 +341,7 @@ The process management features make it perfect for hotkey toggles. Use `--statu
 │ --list-output-devices                                 List available audio   │
 │                                                       output devices and     │
 │                                                       exit.                  │
-│ --save-file                                  TEXT     Save TTS response      │
+│ --save-file                                  PATH     Save TTS response      │
 │                                                       audio to WAV file.     │
 │                                                       [default: None]        │
 │ --help                                                Show this message and  │
@@ -451,10 +451,10 @@ An interactive conversational agent that remembers your conversation and can use
 │                                                 [default: None]              │
 │ --list-output-devices                           List available audio output  │
 │                                                 devices and exit.            │
-│ --save-file                            TEXT     Save TTS response audio to   │
+│ --save-file                            PATH     Save TTS response audio to   │
 │                                                 WAV file.                    │
 │                                                 [default: None]              │
-│ --history-dir                          TEXT     Directory to store           │
+│ --history-dir                          PATH     Directory to store           │
 │                                                 conversation history.        │
 │                                                 [default:                    │
 │                                                 ~/.config/agent-cli/history] │
