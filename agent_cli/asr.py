@@ -12,7 +12,7 @@ from wyoming.client import AsyncClient
 
 from agent_cli import config
 from agent_cli.audio import open_pyaudio_stream
-from agent_cli.utils import print_error_message, print_status_message
+from agent_cli.utils import Stoppable, print_error_message, print_status_message
 
 if TYPE_CHECKING:
     import logging
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 async def send_audio(
     client: AsyncClient,
     stream: pyaudio.Stream,
-    stop_event: asyncio.Event,
+    stop_event: Stoppable,
     logger: logging.Logger,
     *,
     live: Live | None = None,
@@ -125,7 +125,7 @@ async def transcribe_audio(
     device_index: int | None,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
-    stop_event: asyncio.Event,
+    stop_event: Stoppable,
     *,
     console: Console | None = None,
     live: Live | None = None,

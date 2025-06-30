@@ -17,6 +17,7 @@ from agent_cli.agents.interactive import (
     _save_conversation_history,
     async_main,
 )
+from agent_cli.utils import InteractiveStopEvent
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -160,17 +161,13 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         ) as mock_tts,
         patch("agent_cli.agents.interactive.signal_handling_context") as mock_signal,
     ):
-        # Simulate a single loop by setting the stop event after the first transcription
-        stop_event = asyncio.Event()
+        # Simulate a single loop by controlling the mock stop_event's is_set method
+        mock_stop_event = MagicMock(spec=InteractiveStopEvent)
+        mock_stop_event.is_set.side_effect = [False, True]  # Run loop once, then stop
 
-        async def transcribe_and_stop(*_args: object, **_kwargs: object) -> str:
-            """Set the stop event after one call and return a mock instruction."""
-            stop_event.set()
-            return "Mocked instruction"
-
-        mock_transcribe.side_effect = transcribe_and_stop
+        mock_transcribe.return_value = "Mocked instruction"
         mock_llm_response.return_value = "Mocked response"
-        mock_signal.return_value.__enter__.return_value = stop_event
+        mock_signal.return_value.__enter__.return_value = mock_stop_event
 
         await async_main(
             console=MagicMock(),
@@ -195,8 +192,9 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         )
 
         # Verify that the core functions were called
-        mock_transcribe.assert_called()
-        mock_llm_response.assert_called()
+        mock_transcribe.assert_called_once()
+        mock_llm_response.assert_called_once()
+        mock_stop_event.clear.assert_called_once()
         mock_tts.assert_called_with(
             "Mocked response",
             tts_server_ip="localhost",

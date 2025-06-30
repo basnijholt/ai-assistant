@@ -6,7 +6,7 @@ import asyncio
 import signal
 import sys
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pyperclip
 from rich.panel import Panel
@@ -38,11 +38,54 @@ def get_clipboard_text(console: Console | None) -> str | None:
         return None
 
 
+class Stoppable(Protocol):
+    """Protocol for objects that can be stopped, like asyncio.Event."""
+
+    def is_set(self) -> bool:
+        """Return true if the event is set."""
+        ...
+
+    def set(self) -> None:
+        """Set the event."""
+        ...
+
+    def clear(self) -> None:
+        """Clear the event."""
+        ...
+
+
+class InteractiveStopEvent:
+    """A stop event with reset capability for interactive agents."""
+
+    def __init__(self) -> None:
+        """Initialize the interactive stop event."""
+        self._event = asyncio.Event()
+        self._sigint_count = 0
+
+    def is_set(self) -> bool:
+        """Check if the stop event is set."""
+        return self._event.is_set()
+
+    def set(self) -> None:
+        """Set the stop event."""
+        self._event.set()
+
+    def clear(self) -> None:
+        """Clear the stop event and reset interrupt count for next iteration."""
+        self._event.clear()
+        self._sigint_count = 0
+
+    def increment_sigint_count(self) -> int:
+        """Increment and return the SIGINT count."""
+        self._sigint_count += 1
+        return self._sigint_count
+
+
 @contextmanager
 def signal_handling_context(
     console: Console | None,
     logger: logging.Logger,
-) -> Generator[asyncio.Event, None, None]:
+) -> Generator[InteractiveStopEvent, None, None]:
     """Context manager for graceful signal handling with double Ctrl+C support.
 
     Sets up handlers for SIGINT (Ctrl+C) and SIGTERM (kill command):
@@ -55,15 +98,13 @@ def signal_handling_context(
         logger: Logger instance for recording events
 
     Yields:
-        stop_event: asyncio.Event that gets set when shutdown is requested
+        stop_event: InteractiveStopEvent that gets set when shutdown is requested
 
     """
-    stop_event = asyncio.Event()
-    sigint_count = 0
+    stop_event = InteractiveStopEvent()
 
     def sigint_handler() -> None:
-        nonlocal sigint_count
-        sigint_count += 1
+        sigint_count = stop_event.increment_sigint_count()
 
         if sigint_count == 1:
             logger.info("First Ctrl+C received. Processing transcription.")

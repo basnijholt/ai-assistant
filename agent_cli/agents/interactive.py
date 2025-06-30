@@ -291,6 +291,9 @@ async def async_main(
                         play_audio=not save_file,
                     )
 
+                # 8. Reset stop_event for next iteration
+                stop_event.clear()
+
 
 @app.command("interactive")
 def interactive(
