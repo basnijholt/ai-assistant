@@ -1,0 +1,41 @@
+services:
+  ollama:
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama:/root/.ollama
+    # Uncomment the following lines to enable GPU acceleration
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  piper:
+    image: rhasspy/wyoming-piper
+    ports:
+      - "10200:10200"
+    volumes:
+      - ./piper-data:/data
+    command: --voice en-us-ryan-high
+
+  whisper:
+    image: rhasspy/wyoming-whisper
+    ports:
+      - "10300:10300"
+    volumes:
+      - ./whisper-data:/data
+    command: --model large-v3 --language en
+    # Uncomment the following lines to enable GPU acceleration
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
