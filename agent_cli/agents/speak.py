@@ -119,11 +119,7 @@ def speak(
     - Run in background: agent-cli speak "Hello" &
     """
     setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
-        log_level=log_level,
-        log_file=log_file,
-        quiet=quiet,
-    )
+    general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
     console = general_cfg.console
 
     process_name = "speak"

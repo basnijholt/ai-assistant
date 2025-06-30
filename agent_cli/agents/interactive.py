@@ -372,33 +372,23 @@ def interactive(
         quiet=quiet,
         clipboard=False,  # Not used in interactive mode
     )
+    console = general_cfg.console
 
     process_name = "interactive"
 
     if stop:
         if process_manager.kill_process(process_name):
-            print_status_message(general_cfg.console, "✅ Interactive agent stopped.")
+            print_status_message(console, "✅ Interactive agent stopped.")
         else:
-            print_status_message(
-                general_cfg.console,
-                "⚠️  No interactive agent is running.",
-                style="yellow",
-            )
+            print_status_message(console, "⚠️  No interactive agent is running.", style="yellow")
         return
 
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
-            print_status_message(
-                general_cfg.console,
-                f"✅ Interactive agent is running (PID: {pid}).",
-            )
+            print_status_message(console, f"✅ Interactive agent is running (PID: {pid}).")
         else:
-            print_status_message(
-                general_cfg.console,
-                "⚠️  Interactive agent is not running.",
-                style="yellow",
-            )
+            print_status_message(console, "⚠️  Interactive agent is not running.", style="yellow")
         return
 
     # Use context manager for PID file management
