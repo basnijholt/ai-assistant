@@ -19,10 +19,12 @@ def test_transcribe_agent(
 ) -> None:
     """Test the transcribe agent."""
     mock_transcribe_audio.return_value = "hello"
-    result = runner.invoke(app, ["transcribe"])
+    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
+        result = runner.invoke(app, ["transcribe"])
     assert result.exit_code == 0
     mock_pid_context.assert_called_once_with("transcribe")
     mock_transcribe_audio.assert_called_once()
+    mock_copy.assert_called_once_with("hello")
 
 
 @patch("agent_cli.agents.transcribe.process_manager.kill_process")
