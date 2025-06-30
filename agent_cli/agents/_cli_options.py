@@ -101,6 +101,11 @@ ENABLE_TTS: bool = typer.Option(
     "--tts/--no-tts",
     help="Enable text-to-speech for responses.",
 )
+TTS_SPEED: float = typer.Option(
+    1.0,
+    "--tts-speed",
+    help="Speech speed multiplier (1.0 = normal, 2.0 = twice as fast, 0.5 = half speed).",
+)
 
 
 # --- Process Management Options ---

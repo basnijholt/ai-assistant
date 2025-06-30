@@ -74,6 +74,7 @@ async def async_main(
             play_audio=not file_config.save_file,  # Don't play if saving to file
             status_message="🔊 Synthesizing speech..." if general_cfg.console else "",
             description="Audio",
+            speed=tts_config.speed,
         )
 
 
@@ -90,6 +91,7 @@ def speak(
     voice_name: str | None = opts.VOICE_NAME,
     tts_language: str | None = opts.TTS_LANGUAGE,
     speaker: str | None = opts.SPEAKER,
+    tts_speed: float = opts.TTS_SPEED,
     # Output device
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
@@ -137,6 +139,7 @@ def speak(
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             list_output_devices=list_output_devices_flag,
+            speed=tts_speed,
         )
         file_config = FileConfig(save_file=save_file)
 

@@ -53,6 +53,7 @@ async def test_speak_e2e(
         output_device_index=None,
         output_device_name=None,
         list_output_devices=False,
+        speed=1.0,
     )
     file_config = FileConfig(save_file=None)
 

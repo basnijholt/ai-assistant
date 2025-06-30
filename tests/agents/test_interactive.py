@@ -105,6 +105,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         output_device_index=None,
         output_device_name=None,
         list_output_devices=False,
+        speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
@@ -151,6 +152,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         output_device_index=None,
         output_device_name=None,
         list_output_devices=True,
+        speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
@@ -200,6 +202,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         output_device_index=1,
         output_device_name=None,
         list_output_devices=False,
+        speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=history_dir)
 
@@ -255,6 +258,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             logger=mock_tts.call_args[1]["logger"],
             play_audio=True,
             stop_event=mock_stop_event,
+            speed=1.0,
         )
 
         # Verify that history was saved

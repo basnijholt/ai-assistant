@@ -183,6 +183,7 @@ async def play_audio(
     output_device_index: int | None = None,
     console: Console | None = None,
     stop_event: Stoppable | None = None,
+    speed: float = 1.0,
 ) -> None:
     """Play WAV audio data using PyAudio with proper resource management.
 
@@ -192,19 +193,27 @@ async def play_audio(
         output_device_index: Optional output device index
         console: Rich console for messages
         stop_event: Optional stop event to interrupt playback
+        speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
 
     """
     try:
         if console:
-            print_status_message(console, "🔊 Playing audio...")
+            if speed != 1.0:
+                print_status_message(console, f"🔊 Playing audio at {speed}x speed...")
+            else:
+                print_status_message(console, "🔊 Playing audio...")
 
         # Parse WAV file
         wav_io = io.BytesIO(audio_data)
         with wave.open(wav_io, "rb") as wav_file:
-            sample_rate = wav_file.getframerate()
+            original_sample_rate = wav_file.getframerate()
             channels = wav_file.getnchannels()
             sample_width = wav_file.getsampwidth()
             frames = wav_file.readframes(wav_file.getnframes())
+
+        # Calculate effective sample rate for speed control
+        # Higher sample rate = faster playback
+        effective_sample_rate = int(original_sample_rate * speed)
 
         with (
             pyaudio_context() as p,
@@ -212,7 +221,7 @@ async def play_audio(
                 p,
                 format=p.get_format_from_width(sample_width),
                 channels=channels,
-                rate=sample_rate,
+                rate=effective_sample_rate,
                 output=True,
                 frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
                 output_device_index=output_device_index,
@@ -238,7 +247,7 @@ async def play_audio(
                 await asyncio.sleep(0)
 
         if not (stop_event and stop_event.is_set()):
-            logger.info("Audio playback completed")
+            logger.info("Audio playback completed (speed: %.1fx)", speed)
             if console:
                 print_status_message(console, "✅ Audio playback finished")
 
@@ -260,6 +269,7 @@ async def speak_text(
     console: Console | None = None,
     play_audio_flag: bool = True,
     stop_event: Stoppable | None = None,
+    speed: float = 1.0,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text.
 
@@ -275,6 +285,7 @@ async def speak_text(
         console: Rich console for messages
         play_audio_flag: Whether to play the audio immediately
         stop_event: Optional stop event to interrupt playback
+        speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
 
     Returns:
         WAV audio data as bytes, or None if error
@@ -300,6 +311,7 @@ async def speak_text(
             output_device_index=output_device_index,
             console=console,
             stop_event=stop_event,
+            speed=speed,
         )
 
     return audio_data

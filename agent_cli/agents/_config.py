@@ -44,6 +44,7 @@ class TTSConfig:
     output_device_index: int | None
     output_device_name: str | None
     list_output_devices: bool
+    speed: float = 1.0  # Speech speed multiplier (1.0 = normal, 2.0 = 2x speed, etc.)
 
 
 @dataclass

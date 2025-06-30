@@ -27,6 +27,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
         console=MagicMock(),
         logger=MagicMock(),
         play_audio=True,
+        speed=1.0,
     )
     mock_speak_text.assert_called_once()
 
@@ -44,6 +45,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
             console=MagicMock(),
             logger=MagicMock(),
             play_audio=False,
+            speed=1.0,
         )
         mock_write_bytes.assert_called_once_with(b"audio data")
     assert mock_speak_text.call_count == 2
@@ -66,5 +68,6 @@ async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
         console=MagicMock(),
         logger=MagicMock(),
         play_audio=True,
+        speed=1.0,
     )
     mock_speak_text.assert_called_once()

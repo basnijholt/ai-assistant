@@ -258,6 +258,7 @@ async def _handle_conversation_turn(
             logger=LOGGER,
             play_audio=not file_config.save_file,
             stop_event=stop_event,
+            speed=tts_config.speed,
         )
 
     # Reset stop_event for next iteration
@@ -357,6 +358,7 @@ def interactive(
     voice_name: str | None = opts.VOICE_NAME,
     tts_language: str | None = opts.TTS_LANGUAGE,
     speaker: str | None = opts.SPEAKER,
+    tts_speed: float = opts.TTS_SPEED,
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
@@ -401,6 +403,7 @@ def interactive(
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             list_output_devices=list_output_devices_flag,
+            speed=tts_speed,
         )
         file_config = FileConfig(save_file=save_file, history_dir=history_dir)
 

@@ -55,6 +55,7 @@ async def handle_tts_playback(
     status_message: str = "🔊 Speaking...",
     description: str = "Audio",
     stop_event: Stoppable | None = None,
+    speed: float = 1.0,
 ) -> bytes | None:
     """Handle TTS synthesis, playback, and file saving."""
     try:
@@ -73,6 +74,7 @@ async def handle_tts_playback(
             console=console,
             play_audio_flag=play_audio,
             stop_event=stop_event,
+            speed=speed,
         )
 
         if save_file and audio_data:
