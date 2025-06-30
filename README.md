@@ -327,6 +327,12 @@ The process management features make it perfect for hotkey toggles. Use `--statu
 │ --speaker                                    TEXT     Speaker name for TTS   │
 │                                                       voice.                 │
 │                                                       [default: None]        │
+│ --tts-speed                                  FLOAT    Speech speed           │
+│                                                       multiplier (1.0 =      │
+│                                                       normal, 2.0 = twice as │
+│                                                       fast, 0.5 = half       │
+│                                                       speed).                │
+│                                                       [default: 1.0]         │
 │ --output-device-index                        INTEGER  Index of the PyAudio   │
 │                                                       output device to use   │
 │                                                       for TTS.               │
@@ -442,6 +448,10 @@ An interactive conversational agent that remembers your conversation and can use
 │                                                 [default: None]              │
 │ --speaker                              TEXT     Speaker name for TTS voice.  │
 │                                                 [default: None]              │
+│ --tts-speed                            FLOAT    Speech speed multiplier (1.0 │
+│                                                 = normal, 2.0 = twice as     │
+│                                                 fast, 0.5 = half speed).     │
+│                                                 [default: 1.0]               │
 │ --output-device-index                  INTEGER  Index of the PyAudio output  │
 │                                                 device to use for TTS.       │
 │                                                 [default: None]              │
