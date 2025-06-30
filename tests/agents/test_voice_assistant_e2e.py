@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 @patch("agent_cli.tts.pyaudio_context")
+@patch("agent_cli.llm.pyperclip.copy")
 @patch("agent_cli.agents.voice_assistant.pyperclip")
 @patch("agent_cli.agents.voice_assistant.pyaudio_context")
 @patch("agent_cli.agents.voice_assistant.signal_handling_context")
@@ -39,6 +40,7 @@ async def test_voice_assistant_e2e(
     mock_signal_handling_context: MagicMock,
     mock_pyaudio_context_asr: MagicMock,
     mock_pyperclip: MagicMock,
+    mock_llm_pyperclip_copy: MagicMock,
     mock_pyaudio_context_tts: MagicMock,
     mock_pyaudio_device_info: list[dict],
     llm_responses: dict[str, str],
@@ -113,3 +115,4 @@ async def test_voice_assistant_e2e(
     assert mock_llm_agent.call_history
     assert mock_pyaudio_instance.streams[1].get_written_data()
     mock_pyperclip.paste.assert_called_once()
+    mock_llm_pyperclip_copy.assert_called_once()
