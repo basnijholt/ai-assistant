@@ -86,6 +86,14 @@ The user's current message is in the <user-message> tag.
 Your response should be helpful and directly address the user's message.
 """
 
+USER_MESSAGE_WITH_CONTEXT_TEMPLATE = """
+<previous-conversation>
+{formatted_history}
+</previous-conversation>
+<user-message>
+{instruction}
+</user-message>
+"""
 
 # --- Helper Functions ---
 
@@ -235,14 +243,10 @@ async def async_main(
 
                 # 3. Format conversation for LLM
                 formatted_history = _format_conversation_for_llm(conversation_history)
-                user_message_with_context = f"""
-<previous-conversation>
-{formatted_history}
-</previous-conversation>
-<user-message>
-{instruction}
-</user-message>
-"""
+                user_message_with_context = USER_MESSAGE_WITH_CONTEXT_TEMPLATE.format(
+                    formatted_history=formatted_history,
+                    instruction=instruction,
+                )
 
                 # 4. Get LLM response
                 tools = [ReadFileTool, ExecuteCodeTool]
