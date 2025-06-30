@@ -8,7 +8,6 @@ from contextlib import AbstractContextManager, nullcontext, suppress
 from typing import TYPE_CHECKING
 
 import pyperclip
-from rich.console import Console
 from rich.live import Live
 from rich.text import Text
 
@@ -28,6 +27,7 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
+    from rich.console import Console
 
 LOGGER = logging.getLogger()
 
@@ -70,15 +70,15 @@ Please clean up this transcribed text by correcting any speech recognition error
 async def async_main(
     *,
     asr_config: ASRConfig,
-    general_config: GeneralConfig,
+    general_cfg: GeneralConfig,
     llm_config: LLMConfig,
     llm_enabled: bool,
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
     with (
-        signal_handling_context(general_config.console, LOGGER) as stop_event,
-        _maybe_live(general_config.console) as live,
+        signal_handling_context(general_cfg.console, LOGGER) as stop_event,
+        _maybe_live(general_cfg.console) as live,
     ):
         transcript = await asr.transcribe_audio(
             asr_server_ip=asr_config.server_ip,
@@ -87,49 +87,49 @@ async def async_main(
             logger=LOGGER,
             p=p,
             stop_event=stop_event,
-            console=general_config.console,
+            console=general_cfg.console,
             live=live,
             listening_message="Listening...",
         )
 
     if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
-        print_input_panel(general_config.console, transcript, title="📝 Raw Transcript")
+        print_input_panel(general_cfg.console, transcript, title="📝 Raw Transcript")
         await process_and_update_clipboard(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
             model=llm_config.model,
             ollama_host=llm_config.ollama_host,
             logger=LOGGER,
-            console=general_config.console,
+            console=general_cfg.console,
             original_text=transcript,
             instruction=INSTRUCTION,
-            clipboard=general_config.clipboard,
+            clipboard=general_cfg.clipboard,
         )
         return
 
     # When not using LLM, show transcript in output panel for consistency
     if transcript:
-        if general_config.quiet:
+        if general_cfg.quiet:
             # Quiet mode: print result to stdout for Keyboard Maestro to capture
             print(transcript)
         else:
             print_output_panel(
-                general_config.console,
+                general_cfg.console,
                 transcript,
                 title="📝 Transcript",
-                subtitle="[dim]Copied to clipboard[/dim]" if general_config.clipboard else None,
+                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else None,
             )
 
-        if general_config.clipboard:
+        if general_cfg.clipboard:
             pyperclip.copy(transcript)
             LOGGER.info("Copied transcript to clipboard.")
         else:
             LOGGER.info("Clipboard copy disabled.")
     else:
         LOGGER.info("Transcript empty.")
-        if not general_config.quiet:
+        if not general_cfg.quiet:
             print_status_message(
-                general_config.console,
+                general_cfg.console,
                 "⚠️ No transcript captured.",
                 style="yellow",
             )
@@ -176,7 +176,13 @@ def transcribe(
     - Stop background process: agent-cli transcribe --stop
     """
     setup_logging(log_level, log_file, quiet=quiet)
-    console = Console() if not quiet else None
+    general_cfg = GeneralConfig(
+        log_level=log_level,
+        log_file=log_file,
+        quiet=quiet,
+        clipboard=clipboard,
+    )
+    console = general_cfg.console
     process_name = "transcribe"
 
     if stop:
@@ -194,8 +200,6 @@ def transcribe(
             print_status_message(console, "⚠️  Transcribe is not running.", style="yellow")
         return
 
-    console = Console() if not quiet else None
-
     with pyaudio_context() as p:
         if list_devices:
             list_input_devices(p, console)
@@ -212,19 +216,12 @@ def transcribe(
                 device_name=device_name,
                 list_devices=list_devices,
             )
-            general_config = GeneralConfig(
-                log_level=log_level,
-                log_file=log_file,
-                quiet=quiet,
-                console=console,
-                clipboard=clipboard,
-            )
             llm_config = LLMConfig(model=model, ollama_host=ollama_host)
 
             asyncio.run(
                 async_main(
                     asr_config=asr_config,
-                    general_config=general_config,
+                    general_cfg=general_cfg,
                     llm_config=llm_config,
                     llm_enabled=llm,
                     p=p,

@@ -20,13 +20,13 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+from typing import TYPE_CHECKING
 
 import httpx
 import pyperclip
 import typer
 from openai import APIConnectionError
 from pydantic_ai.exceptions import ModelHTTPError
-from rich.console import Console
 from rich.status import Status
 
 import agent_cli.agents._cli_options as opts
@@ -40,6 +40,9 @@ from agent_cli.utils import (
     print_output_panel,
     print_status_message,
 )
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 # --- Configuration ---
 
@@ -114,20 +117,19 @@ async def async_autocorrect(
     *,
     text: str | None,
     llm_config: LLMConfig,
-    general_config: GeneralConfig,
+    general_cfg: GeneralConfig,
 ) -> None:
     """Asynchronous version of the autocorrect command."""
-    setup_logging(general_config.log_level, general_config.log_file, quiet=general_config.quiet)
-    console = Console() if not general_config.quiet else None
-    original_text = text if text is not None else get_clipboard_text(console)
+    setup_logging(general_cfg.log_level, general_cfg.log_file, quiet=general_cfg.quiet)
+    original_text = text if text is not None else get_clipboard_text(general_cfg.console)
 
     if original_text is None:
         return
 
-    display_original_text(original_text, console)
+    display_original_text(original_text, general_cfg.console)
 
     try:
-        if general_config.quiet:
+        if general_cfg.quiet:
             corrected_text, elapsed = await process_text(
                 original_text,
                 llm_config.model,
@@ -136,11 +138,11 @@ async def async_autocorrect(
         else:
             with Status(
                 f"[bold yellow]🤖 Correcting with {llm_config.model}...[/bold yellow]",
-                console=console,
+                console=general_cfg.console,
             ) as status:
                 maybe_log = (
-                    f" (see [dim]log at {general_config.log_file}[/dim])"
-                    if general_config.log_file
+                    f" (see [dim]log at {general_cfg.log_file}[/dim])"
+                    if general_cfg.log_file
                     else ""
                 )
                 status.update(
@@ -156,16 +158,16 @@ async def async_autocorrect(
             corrected_text,
             original_text,
             elapsed,
-            simple_output=general_config.quiet,
-            console=console,
+            simple_output=general_cfg.quiet,
+            console=general_cfg.console,
         )
 
     except (httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
-        if general_config.quiet:
+        if general_cfg.quiet:
             print(f"❌ {e}")
         else:
             print_error_message(
-                console,
+                general_cfg.console,
                 str(e),
                 f"Please check that your Ollama server is running at [bold cyan]{llm_config.ollama_host}[/bold cyan]",
             )
@@ -187,16 +189,11 @@ def autocorrect(
 ) -> None:
     """Correct text from clipboard using a local Ollama model."""
     llm_config = LLMConfig(model=model, ollama_host=ollama_host)
-    general_config = GeneralConfig(
-        log_level=log_level,
-        log_file=log_file,
-        quiet=quiet,
-        console=None,  # Console is created in async_autocorrect
-    )
+    general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
     asyncio.run(
         async_autocorrect(
             text=text,
             llm_config=llm_config,
-            general_config=general_config,
+            general_cfg=general_cfg,
         ),
     )

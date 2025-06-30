@@ -51,17 +51,16 @@ async def test_transcribe_main(
             device_name=None,
             list_devices=False,
         )
-        general_config = GeneralConfig(
+        general_cfg = GeneralConfig(
             log_level="INFO",
             log_file=None,
             quiet=True,
-            console=None,
             clipboard=True,
         )
         llm_config = LLMConfig(model="", ollama_host="")
         await transcribe.async_main(
             asr_config=asr_config,
-            general_config=general_config,
+            general_cfg=general_cfg,
             llm_config=llm_config,
             llm_enabled=False,
             p=mock_pyaudio_instance,

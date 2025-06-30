@@ -80,13 +80,13 @@ def test_format_conversation_for_llm() -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_devices=True."""
-    general_config = GeneralConfig(
+    general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
         quiet=False,
-        console=MagicMock(),
         clipboard=False,
     )
+    general_cfg.__dict__["console"] = MagicMock()
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=1234,
@@ -115,7 +115,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         ) as mock_list_input_devices,
     ):
         await async_main(
-            general_config=general_config,
+            general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,
             tts_config=tts_config,
@@ -127,11 +127,10 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_output_devices_flag=True."""
-    general_config = GeneralConfig(
+    general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
         quiet=False,
-        console=MagicMock(),
         clipboard=False,
     )
     asr_config = ASRConfig(
@@ -162,7 +161,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         ) as mock_list_output_devices,
     ):
         await async_main(
-            general_config=general_config,
+            general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,
             tts_config=tts_config,
@@ -177,11 +176,10 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     history_dir = tmp_path / "history"
     history_dir.mkdir()
 
-    general_config = GeneralConfig(
+    general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
         quiet=False,
-        console=MagicMock(),
         clipboard=False,
     )
     asr_config = ASRConfig(
@@ -232,7 +230,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
         await async_main(
-            general_config=general_config,
+            general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,
             tts_config=tts_config,

@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
 import typer
-from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -54,6 +53,7 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
+    from rich.console import Console
 
 
 LOGGER = logging.getLogger(__name__)
@@ -161,7 +161,7 @@ async def _handle_conversation_turn(
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
     conversation_history: list[ConversationEntry],
-    general_config: GeneralConfig,
+    general_cfg: GeneralConfig,
     asr_config: ASRConfig,
     llm_config: LLMConfig,
     tts_config: TTSConfig,
@@ -169,7 +169,7 @@ async def _handle_conversation_turn(
 ) -> None:
     """Handles a single turn of the conversation."""
     # 1. Transcribe user's command
-    print_status_message(general_config.console, "Listening for your command...", style="bold cyan")
+    print_status_message(general_cfg.console, "Listening for your command...", style="bold cyan")
     instruction = await asr.transcribe_audio(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
@@ -177,18 +177,18 @@ async def _handle_conversation_turn(
         logger=LOGGER,
         p=p,
         stop_event=stop_event,
-        console=general_config.console,
+        console=general_cfg.console,
     )
 
     if not instruction or not instruction.strip():
         print_status_message(
-            general_config.console,
+            general_cfg.console,
             "No instruction, listening again.",
             style="yellow",
         )
         return
 
-    print_input_panel(general_config.console, instruction, title="You")
+    print_input_panel(general_cfg.console, instruction, title="You")
 
     # 2. Add user message to history
     conversation_history.append(
@@ -215,15 +215,15 @@ async def _handle_conversation_turn(
         model=llm_config.model,
         ollama_host=llm_config.ollama_host,
         logger=LOGGER,
-        console=general_config.console,
+        console=general_cfg.console,
         tools=tools,
     )
 
     if not response_text:
-        print_status_message(general_config.console, "No response from LLM.", style="yellow")
+        print_status_message(general_cfg.console, "No response from LLM.", style="yellow")
         return
 
-    print_input_panel(general_config.console, response_text, title="AI")
+    print_input_panel(general_cfg.console, response_text, title="AI")
 
     # 5. Add AI response to history
     conversation_history.append(
@@ -250,7 +250,7 @@ async def _handle_conversation_turn(
             speaker=tts_config.speaker,
             output_device_index=tts_config.output_device_index,
             save_file=file_config.save_file,
-            console=general_config.console,
+            console=general_cfg.console,
             logger=LOGGER,
             play_audio=not file_config.save_file,
         )
@@ -264,7 +264,7 @@ async def _handle_conversation_turn(
 
 async def async_main(
     *,
-    general_config: GeneralConfig,
+    general_cfg: GeneralConfig,
     asr_config: ASRConfig,
     llm_config: LLMConfig,
     tts_config: TTSConfig,
@@ -275,17 +275,17 @@ async def async_main(
         with pyaudio_context() as p:
             # Handle device listing
             if asr_config.list_devices:
-                list_input_devices(p, general_config.console)
+                list_input_devices(p, general_cfg.console)
                 return
 
             if tts_config.list_output_devices:
-                list_output_devices(p, general_config.console)
+                list_output_devices(p, general_cfg.console)
                 return
 
             # Setup devices
             device_index, _ = _setup_input_device(
                 p,
-                general_config.console,
+                general_cfg.console,
                 asr_config.device_name,
                 asr_config.device_index,
             )
@@ -294,7 +294,7 @@ async def async_main(
             if tts_config.enabled:
                 tts_output_device_index, _ = _setup_output_device(
                     p,
-                    general_config.console,
+                    general_cfg.console,
                     tts_config.output_device_name,
                     tts_config.output_device_index,
                 )
@@ -308,21 +308,21 @@ async def async_main(
                 history_file = history_path / "conversation.json"
                 conversation_history = _load_conversation_history(history_file)
 
-            with signal_handling_context(general_config.console, LOGGER) as stop_event:
+            with signal_handling_context(general_cfg.console, LOGGER) as stop_event:
                 while not stop_event.is_set():
                     await _handle_conversation_turn(
                         p=p,
                         stop_event=stop_event,
                         conversation_history=conversation_history,
-                        general_config=general_config,
+                        general_cfg=general_cfg,
                         asr_config=asr_config,
                         llm_config=llm_config,
                         tts_config=tts_config,
                         file_config=file_config,
                     )
     except Exception:
-        if general_config.console:
-            general_config.console.print_exception()
+        if general_cfg.console:
+            general_cfg.console.print_exception()
         raise
 
 
@@ -366,33 +366,43 @@ def interactive(
 ) -> None:
     """An interactive agent that you can talk to."""
     setup_logging(log_level, log_file, quiet=quiet)
-    console = Console() if not quiet else None
+    general_cfg = GeneralConfig(
+        log_level=log_level,
+        log_file=log_file,
+        quiet=quiet,
+        clipboard=False,  # Not used in interactive mode
+    )
+
     process_name = "interactive"
 
     if stop:
         if process_manager.kill_process(process_name):
-            print_status_message(console, "✅ Interactive agent stopped.")
+            print_status_message(general_cfg.console, "✅ Interactive agent stopped.")
         else:
-            print_status_message(console, "⚠️  No interactive agent is running.", style="yellow")
+            print_status_message(
+                general_cfg.console,
+                "⚠️  No interactive agent is running.",
+                style="yellow",
+            )
         return
 
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
-            print_status_message(console, f"✅ Interactive agent is running (PID: {pid}).")
+            print_status_message(
+                general_cfg.console,
+                f"✅ Interactive agent is running (PID: {pid}).",
+            )
         else:
-            print_status_message(console, "⚠️  Interactive agent is not running.", style="yellow")
+            print_status_message(
+                general_cfg.console,
+                "⚠️  Interactive agent is not running.",
+                style="yellow",
+            )
         return
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        general_config = GeneralConfig(
-            log_level=log_level,
-            log_file=log_file,
-            quiet=quiet,
-            console=console,
-            clipboard=False,  # Not used in interactive mode
-        )
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
             server_port=asr_server_port,
@@ -416,7 +426,7 @@ def interactive(
 
         asyncio.run(
             async_main(
-                general_config=general_config,
+                general_cfg=general_cfg,
                 asr_config=asr_config,
                 llm_config=llm_config,
                 tts_config=tts_config,

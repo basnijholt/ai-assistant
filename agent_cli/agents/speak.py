@@ -8,7 +8,6 @@ from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 
 import typer
-from rich.console import Console
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager
@@ -27,7 +26,7 @@ LOGGER = logging.getLogger()
 
 async def async_main(
     *,
-    general_config: GeneralConfig,
+    general_cfg: GeneralConfig,
     text: str | None,
     tts_config: TTSConfig,
     file_config: FileConfig,
@@ -36,7 +35,7 @@ async def async_main(
     with pyaudio_context() as p:
         # Handle device listing
         if tts_config.list_output_devices:
-            list_output_devices(p, general_config.console)
+            list_output_devices(p, general_cfg.console)
             return
 
         # Setup output device
@@ -45,19 +44,19 @@ async def async_main(
             tts_config.output_device_name,
             tts_config.output_device_index,
         )
-        if output_device_index is not None and general_config.console:
+        if output_device_index is not None and general_cfg.console:
             msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
-            print_status_message(general_config.console, msg)
+            print_status_message(general_cfg.console, msg)
 
         # Get text from argument or clipboard
         if text is None:
-            text = get_clipboard_text(general_config.console)
+            text = get_clipboard_text(general_cfg.console)
             if not text:
                 return
-            if not general_config.quiet and general_config.console:
-                print_input_panel(general_config.console, text, title="📋 Text from Clipboard")
-        elif not general_config.quiet and general_config.console:
-            print_input_panel(general_config.console, text, title="📝 Text to Speak")
+            if not general_cfg.quiet and general_cfg.console:
+                print_input_panel(general_cfg.console, text, title="📋 Text from Clipboard")
+        elif not general_cfg.quiet and general_cfg.console:
+            print_input_panel(general_cfg.console, text, title="📝 Text to Speak")
 
         # Handle TTS playback and saving
         await handle_tts_playback(
@@ -69,10 +68,10 @@ async def async_main(
             speaker=tts_config.speaker,
             output_device_index=output_device_index,
             save_file=file_config.save_file,
-            console=general_config.console,
+            console=general_cfg.console,
             logger=LOGGER,
             play_audio=not file_config.save_file,  # Don't play if saving to file
-            status_message="🔊 Synthesizing speech..." if general_config.console else "",
+            status_message="🔊 Synthesizing speech..." if general_cfg.console else "",
             description="Audio",
         )
 
@@ -120,7 +119,13 @@ def speak(
     - Run in background: agent-cli speak "Hello" &
     """
     setup_logging(log_level, log_file, quiet=quiet)
-    console = Console() if not quiet else None
+    general_cfg = GeneralConfig(
+        log_level=log_level,
+        log_file=log_file,
+        quiet=quiet,
+    )
+    console = general_cfg.console
+
     process_name = "speak"
 
     if stop:
@@ -140,12 +145,6 @@ def speak(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        general_config = GeneralConfig(
-            log_level=log_level,
-            log_file=log_file,
-            quiet=quiet,
-            console=console,
-        )
         tts_config = TTSConfig(
             enabled=True,  # Implied for speak command
             server_ip=tts_server_ip,
@@ -161,7 +160,7 @@ def speak(
 
         asyncio.run(
             async_main(
-                general_config=general_config,
+                general_cfg=general_cfg,
                 text=text,
                 tts_config=tts_config,
                 file_config=file_config,

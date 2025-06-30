@@ -70,13 +70,13 @@ async def test_voice_assistant_e2e(
         "agent_cli.agents.voice_assistant.get_clipboard_text",
         return_value="test clipboard text",
     ):
-        general_config = GeneralConfig(
+        general_cfg = GeneralConfig(
             log_level="INFO",
             log_file=None,
             quiet=False,
-            console=mock_console,
             clipboard=True,
         )
+        general_cfg.__dict__["console"] = mock_console
         asr_config = ASRConfig(
             server_ip="mock-asr-host",
             server_port=10300,
@@ -99,7 +99,7 @@ async def test_voice_assistant_e2e(
         file_config = FileConfig(save_file=None)
 
         await async_main(
-            general_config=general_config,
+            general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,
             tts_config=tts_config,

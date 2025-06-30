@@ -158,18 +158,17 @@ async def test_autocorrect_command_with_text(
     mock_build_agent.return_value = mock_agent
 
     llm_config = LLMConfig(model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
-    general_config = GeneralConfig(
+    general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
         quiet=True,
-        console=None,
     )
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
         await autocorrect.async_autocorrect(
             text="input text",
             llm_config=llm_config,
-            general_config=general_config,
+            general_cfg=general_cfg,
         )
 
     # Assertions
@@ -200,18 +199,17 @@ async def test_autocorrect_command_from_clipboard(
     mock_build_agent.return_value = mock_agent
 
     llm_config = LLMConfig(model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
-    general_config = GeneralConfig(
+    general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
         quiet=True,
-        console=None,
     )
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
         await autocorrect.async_autocorrect(
             text=None,  # No text argument provided
             llm_config=llm_config,
-            general_config=general_config,
+            general_cfg=general_cfg,
         )
 
     # Assertions
@@ -234,16 +232,15 @@ async def test_async_autocorrect_no_text(
 ) -> None:
     """Test the async_autocorrect function when no text is provided."""
     llm_config = LLMConfig(model="test", ollama_host="test")
-    general_config = GeneralConfig(
+    general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
         quiet=True,
-        console=None,
     )
     await autocorrect.async_autocorrect(
         text=None,
         llm_config=llm_config,
-        general_config=general_config,
+        general_cfg=general_cfg,
     )
     mock_process_text.assert_not_called()
     mock_get_clipboard_text.assert_called_once()

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from rich.console import Console
+
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from rich.console import Console
 
 
 @dataclass
@@ -52,8 +53,14 @@ class GeneralConfig:
     log_level: str
     log_file: str | None
     quiet: bool
-    console: Console | None
     clipboard: bool = True  # Default value since not all agents have it
+
+    @functools.cached_property
+    def console(self) -> Console | None:
+        """Return a console instance, creating one if not provided."""
+        if not self.quiet:
+            return Console()
+        return None
 
 
 @dataclass

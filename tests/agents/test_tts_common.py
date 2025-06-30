@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -39,7 +40,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
             tts_language="en",
             speaker=None,
             output_device_index=1,
-            save_file="test.wav",
+            save_file=Path("test.wav"),
             console=MagicMock(),
             logger=MagicMock(),
             play_audio=False,

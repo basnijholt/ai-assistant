@@ -37,12 +37,12 @@ async def test_speak_e2e(
     mock_tts_client = MockTTSClient(b"fake audio data")
     mock_async_client_class.from_uri.return_value.__aenter__.return_value = mock_tts_client
 
-    general_config = GeneralConfig(
+    general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
         quiet=False,
-        console=mock_console,
     )
+    general_cfg.__dict__["console"] = mock_console
     tts_config = TTSConfig(
         enabled=True,
         server_ip="mock-host",
@@ -57,7 +57,7 @@ async def test_speak_e2e(
     file_config = FileConfig(save_file=None)
 
     await async_main(
-        general_config=general_config,
+        general_cfg=general_cfg,
         text="Hello, world!",
         tts_config=tts_config,
         file_config=file_config,
