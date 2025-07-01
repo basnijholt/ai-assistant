@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
 import typer
-from rich.live import Live
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -230,7 +229,6 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
     ) as live:
         # Create a dummy Live for get_llm_response since we're using our own timer display
-        dummy_live = Live(console=console) if live is None else live
         response_text = await get_llm_response(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
@@ -240,7 +238,7 @@ async def _handle_conversation_turn(
             logger=LOGGER,
             tools=tools,
             quiet=True,  # Suppress internal output since we're showing our own timer
-            live=dummy_live,
+            live=None,
         )
 
     elapsed_time = timer.stop()

@@ -10,8 +10,10 @@ import pyperclip
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
+from rich.live import Live
 
 from agent_cli.utils import (
+    console,
     live_timer,
     print_error_message,
     print_output_panel,
@@ -21,7 +23,6 @@ if TYPE_CHECKING:
     import logging
 
     from pydantic_ai.tools import Tool
-    from rich.live import Live
 
 
 def build_agent(
@@ -65,7 +66,7 @@ async def get_llm_response(
     model: str,
     ollama_host: str,
     logger: logging.Logger,
-    live: Live,
+    live: Live | None = None,
     tools: list[Tool] | None = None,
     quiet: bool = False,
     clipboard: bool = False,
@@ -104,7 +105,7 @@ async def get_llm_response(
 
     try:
         async with live_timer(
-            live,
+            live or Live(console=console),
             f"🤖 Applying instruction with {model}",
             style="bold yellow",
             quiet=quiet,
