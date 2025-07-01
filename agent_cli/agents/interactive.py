@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
@@ -77,11 +78,23 @@ class ConversationEntry(TypedDict):
 # --- LLM Prompts ---
 
 SYSTEM_PROMPT = """\
-You are a helpful and friendly conversational AI. Your role is to assist the user with their questions and tasks.
+You are a helpful and friendly conversational AI with long-term memory. Your role is to assist the user with their questions and tasks.
 
 You have access to the following tools:
 - read_file: Read the content of a file.
 - execute_code: Execute a shell command.
+- add_memory: Add important information to long-term memory for future recall.
+- search_memory: Search your long-term memory for relevant information.
+- update_memory: Modify existing memories by ID when information changes.
+- list_all_memories: Show all stored memories with their IDs and details.
+- list_memory_categories: See what types of information you've remembered.
+- duckduckgo_search: Search the web for current information.
+
+Memory Guidelines:
+- When the user shares personal information, preferences, or important facts, offer to add them to memory.
+- Before answering questions, consider searching your memory for relevant context.
+- Use categories like: personal, preferences, facts, tasks, projects, etc.
+- Always ask for permission before adding sensitive or personal information to memory.
 
 - The user is interacting with you through voice, so keep your responses concise and natural.
 - A summary of the previous conversation is provided for context. This context may or may not be relevant to the current query.
@@ -180,9 +193,21 @@ async def _handle_conversation_turn(
     live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
-    from agent_cli._tools import ExecuteCodeTool, ReadFileTool
+    # Import here to avoid slow pydantic_ai import in CLI
+    from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
+
+    from agent_cli._tools import (
+        AddMemoryTool,
+        ExecuteCodeTool,
+        ListAllMemoriesTool,
+        ListMemoryCategoresTool,
+        ReadFileTool,
+        SearchMemoryTool,
+        UpdateMemoryTool,
+    )
 
     # 1. Transcribe user's command
+    timer_asr = Timer()
     instruction = await asr.transcribe_audio(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
@@ -193,6 +218,7 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
         live=live,
     )
+    elapsed_time = timer_asr.stop()
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
     stop_event.clear()
@@ -206,7 +232,7 @@ async def _handle_conversation_turn(
         return
 
     if not general_cfg.quiet:
-        print_input_panel(instruction, title="👤 You")
+        print_input_panel(instruction, title="👤 You", subtitle=f"took {elapsed_time:.2f}s")
 
     # 2. Add user message to history
     conversation_history.append(
@@ -225,8 +251,17 @@ async def _handle_conversation_turn(
     )
 
     # 4. Get LLM response with timing
-    tools = [ReadFileTool, ExecuteCodeTool]
-    timer = Timer()
+    tools = [
+        ReadFileTool,
+        ExecuteCodeTool,
+        AddMemoryTool,
+        SearchMemoryTool,
+        UpdateMemoryTool,
+        ListAllMemoriesTool,
+        ListMemoryCategoresTool,
+        duckduckgo_search_tool(),
+    ]
+    timer_ai = Timer()
 
     async with live_timer(
         live,
@@ -248,7 +283,7 @@ async def _handle_conversation_turn(
             live=live,
         )
 
-    elapsed_time = timer.stop()
+    elapsed_time = timer_ai.stop()
 
     if not response_text:
         if not general_cfg.quiet:
@@ -273,7 +308,11 @@ async def _handle_conversation_turn(
 
     # 6. Save history
     if file_config.history_dir:
-        history_file = file_config.history_dir / "conversation.json"
+        history_path = Path(file_config.history_dir).expanduser()
+        history_path.mkdir(parents=True, exist_ok=True)
+        # Share the history directory with the memory tools
+        os.environ["AGENT_CLI_HISTORY_DIR"] = str(history_path)
+        history_file = history_path / "conversation.json"
         _save_conversation_history(history_file, conversation_history)
 
     # 7. Handle TTS playback
@@ -345,6 +384,8 @@ async def async_main(
             if file_config.history_dir:
                 history_path = Path(file_config.history_dir).expanduser()
                 history_path.mkdir(parents=True, exist_ok=True)
+                # Share the history directory with the memory tools
+                os.environ["AGENT_CLI_HISTORY_DIR"] = str(history_path)
                 history_file = history_path / "conversation.json"
                 conversation_history = _load_conversation_history(
                     history_file,

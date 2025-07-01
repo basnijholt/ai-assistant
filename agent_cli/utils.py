@@ -98,10 +98,11 @@ def create_status(text: str, style: str = "bold yellow") -> Status:
 def print_input_panel(
     text: str,
     title: str = "Input",
+    subtitle: str = "",
     style: str = "bold blue",
 ) -> None:
     """Prints a panel with the input text."""
-    console.print(Panel(text, title=title, border_style=style))
+    console.print(Panel(text, title=title, subtitle=subtitle, border_style=style))
 
 
 def print_output_panel(
