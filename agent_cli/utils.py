@@ -5,11 +5,12 @@ from __future__ import annotations
 import asyncio
 import signal
 import sys
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from typing import TYPE_CHECKING, Protocol, TypeVar
 
 import pyperclip
 from rich.console import Console
+from rich.live import Live
 from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.status import Status
@@ -88,14 +89,14 @@ def format_timedelta_to_ago(td: timedelta) -> str:
     return f"{seconds} second{'s' if seconds != 1 else ''} ago"
 
 
-def create_spinner(text: str) -> Spinner:
+def create_spinner(text: str, style: str) -> Spinner:
     """Creates a default spinner."""
-    return Spinner("dots", text=Text(text, style="blue"))
+    return Spinner("dots", text=Text(text, style=style))
 
 
-def create_status(text: str) -> Status:
+def create_status(text: str, style: str) -> Status:
     """Creates a default status."""
-    return Status(create_spinner(text), console=console)
+    return Status(create_spinner(text, style), console=console)
 
 
 def print_input_panel(
@@ -228,3 +229,10 @@ def stop_or_status(
         return True
 
     return False
+
+
+def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
+    """Create a live context manager if use_live is True."""
+    if use_live:
+        return Live(create_spinner("Transcribing...", "blue"), console=console, transient=True)
+    return nullcontext()

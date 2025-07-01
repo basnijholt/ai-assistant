@@ -65,6 +65,7 @@ from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
     console,
     get_clipboard_text,
+    maybe_live,
     print_device_index,
     print_input_panel,
     print_status_message,
@@ -162,7 +163,10 @@ async def async_main(
         if not general_cfg.quiet:
             print_input_panel(original_text, title="📝 Text to Process")
 
-        with signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event:
+        with (
+            signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event,
+            maybe_live(not general_cfg.quiet) as live,
+        ):
             # Define callbacks for voice assistant specific formatting
             def chunk_callback(chunk_text: str) -> None:
                 """Handle transcript chunks as they arrive."""
@@ -185,6 +189,7 @@ async def async_main(
                 p=p,
                 stop_event=stop_event,
                 quiet=general_cfg.quiet,
+                live=live,
                 listening_message="Listening for your command...",
                 chunk_callback=chunk_callback,
                 final_callback=final_callback,

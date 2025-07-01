@@ -129,9 +129,7 @@ async def async_autocorrect(
                 llm_config.ollama_host,
             )
         else:
-            with create_status(
-                f"[bold yellow]🤖 Correcting with {llm_config.model}...[/bold yellow]",
-            ):
+            with create_status(f"🤖 Correcting with {llm_config.model}...", "bold yellow"):
                 corrected_text, elapsed = await process_text(
                     original_text,
                     llm_config.model,

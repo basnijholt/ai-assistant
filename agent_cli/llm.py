@@ -76,7 +76,7 @@ async def get_llm_response(
         tools=tools,
     )
     try:
-        with create_status(f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]"):
+        with create_status(f"🤖 Applying instruction with {model}...", "bold yellow"):
             result = await agent.run(user_input)
         return result.output
     except Exception as e:
@@ -128,7 +128,7 @@ async def process_and_update_clipboard(
     )
     try:
         cm = (
-            create_status(f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]")
+            create_status(f"🤖 Applying instruction with {model}...", "bold yellow")
             if not quiet
             else nullcontext()
         )

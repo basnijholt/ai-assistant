@@ -46,6 +46,7 @@ from agent_cli.utils import (
     InteractiveStopEvent,
     console,
     format_timedelta_to_ago,
+    maybe_live,
     print_device_index,
     print_input_panel,
     print_status_message,
@@ -173,15 +174,17 @@ async def _handle_conversation_turn(
     # 1. Transcribe user's command
     if not general_cfg.quiet:
         print_status_message("Listening for your command...", style="bold cyan")
-    instruction = await asr.transcribe_audio(
-        asr_server_ip=asr_config.server_ip,
-        asr_server_port=asr_config.server_port,
-        device_index=asr_config.device_index,
-        logger=LOGGER,
-        p=p,
-        stop_event=stop_event,
-        quiet=general_cfg.quiet,
-    )
+    with maybe_live(not general_cfg.quiet) as live:
+        instruction = await asr.transcribe_audio(
+            asr_server_ip=asr_config.server_ip,
+            asr_server_port=asr_config.server_port,
+            device_index=asr_config.device_index,
+            logger=LOGGER,
+            p=p,
+            stop_event=stop_event,
+            quiet=general_cfg.quiet,
+            live=live,
+        )
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
     stop_event.clear()

@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from contextlib import AbstractContextManager, nullcontext, suppress
+from contextlib import suppress
 from typing import TYPE_CHECKING
 
 import pyperclip
-from rich.live import Live
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -17,8 +16,7 @@ from agent_cli.audio import input_device, list_input_devices, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
-    console,
-    create_spinner,
+    maybe_live,
     print_device_index,
     print_input_panel,
     print_output_panel,
@@ -79,7 +77,7 @@ async def async_main(
     """Async entry point, consuming parsed args."""
     with (
         signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event,
-        _maybe_live(not general_cfg.quiet) as live,
+        maybe_live(not general_cfg.quiet) as live,
     ):
         transcript = await asr.transcribe_audio(
             asr_server_ip=asr_config.server_ip,
@@ -133,16 +131,6 @@ async def async_main(
                 "⚠️ No transcript captured.",
                 style="yellow",
             )
-
-
-def _maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
-    if use_live:
-        return Live(
-            create_spinner("Transcribing..."),
-            console=console,
-            transient=True,
-        )
-    return nullcontext()
 
 
 @app.command("transcribe")

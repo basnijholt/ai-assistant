@@ -275,10 +275,7 @@ async def play_audio(
                 if stop_event and stop_event.is_set():
                     logger.info("Audio playback interrupted")
                     if not quiet:
-                        print_status_message(
-                            "⏹️ Audio playback interrupted",
-                            style="yellow",
-                        )
+                        print_status_message("⏹️ Audio playback interrupted", style="yellow")
                     break
                 chunk = frames[i : i + chunk_size]
                 stream.write(chunk)
