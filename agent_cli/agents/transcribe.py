@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 from rich.live import Live
-from rich.text import Text
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -18,6 +17,8 @@ from agent_cli.audio import input_device, list_input_devices, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
+    console,
+    create_spinner,
     print_device_index,
     print_input_panel,
     print_output_panel,
@@ -28,7 +29,6 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
-    from rich.console import Console
 
 LOGGER = logging.getLogger()
 
@@ -78,8 +78,8 @@ async def async_main(
 ) -> None:
     """Async entry point, consuming parsed args."""
     with (
-        signal_handling_context(general_cfg.console, LOGGER) as stop_event,
-        _maybe_live(general_cfg.console) as live,
+        signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event,
+        _maybe_live(not general_cfg.quiet) as live,
     ):
         transcript = await asr.transcribe_audio(
             asr_server_ip=asr_config.server_ip,
@@ -88,23 +88,24 @@ async def async_main(
             logger=LOGGER,
             p=p,
             stop_event=stop_event,
-            console=general_cfg.console,
+            quiet=general_cfg.quiet,
             live=live,
             listening_message="Listening...",
         )
 
     if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
-        print_input_panel(general_cfg.console, transcript, title="📝 Raw Transcript")
+        if not general_cfg.quiet:
+            print_input_panel(transcript, title="📝 Raw Transcript")
         await process_and_update_clipboard(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
             model=llm_config.model,
             ollama_host=llm_config.ollama_host,
             logger=LOGGER,
-            console=general_cfg.console,
             original_text=transcript,
             instruction=INSTRUCTION,
             clipboard=general_cfg.clipboard,
+            quiet=general_cfg.quiet,
         )
         return
 
@@ -115,10 +116,9 @@ async def async_main(
             print(transcript)
         else:
             print_output_panel(
-                general_cfg.console,
                 transcript,
                 title="📝 Transcript",
-                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else None,
+                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
             )
 
         if general_cfg.clipboard:
@@ -130,16 +130,15 @@ async def async_main(
         LOGGER.info("Transcript empty.")
         if not general_cfg.quiet:
             print_status_message(
-                general_cfg.console,
                 "⚠️ No transcript captured.",
                 style="yellow",
             )
 
 
-def _maybe_live(console: Console | None) -> AbstractContextManager[Live | None]:
-    if console:
+def _maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
+    if use_live:
         return Live(
-            Text("Transcribing...", style="blue"),
+            create_spinner("Transcribing..."),
             console=console,
             transient=True,
         )
@@ -184,15 +183,16 @@ def transcribe(
         clipboard=clipboard,
     )
     process_name = "transcribe"
-    if stop_or_status(process_name, "transcribe", general_cfg.console, stop, status):
+    if stop_or_status(process_name, "transcribe", stop, status, quiet=general_cfg.quiet):
         return
 
     with pyaudio_context() as p:
         if list_devices:
-            list_input_devices(p, general_cfg.console)
+            list_input_devices(p, quiet)
             return
         device_index, device_name = input_device(p, device_name, device_index)
-        print_device_index(general_cfg.console, device_index, device_name)
+        if not quiet:
+            print_device_index(device_index, device_name)
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):

@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -12,19 +12,28 @@ from agent_cli.agents._tts_common import _save_audio_file, handle_tts_playback
 @pytest.mark.asyncio
 async def test_save_audio_file_os_error():
     """Test that an OS error is handled when saving an audio file."""
-    mock_console = MagicMock()
     logger = logging.getLogger(__name__)
-    with patch("pathlib.Path.write_bytes", side_effect=OSError("Test error")):
-        await _save_audio_file(b"audio_data", Path("test.wav"), mock_console, logger)
+    with (
+        patch("pathlib.Path.write_bytes", side_effect=OSError("Test error")),
+        patch("agent_cli.utils.console") as mock_console,
+    ):
+        await _save_audio_file(
+            b"audio_data",
+            Path("test.wav"),
+            quiet=False,
+            logger=logger,
+        )
         mock_console.print.assert_called()
 
 
 @pytest.mark.asyncio
 async def test_handle_tts_playback_os_error():
     """Test that an OS error is handled during TTS playback."""
-    mock_console = MagicMock()
     logger = logging.getLogger(__name__)
-    with patch("agent_cli.tts.speak_text", side_effect=OSError("Test error")):
+    with (
+        patch("agent_cli.tts.speak_text", side_effect=OSError("Test error")),
+        patch("agent_cli.utils.console") as mock_console,
+    ):
         result = await handle_tts_playback(
             "text",
             tts_server_ip="localhost",
@@ -34,7 +43,7 @@ async def test_handle_tts_playback_os_error():
             speaker=None,
             output_device_index=None,
             save_file=None,
-            console=mock_console,
+            quiet=False,
             logger=logger,
         )
         assert result is None

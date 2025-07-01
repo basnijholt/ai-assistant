@@ -63,7 +63,7 @@ from agent_cli.audio import (
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
-    _print,
+    console,
     get_clipboard_text,
     print_device_index,
     print_input_panel,
@@ -74,7 +74,6 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
-    from rich.console import Console
 
 LOGGER = logging.getLogger()
 
@@ -107,12 +106,13 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 
 def _setup_input_device(
     p: pyaudio.PyAudio,
-    console: Console | None,
+    quiet: bool,
     device_name: str | None,
     device_index: int | None,
 ) -> tuple[int | None, str | None]:
     device_index, device_name = input_device(p, device_name, device_index)
-    print_device_index(console, device_index, device_name)
+    if not quiet:
+        print_device_index(device_index, device_name)
     return device_index, device_name
 
 
@@ -128,17 +128,17 @@ async def async_main(
     with pyaudio_context() as p:
         # Handle device listing
         if asr_config.list_devices:
-            list_input_devices(p, general_cfg.console)
+            list_input_devices(p, not general_cfg.quiet)
             return
 
         if tts_config.list_output_devices:
-            list_output_devices(p, general_cfg.console)
+            list_output_devices(p, not general_cfg.quiet)
             return
 
         # Setup input device for ASR
         device_index, device_name = _setup_input_device(
             p,
-            general_cfg.console,
+            general_cfg.quiet,
             asr_config.device_name,
             asr_config.device_index,
         )
@@ -151,29 +151,31 @@ async def async_main(
                 tts_config.output_device_name,
                 tts_config.output_device_index,
             )
-            if tts_output_device_index is not None and general_cfg.console:
+            if tts_output_device_index is not None and not general_cfg.quiet:
                 msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
-                print_status_message(general_cfg.console, msg)
+                print_status_message(msg)
 
-        original_text = get_clipboard_text(general_cfg.console)
+        original_text = get_clipboard_text()
         if not original_text:
             return
 
-        print_input_panel(general_cfg.console, original_text, title="📝 Text to Process")
+        if not general_cfg.quiet:
+            print_input_panel(original_text, title="📝 Text to Process")
 
-        with signal_handling_context(general_cfg.console, LOGGER) as stop_event:
+        with signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event:
             # Define callbacks for voice assistant specific formatting
             def chunk_callback(chunk_text: str) -> None:
                 """Handle transcript chunks as they arrive."""
-                _print(general_cfg.console, chunk_text, end="")
+                if not general_cfg.quiet:
+                    console.print(chunk_text, end="")
 
             def final_callback(transcript_text: str) -> None:
                 """Format the final instruction result."""
-                print_status_message(
-                    general_cfg.console,
-                    f"\n🎯 Instruction: {transcript_text}",
-                    style="bold green",
-                )
+                if not general_cfg.quiet:
+                    print_status_message(
+                        f"\n🎯 Instruction: {transcript_text}",
+                        style="bold green",
+                    )
 
             instruction = await asr.transcribe_audio(
                 asr_server_ip=asr_config.server_ip,
@@ -182,18 +184,18 @@ async def async_main(
                 logger=LOGGER,
                 p=p,
                 stop_event=stop_event,
-                console=general_cfg.console,
+                quiet=general_cfg.quiet,
                 listening_message="Listening for your command...",
                 chunk_callback=chunk_callback,
                 final_callback=final_callback,
             )
 
             if not instruction or not instruction.strip():
-                print_status_message(
-                    general_cfg.console,
-                    "No instruction was transcribed. Exiting.",
-                    style="yellow",
-                )
+                if not general_cfg.quiet:
+                    print_status_message(
+                        "No instruction was transcribed. Exiting.",
+                        style="yellow",
+                    )
                 return
 
             await process_and_update_clipboard(
@@ -202,10 +204,10 @@ async def async_main(
                 model=llm_config.model,
                 ollama_host=llm_config.ollama_host,
                 logger=LOGGER,
-                console=general_cfg.console,
                 original_text=original_text,
                 instruction=instruction,
                 clipboard=general_cfg.clipboard,
+                quiet=general_cfg.quiet,
             )
 
             # Handle TTS response if enabled
@@ -221,7 +223,7 @@ async def async_main(
                         speaker=tts_config.speaker,
                         output_device_index=tts_output_device_index,
                         save_file=file_config.save_file,
-                        console=general_cfg.console,
+                        quiet=general_cfg.quiet,
                         logger=LOGGER,
                         play_audio=not file_config.save_file,  # Don't play if saving to file
                         status_message="🔊 Speaking response...",
@@ -282,7 +284,7 @@ def voice_assistant(
         clipboard=clipboard,
     )
     process_name = "voice-assistant"
-    if stop_or_status(process_name, "voice assistant", general_cfg.console, stop, status):
+    if stop_or_status(process_name, "voice assistant", stop, status, quiet=general_cfg.quiet):
         return
 
     # Use context manager for PID file management

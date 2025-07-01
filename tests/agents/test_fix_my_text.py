@@ -36,7 +36,6 @@ def test_display_result_quiet_mode():
                 "hello world",
                 0.1,
                 simple_output=True,
-                console=None,
             )
 
         assert output.getvalue().strip() == "Hello world!"
@@ -53,7 +52,6 @@ def test_display_result_no_correction_needed():
                 "Hello world!",
                 0.1,
                 simple_output=True,
-                console=None,
             )
 
         assert output.getvalue().strip() == "✅ No correction needed."
@@ -62,18 +60,19 @@ def test_display_result_no_correction_needed():
 
 def test_display_result_verbose_mode():
     """Test the _display_result function in verbose mode with real console output."""
-    console = Console(file=io.StringIO(), width=80)
-
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
+    mock_console = Console(file=io.StringIO(), width=80)
+    with (
+        patch("agent_cli.utils.console", mock_console),
+        patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy,
+    ):
         autocorrect._display_result(
             "Hello world!",
             "hello world",
             0.25,
             simple_output=False,
-            console=console,
         )
 
-        output = console.file.getvalue()
+        output = mock_console.file.getvalue()
         assert "Hello world!" in output
         assert "Corrected Text" in output
         assert "Success!" in output
@@ -82,19 +81,21 @@ def test_display_result_verbose_mode():
 
 def test_display_original_text():
     """Test the display_original_text function."""
-    console = Console(file=io.StringIO(), width=80)
-
-    autocorrect.display_original_text("Test text here", console)
-
-    output = console.file.getvalue()
-    assert "Test text here" in output
-    assert "Original Text" in output
+    mock_console = Console(file=io.StringIO(), width=80)
+    with patch("agent_cli.utils.console", mock_console):
+        autocorrect.display_original_text("Test text here", quiet=False)
+        output = mock_console.file.getvalue()
+        assert "Test text here" in output
+        assert "Original Text" in output
 
 
 def test_display_original_text_none_console():
     """Test display_original_text with None console (should not crash)."""
-    # This should not raise an exception
-    autocorrect.display_original_text("Test text", None)
+    mock_console = Console(file=io.StringIO(), width=80)
+    with patch("agent_cli.utils.console", mock_console):
+        # This should not raise an exception or print anything
+        autocorrect.display_original_text("Test text", quiet=True)
+        assert mock_console.file.getvalue() == ""
 
 
 @pytest.mark.asyncio
@@ -213,7 +214,7 @@ async def test_autocorrect_command_from_clipboard(
         )
 
     # Assertions
-    mock_get_clipboard.assert_called_once()
+    mock_get_clipboard.assert_called_once_with(quiet=True)
     mock_build_agent.assert_called_once_with(
         model=config.DEFAULT_MODEL,
         ollama_host=config.OLLAMA_HOST,

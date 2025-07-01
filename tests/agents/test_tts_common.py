@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -24,12 +24,26 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
         speaker=None,
         output_device_index=1,
         save_file=None,
-        console=MagicMock(),
+        quiet=False,
         logger=MagicMock(),
         play_audio=True,
         speed=1.0,
     )
-    mock_speak_text.assert_called_once()
+
+    mock_speak_text.assert_called_once_with(
+        text="hello",
+        tts_server_ip="localhost",
+        tts_server_port=1234,
+        logger=ANY,
+        voice_name="test-voice",
+        language="en",
+        speaker=None,
+        output_device_index=1,
+        quiet=False,
+        play_audio_flag=True,
+        stop_event=None,
+        speed=1.0,
+    )
 
     # Test with save_file
     with patch("pathlib.Path.write_bytes") as mock_write_bytes:
@@ -42,7 +56,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
             speaker=None,
             output_device_index=1,
             save_file=Path("test.wav"),
-            console=MagicMock(),
+            quiet=False,
             logger=MagicMock(),
             play_audio=False,
             speed=1.0,
@@ -65,7 +79,7 @@ async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
         speaker=None,
         output_device_index=1,
         save_file=None,
-        console=MagicMock(),
+        quiet=False,
         logger=MagicMock(),
         play_audio=True,
         speed=1.0,
