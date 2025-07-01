@@ -227,6 +227,7 @@ async def _handle_conversation_turn(
         f"🤖 Processing with {llm_config.model}",
         style="bold yellow",
         quiet=general_cfg.quiet,
+        stop_event=stop_event,
     ):
         # Create a dummy Live for get_llm_response since we're using our own timer display
         response_text = await get_llm_response(
@@ -343,7 +344,7 @@ async def async_main(
 
             with (
                 maybe_live(not general_cfg.quiet) as live,
-                signal_handling_context(LOGGER, live, general_cfg.quiet) as stop_event,
+                signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
             ):
                 while not stop_event.is_set():
                     await _handle_conversation_turn(

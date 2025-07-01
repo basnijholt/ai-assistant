@@ -12,7 +12,7 @@ from wyoming.client import AsyncClient
 
 from agent_cli import config
 from agent_cli.audio import open_pyaudio_stream
-from agent_cli.utils import Stoppable, print_error_message
+from agent_cli.utils import InteractiveStopEvent, print_error_message
 
 if TYPE_CHECKING:
     import logging
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 async def send_audio(
     client: AsyncClient,
     stream: pyaudio.Stream,
-    stop_event: Stoppable,
+    stop_event: InteractiveStopEvent,
     logger: logging.Logger,
     *,
     live: Live,
@@ -69,7 +69,16 @@ async def send_audio(
             # Update display timing
             seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
             if live and not quiet:
-                live.update(Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"))
+                # Check if Ctrl+C was pressed
+                if stop_event.ctrl_c_pressed:
+                    live.update(
+                        Text(
+                            "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)",
+                            style="yellow",
+                        ),
+                    )
+                else:
+                    live.update(Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"))
 
     finally:
         await client.write_event(AudioStop().event())
@@ -125,7 +134,7 @@ async def transcribe_audio(
     device_index: int | None,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
-    stop_event: Stoppable,
+    stop_event: InteractiveStopEvent,
     *,
     live: Live,
     quiet: bool = False,

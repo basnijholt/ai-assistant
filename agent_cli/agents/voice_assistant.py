@@ -165,7 +165,7 @@ async def async_main(
 
         with (
             maybe_live(not general_cfg.quiet) as live,
-            signal_handling_context(LOGGER, live, general_cfg.quiet) as stop_event,
+            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
         ):
             # Define callbacks for voice assistant specific formatting
             def chunk_callback(chunk_text: str) -> None:

@@ -76,7 +76,7 @@ async def async_main(
 ) -> None:
     """Async entry point, consuming parsed args."""
     with maybe_live(not general_cfg.quiet) as live:
-        with signal_handling_context(LOGGER, live, general_cfg.quiet) as stop_event:
+        with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
             transcript = await asr.transcribe_audio(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,

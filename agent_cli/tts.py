@@ -18,7 +18,7 @@ from agent_cli.audio import (
     pyaudio_context,
 )
 from agent_cli.utils import (
-    Stoppable,
+    InteractiveStopEvent,
     live_timer,
     print_error_message,
     print_status_message,
@@ -227,7 +227,7 @@ async def play_audio(
     *,
     output_device_index: int | None = None,
     quiet: bool = False,
-    stop_event: Stoppable | None = None,
+    stop_event: InteractiveStopEvent | None = None,
     speed: float = 1.0,
     live: Live,
 ) -> None:
@@ -316,7 +316,7 @@ async def speak_text(
     output_device_index: int | None = None,
     quiet: bool = False,
     play_audio_flag: bool = True,
-    stop_event: Stoppable | None = None,
+    stop_event: InteractiveStopEvent | None = None,
     speed: float = 1.0,
     live: Live,
 ) -> bytes | None:

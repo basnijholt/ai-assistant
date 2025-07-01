@@ -18,15 +18,11 @@ async def test_send_audio() -> None:
     # Arrange
     client = AsyncMock()
     stream = MagicMock()
-    stop_event = asyncio.Event()
+    stop_event = MagicMock()
+    stop_event.is_set.side_effect = [False, True]  # Allow one iteration then stop
+    stop_event.ctrl_c_pressed = False
 
-    def read_and_stop(*args, **kwargs) -> bytes:  # noqa: ARG001
-        # This function will be called by stream.read()
-        # It stops the loop after the first chunk.
-        stop_event.set()
-        return b"fake_audio_chunk"
-
-    stream.read.side_effect = read_and_stop
+    stream.read.return_value = b"fake_audio_chunk"
     logger = MagicMock()
 
     # Act
@@ -100,7 +96,9 @@ async def test_transcribe_audio() -> None:
         mock_pyaudio_context.return_value.__enter__.return_value = p
         stream = MagicMock()
         p.open.return_value.__enter__.return_value = stream
-        stop_event = asyncio.Event()
+        stop_event = MagicMock()
+        stop_event.is_set.return_value = False
+        stop_event.ctrl_c_pressed = False
         logger = MagicMock()
 
         # Act
@@ -118,7 +116,7 @@ async def test_transcribe_audio() -> None:
         )
         # Simulate stopping after a brief period
         await asyncio.sleep(0.01)
-        stop_event.set()
+        stop_event.is_set.return_value = True
         result = await transcribe_task
 
         # Assert
@@ -141,7 +139,9 @@ async def test_transcribe_audio_connection_error() -> None:
         mock_pyaudio_context.return_value.__enter__.return_value = p
         stream = MagicMock()
         p.open.return_value.__enter__.return_value = stream
-        stop_event = asyncio.Event()
+        stop_event = MagicMock()
+        stop_event.is_set.return_value = False
+        stop_event.ctrl_c_pressed = False
         logger = MagicMock()
 
         # Act

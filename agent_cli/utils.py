@@ -13,7 +13,7 @@ from contextlib import (
     nullcontext,
     suppress,
 )
-from typing import TYPE_CHECKING, Protocol, TypeVar
+from typing import TYPE_CHECKING
 
 import pyperclip
 from rich.console import Console
@@ -32,34 +32,15 @@ if TYPE_CHECKING:
 
 console = Console()
 
-T = TypeVar("T")
-
-
-class Stoppable(Protocol):
-    """Protocol for objects that can be stopped, like asyncio.Event."""
-
-    def is_set(self) -> bool:
-        """Return true if the event is set."""
-        ...
-
-    def set(self) -> None:
-        """Set the event."""
-        ...
-
-    def clear(self) -> None:
-        """Clear the event."""
-        ...
-
 
 class InteractiveStopEvent:
     """A stop event with reset capability for interactive agents."""
 
     def __init__(self) -> None:
         """Initialize the interactive stop event."""
-        import asyncio
-
         self._event = asyncio.Event()
         self._sigint_count = 0
+        self._ctrl_c_pressed = False
 
     def is_set(self) -> bool:
         """Check if the stop event is set."""
@@ -73,11 +54,18 @@ class InteractiveStopEvent:
         """Clear the stop event and reset interrupt count for next iteration."""
         self._event.clear()
         self._sigint_count = 0
+        self._ctrl_c_pressed = False
 
     def increment_sigint_count(self) -> int:
         """Increment and return the SIGINT count."""
         self._sigint_count += 1
+        self._ctrl_c_pressed = True
         return self._sigint_count
+
+    @property
+    def ctrl_c_pressed(self) -> bool:
+        """Check if Ctrl+C was pressed."""
+        return self._ctrl_c_pressed
 
 
 def format_timedelta_to_ago(td: timedelta) -> str:
@@ -160,7 +148,6 @@ def get_clipboard_text(*, quiet: bool = False) -> str | None:
 @contextmanager
 def signal_handling_context(
     logger: logging.Logger,
-    live: Live,
     quiet: bool = False,
 ) -> Generator[InteractiveStopEvent, None, None]:
     """Context manager for graceful signal handling with double Ctrl+C support.
@@ -173,7 +160,6 @@ def signal_handling_context(
     Args:
         logger: Logger instance for recording events
         quiet: Whether to suppress console output
-        live: Live instance for displaying status messages
 
     Yields:
         stop_event: InteractiveStopEvent that gets set when shutdown is requested
@@ -186,14 +172,7 @@ def signal_handling_context(
 
         if sigint_count == 1:
             logger.info("First Ctrl+C received. Processing transcription.")
-            if not quiet:
-                # Update the existing Live display with the Ctrl+C message
-                ctrl_c_text = Text(
-                    "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)",
-                    style="yellow",
-                )
-                live.update(ctrl_c_text)
-
+            # The Ctrl+C message will be shown by the ASR function
             stop_event.set()
         else:
             logger.info("Second Ctrl+C received. Force exiting.")
@@ -259,6 +238,7 @@ async def live_timer(
     *,
     quiet: bool = False,
     style: str = "blue",
+    stop_event: InteractiveStopEvent | None = None,
 ) -> AsyncGenerator[None, None]:
     """Async context manager that automatically manages a timer for a Live display.
 
@@ -267,6 +247,7 @@ async def live_timer(
         base_message: Base message to display
         style: Rich style for the text
         quiet: If True, don't show any display
+        stop_event: Optional stop event to check for Ctrl+C
 
     Usage:
         async with live_timer(live, "🤖 Processing", style="bold yellow"):
@@ -285,8 +266,18 @@ async def live_timer(
         """Update the timer display."""
         while True:
             elapsed = time.monotonic() - start_time
-            spinner = create_spinner(f"{base_message}... ({elapsed:.1f}s)", style)
-            live.update(spinner)
+
+            # Check if Ctrl+C was pressed
+            if stop_event and stop_event.ctrl_c_pressed:
+                ctrl_c_text = Text(
+                    "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)",
+                    style="yellow",
+                )
+                live.update(ctrl_c_text)
+            else:
+                spinner = create_spinner(f"{base_message}... ({elapsed:.1f}s)", style)
+                live.update(spinner)
+
             await asyncio.sleep(0.1)
 
     timer_task = asyncio.create_task(update_timer())
@@ -298,37 +289,6 @@ async def live_timer(
         timer_task.cancel()
         with suppress(asyncio.CancelledError):
             await timer_task
-
-
-@asynccontextmanager
-async def timed_live_async(
-    base_message: str,
-    *,
-    style: str = "blue",
-    quiet: bool = False,
-) -> AsyncGenerator[Live | None, None]:
-    """Async context manager for Live display with automatic timer.
-
-    Args:
-        base_message: Base message to display (e.g., "🤖 Processing")
-        style: Rich style for the text
-        quiet: If True, don't show any display
-
-    Usage:
-        async with timed_live_async("🤖 Processing", style="bold yellow") as live:
-            # Do work here, timer updates automatically
-            await some_operation()
-
-    """
-    if quiet:
-        yield None
-        return
-
-    initial_spinner = create_spinner(f"{base_message}...", style)
-
-    with Live(initial_spinner, console=console, refresh_per_second=10, transient=True) as live:
-        async with live_timer(live, base_message, style=style):
-            yield live
 
 
 class Timer:
