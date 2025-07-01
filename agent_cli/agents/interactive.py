@@ -136,10 +136,15 @@ def _setup_output_device(
     return device_index, device_name
 
 
-def _load_conversation_history(history_file: Path) -> list[ConversationEntry]:
+def _load_conversation_history(history_file: Path, last_n_messages: int) -> list[ConversationEntry]:
+    if last_n_messages == 0:
+        return []
     if history_file.exists():
         with history_file.open("r") as f:
-            return json.load(f)
+            history = json.load(f)
+            if last_n_messages > 0:
+                return history[-last_n_messages:]
+            return history
     return []
 
 
@@ -341,7 +346,10 @@ async def async_main(
                 history_path = Path(file_config.history_dir).expanduser()
                 history_path.mkdir(parents=True, exist_ok=True)
                 history_file = history_path / "conversation.json"
-                conversation_history = _load_conversation_history(history_file)
+                conversation_history = _load_conversation_history(
+                    history_file,
+                    file_config.last_n_messages,
+                )
 
             with (
                 maybe_live(not general_cfg.quiet) as live,
@@ -403,6 +411,12 @@ def interactive(
         "--history-dir",
         help="Directory to store conversation history.",
     ),
+    last_n_messages: int = typer.Option(
+        50,
+        "--last-n-messages",
+        help="Number of messages to include in the conversation history."
+        " Set to 0 to disable history.",
+    ),
 ) -> None:
     """An interactive agent that you can talk to."""
     setup_logging(log_level, log_file, quiet=quiet)
@@ -444,7 +458,11 @@ def interactive(
             list_output_devices=list_output_devices_flag,
             speed=tts_speed,
         )
-        file_config = FileConfig(save_file=save_file, history_dir=history_dir)
+        file_config = FileConfig(
+            save_file=save_file,
+            last_n_messages=last_n_messages,
+            history_dir=history_dir,
+        )
 
         asyncio.run(
             async_main(

@@ -59,6 +59,7 @@ class FileConfig:
     """File-related configuration."""
 
     save_file: Path | None
+    last_n_messages: int = 50
     history_dir: Path | None = None
 
     def __post_init__(self) -> None:

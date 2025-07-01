@@ -38,7 +38,7 @@ def history_file(tmp_path: Path) -> Path:
 def test_load_and_save_conversation_history(history_file: Path) -> None:
     """Test saving and loading conversation history."""
     # 1. Test loading from a non-existent file
-    history = _load_conversation_history(history_file)
+    history = _load_conversation_history(history_file, 10)
     assert history == []
 
     # 2. Test saving and then loading
@@ -49,7 +49,7 @@ def test_load_and_save_conversation_history(history_file: Path) -> None:
     ]
     _save_conversation_history(history_file, history_to_save)
 
-    loaded_history = _load_conversation_history(history_file)
+    loaded_history = _load_conversation_history(history_file, 10)
     assert loaded_history == history_to_save
 
 
