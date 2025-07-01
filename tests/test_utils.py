@@ -1,9 +1,9 @@
-"""Tests for the utility functions."""
+"""Tests for the utils module."""
 
 from __future__ import annotations
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -27,47 +27,47 @@ def test_format_timedelta_to_ago(td: timedelta, expected: str) -> None:
 def test_get_clipboard_text() -> None:
     """Test reading from clipboard."""
     with patch("pyperclip.paste", return_value="hello world"):
-        text = utils.get_clipboard_text(console=None)
+        text = utils.get_clipboard_text(quiet=True)
         assert text == "hello world"
 
 
 def test_get_clipboard_text_empty() -> None:
     """Test reading from an empty clipboard."""
     with patch("pyperclip.paste", return_value=""):
-        text = utils.get_clipboard_text(console=None)
+        text = utils.get_clipboard_text(quiet=True)
         assert text is None
 
 
 def test_print_device_index() -> None:
     """Test the print_device_index function."""
-    console = MagicMock()
-    utils.print_device_index(console, 1, "mock_device")
-    console.print.assert_called_once()
+    with patch("agent_cli.utils.console") as mock_console:
+        utils.print_device_index(1, "mock_device")
+        mock_console.print.assert_called_once()
 
 
 def test_print_input_panel() -> None:
     """Test the print_input_panel function."""
-    console = MagicMock()
-    utils.print_input_panel(console, "hello")
-    console.print.assert_called_once()
+    with patch("agent_cli.utils.console") as mock_console:
+        utils.print_input_panel("hello")
+        mock_console.print.assert_called_once()
 
 
 def test_print_output_panel() -> None:
     """Test the print_output_panel function."""
-    console = MagicMock()
-    utils.print_output_panel(console, "hello")
-    console.print.assert_called_once()
+    with patch("agent_cli.utils.console") as mock_console:
+        utils.print_output_panel("hello")
+        mock_console.print.assert_called_once()
 
 
 def test_print_status_message() -> None:
     """Test the print_status_message function."""
-    console = MagicMock()
-    utils.print_status_message(console, "hello")
-    console.print.assert_called_once()
+    with patch("agent_cli.utils.console") as mock_console:
+        utils.print_status_message("hello")
+        mock_console.print.assert_called_once()
 
 
 def test_print_error_message() -> None:
     """Test the print_error_message function."""
-    console = MagicMock()
-    utils.print_error_message(console, "hello", "world")
-    assert console.print.call_count == 2
+    with patch("agent_cli.utils.console") as mock_console:
+        utils.print_error_message("hello", "world")
+        mock_console.print.assert_called_once()

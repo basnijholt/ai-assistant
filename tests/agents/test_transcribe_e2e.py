@@ -56,16 +56,16 @@ async def test_transcribe_e2e(
         quiet=False,
         clipboard=False,
     )
-    general_cfg.__dict__["console"] = mock_console
     llm_config = LLMConfig(model="", ollama_host="")
 
-    await async_main(
-        asr_config=asr_config,
-        general_cfg=general_cfg,
-        llm_config=llm_config,
-        llm_enabled=False,
-        p=mock_pyaudio_instance,
-    )
+    with patch("agent_cli.utils.console", mock_console):
+        await async_main(
+            asr_config=asr_config,
+            general_cfg=general_cfg,
+            llm_config=llm_config,
+            llm_enabled=False,
+            p=mock_pyaudio_instance,
+        )
 
     # Assert that the final transcript is in the console output
     output = mock_console.file.getvalue()

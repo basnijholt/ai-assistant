@@ -20,29 +20,25 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
-from typing import TYPE_CHECKING
 
 import httpx
 import pyperclip
 import typer
 from openai import APIConnectionError
 from pydantic_ai.exceptions import ModelHTTPError
-from rich.status import Status
 
 import agent_cli.agents._cli_options as opts
 from agent_cli.agents._config import GeneralConfig, LLMConfig
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
 from agent_cli.utils import (
+    create_status,
     get_clipboard_text,
     print_error_message,
     print_input_panel,
     print_output_panel,
     print_status_message,
 )
-
-if TYPE_CHECKING:
-    from rich.console import Console
 
 # --- Configuration ---
 
@@ -78,9 +74,10 @@ async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, fl
     return result.output, t_end - t_start
 
 
-def display_original_text(original_text: str, console: Console | None) -> None:
+def display_original_text(original_text: str, quiet: bool) -> None:
     """Render the original text panel in verbose mode."""
-    print_input_panel(console, original_text, title="📋 Original Text")
+    if not quiet:
+        print_input_panel(original_text, title="📋 Original Text")
 
 
 def _display_result(
@@ -89,7 +86,6 @@ def _display_result(
     elapsed: float,
     *,
     simple_output: bool,
-    console: Console | None,
 ) -> None:
     """Handle output and clipboard copying based on desired verbosity."""
     pyperclip.copy(corrected_text)
@@ -100,15 +96,12 @@ def _display_result(
         else:
             print(corrected_text)
     else:
-        assert console is not None
         print_output_panel(
-            console,
             corrected_text,
             title="✨ Corrected Text",
             subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
         )
         print_status_message(
-            console,
             "✅ Success! Corrected text has been copied to your clipboard.",
         )
 
@@ -121,12 +114,12 @@ async def async_autocorrect(
 ) -> None:
     """Asynchronous version of the autocorrect command."""
     setup_logging(general_cfg.log_level, general_cfg.log_file, quiet=general_cfg.quiet)
-    original_text = text if text is not None else get_clipboard_text(general_cfg.console)
+    original_text = text if text is not None else get_clipboard_text(quiet=general_cfg.quiet)
 
     if original_text is None:
         return
 
-    display_original_text(original_text, general_cfg.console)
+    display_original_text(original_text, general_cfg.quiet)
 
     try:
         if general_cfg.quiet:
@@ -136,18 +129,7 @@ async def async_autocorrect(
                 llm_config.ollama_host,
             )
         else:
-            with Status(
-                f"[bold yellow]🤖 Correcting with {llm_config.model}...[/bold yellow]",
-                console=general_cfg.console,
-            ) as status:
-                maybe_log = (
-                    f" (see [dim]log at {general_cfg.log_file}[/dim])"
-                    if general_cfg.log_file
-                    else ""
-                )
-                status.update(
-                    f"[bold yellow]🤖 Correcting with {llm_config.model}...{maybe_log}[/bold yellow]",
-                )
+            with create_status(f"🤖 Correcting with {llm_config.model}...", "bold yellow"):
                 corrected_text, elapsed = await process_text(
                     original_text,
                     llm_config.model,
@@ -159,7 +141,6 @@ async def async_autocorrect(
             original_text,
             elapsed,
             simple_output=general_cfg.quiet,
-            console=general_cfg.console,
         )
 
     except (httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
@@ -167,7 +148,6 @@ async def async_autocorrect(
             print(f"❌ {e}")
         else:
             print_error_message(
-                general_cfg.console,
                 str(e),
                 f"Please check that your Ollama server is running at [bold cyan]{llm_config.ollama_host}[/bold cyan]",
             )

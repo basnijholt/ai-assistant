@@ -40,9 +40,11 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
         model="test",
         ollama_host="test",
         logger=MagicMock(),
-        console=MagicMock(),
     )
+
     assert response == "hello"
+    mock_build_agent.assert_called_once()
+    mock_agent.run.assert_called_once_with("test")
 
 
 @pytest.mark.asyncio
@@ -60,9 +62,11 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
         model="test",
         ollama_host="test",
         logger=MagicMock(),
-        console=MagicMock(),
     )
+
     assert response is None
+    mock_build_agent.assert_called_once()
+    mock_agent.run.assert_called_once_with("test")
 
 
 @patch("agent_cli.llm.process_with_llm", new_callable=AsyncMock)
@@ -73,6 +77,8 @@ def test_process_and_update_clipboard(
 ) -> None:
     """Test the process_and_update_clipboard function."""
     mock_process_with_llm.return_value = ("hello", 0.1)
+    mock_live = MagicMock()
+
     asyncio.run(
         process_and_update_clipboard(
             system_prompt="test",
@@ -80,10 +86,13 @@ def test_process_and_update_clipboard(
             model="test",
             ollama_host="test",
             logger=MagicMock(),
-            console=MagicMock(),
             original_text="test",
             instruction="test",
             clipboard=True,
+            quiet=True,
+            live=mock_live,
         ),
     )
+
     mock_copy.assert_called_once_with("hello")
+    mock_process_with_llm.assert_called_once()

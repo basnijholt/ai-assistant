@@ -22,8 +22,6 @@ from agent_cli.utils import Stoppable, print_error_message, print_status_message
 if TYPE_CHECKING:
     import logging
 
-    from rich.console import Console
-
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
 
@@ -115,7 +113,7 @@ async def synthesize_speech(
     voice_name: str | None = None,
     language: str | None = None,
     speaker: str | None = None,
-    console: Console | None = None,
+    quiet: bool = False,
 ) -> bytes | None:
     """Synthesize speech from text using Wyoming TTS server.
 
@@ -127,7 +125,7 @@ async def synthesize_speech(
         voice_name: Optional voice name
         language: Optional language
         speaker: Optional speaker name
-        console: Rich console for messages
+        quiet: If true, suppress console messages
 
     Returns:
         WAV audio data as bytes, or None if error
@@ -139,8 +137,8 @@ async def synthesize_speech(
     try:
         async with AsyncClient.from_uri(uri) as client:
             logger.info("TTS connection established")
-            if console:
-                print_status_message(console, f"🔊 Synthesizing: {text[:50]}...")
+            if not quiet:
+                print_status_message(f"🔊 Synthesizing: {text[:50]}...")
 
             # Create and send synthesis request
             synthesize_event = _create_synthesis_request(
@@ -167,15 +165,16 @@ async def synthesize_speech(
             return None
 
     except ConnectionRefusedError:
-        print_error_message(
-            console,
-            "TTS Connection refused.",
-            f"Is the Wyoming TTS server running at {uri}?",
-        )
+        if not quiet:
+            print_error_message(
+                "TTS Connection refused.",
+                f"Is the Wyoming TTS server running at {uri}?",
+            )
         return None
     except Exception as e:
         logger.exception("An error occurred during speech synthesis.")
-        print_error_message(console, f"TTS error: {e}")
+        if not quiet:
+            print_error_message(f"TTS error: {e}")
         return None
 
 
@@ -220,7 +219,7 @@ async def play_audio(
     logger: logging.Logger,
     *,
     output_device_index: int | None = None,
-    console: Console | None = None,
+    quiet: bool = False,
     stop_event: Stoppable | None = None,
     speed: float = 1.0,
 ) -> None:
@@ -230,17 +229,17 @@ async def play_audio(
         audio_data: WAV audio data as bytes
         logger: Logger instance
         output_device_index: Optional output device index
-        console: Rich console for messages
+        quiet: If true, suppress console messages
         stop_event: Optional stop event to interrupt playback
         speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
 
     """
     try:
-        if console:
+        if not quiet:
             msg = (
                 f"🔊 Playing audio at {speed}x speed..." if speed != 1.0 else "🔊 Playing audio..."
             )
-            print_status_message(console, msg)
+            print_status_message(msg)
 
         # Apply high-quality speed adjustment if possible
         wav_io = io.BytesIO(audio_data)
@@ -275,12 +274,8 @@ async def play_audio(
                 # Check for interruption
                 if stop_event and stop_event.is_set():
                     logger.info("Audio playback interrupted")
-                    if console:
-                        print_status_message(
-                            console,
-                            "⏹️ Audio playback interrupted",
-                            style="yellow",
-                        )
+                    if not quiet:
+                        print_status_message("⏹️ Audio playback interrupted", style="yellow")
                     break
                 chunk = frames[i : i + chunk_size]
                 stream.write(chunk)
@@ -290,12 +285,13 @@ async def play_audio(
 
         if not (stop_event and stop_event.is_set()):
             logger.info("Audio playback completed (speed: %.1fx)", speed)
-            if console:
-                print_status_message(console, "✅ Audio playback finished")
+            if not quiet:
+                print_status_message("✅ Audio playback finished")
 
     except Exception as e:
         logger.exception("Error during audio playback")
-        print_error_message(console, f"Playback error: {e}")
+        if not quiet:
+            print_error_message(f"Playback error: {e}")
 
 
 async def speak_text(
@@ -308,7 +304,7 @@ async def speak_text(
     language: str | None = None,
     speaker: str | None = None,
     output_device_index: int | None = None,
-    console: Console | None = None,
+    quiet: bool = False,
     play_audio_flag: bool = True,
     stop_event: Stoppable | None = None,
     speed: float = 1.0,
@@ -324,7 +320,7 @@ async def speak_text(
         language: Optional language
         speaker: Optional speaker name
         output_device_index: Optional output device index
-        console: Rich console for messages
+        quiet: If true, suppress console messages
         play_audio_flag: Whether to play the audio immediately
         stop_event: Optional stop event to interrupt playback
         speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
@@ -342,7 +338,7 @@ async def speak_text(
         voice_name=voice_name,
         language=language,
         speaker=speaker,
-        console=console,
+        quiet=quiet,
     )
 
     # Play audio if requested and synthesis succeeded
@@ -351,7 +347,7 @@ async def speak_text(
             audio_data,
             logger,
             output_device_index=output_device_index,
-            console=console,
+            quiet=quiet,
             stop_event=stop_event,
             speed=speed,
         )

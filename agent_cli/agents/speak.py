@@ -36,7 +36,7 @@ async def async_main(
     with pyaudio_context() as p:
         # Handle device listing
         if tts_config.list_output_devices:
-            list_output_devices(p, general_cfg.console)
+            list_output_devices(p, general_cfg.quiet)
             return
 
         # Setup output device
@@ -45,19 +45,19 @@ async def async_main(
             tts_config.output_device_name,
             tts_config.output_device_index,
         )
-        if output_device_index is not None and general_cfg.console:
+        if not general_cfg.quiet and output_device_index is not None:
             msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
-            print_status_message(general_cfg.console, msg)
+            print_status_message(msg)
 
         # Get text from argument or clipboard
         if text is None:
-            text = get_clipboard_text(general_cfg.console)
+            text = get_clipboard_text(quiet=general_cfg.quiet)
             if not text:
                 return
-            if not general_cfg.quiet and general_cfg.console:
-                print_input_panel(general_cfg.console, text, title="📋 Text from Clipboard")
-        elif not general_cfg.quiet and general_cfg.console:
-            print_input_panel(general_cfg.console, text, title="📝 Text to Speak")
+            if not general_cfg.quiet:
+                print_input_panel(text, title="📋 Text from Clipboard")
+        elif not general_cfg.quiet:
+            print_input_panel(text, title="📝 Text to Speak")
 
         # Handle TTS playback and saving
         await handle_tts_playback(
@@ -69,10 +69,10 @@ async def async_main(
             speaker=tts_config.speaker,
             output_device_index=output_device_index,
             save_file=file_config.save_file,
-            console=general_cfg.console,
+            quiet=general_cfg.quiet,
             logger=LOGGER,
             play_audio=not file_config.save_file,  # Don't play if saving to file
-            status_message="🔊 Synthesizing speech..." if general_cfg.console else "",
+            status_message="🔊 Synthesizing speech...",
             description="Audio",
             speed=tts_config.speed,
         )
@@ -124,7 +124,7 @@ def speak(
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
     process_name = "speak"
-    if stop_or_status(process_name, "speak process", general_cfg.console, stop, status):
+    if stop_or_status(process_name, "speak process", stop, status, quiet=general_cfg.quiet):
         return
 
     # Use context manager for PID file management

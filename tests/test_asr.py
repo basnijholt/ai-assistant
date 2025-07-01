@@ -112,18 +112,17 @@ async def test_transcribe_audio() -> None:
                 logger,
                 p,
                 stop_event,
-                console=MagicMock(),
+                quiet=True,
             ),
         )
-        # Give the task a moment to start up
-        await asyncio.sleep(0.1)
-        # Set the stop event to allow the send_audio task to complete
+        # Simulate stopping after a brief period
+        await asyncio.sleep(0.01)
         stop_event.set()
-        # Await the result of the transcription
         result = await transcribe_task
 
         # Assert
         assert result == "test transcription"
+        mock_client.write_event.assert_called()
 
 
 @pytest.mark.asyncio
@@ -152,7 +151,7 @@ async def test_transcribe_audio_connection_error() -> None:
             logger,
             p,
             stop_event,
-            console=MagicMock(),
+            quiet=True,
         )
 
         # Assert

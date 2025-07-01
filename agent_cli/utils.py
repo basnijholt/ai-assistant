@@ -1,15 +1,20 @@
-"""Common utility functions for the Agent CLI tools."""
+"""Utility functions for agent CLI operations."""
 
 from __future__ import annotations
 
 import asyncio
 import signal
 import sys
-from contextlib import contextmanager
-from typing import TYPE_CHECKING, Protocol
+from contextlib import AbstractContextManager, contextmanager, nullcontext
+from typing import TYPE_CHECKING, Protocol, TypeVar
 
 import pyperclip
+from rich.console import Console
+from rich.live import Live
 from rich.panel import Panel
+from rich.spinner import Spinner
+from rich.status import Status
+from rich.text import Text
 
 from agent_cli import process_manager
 
@@ -18,26 +23,9 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from datetime import timedelta
 
-    from rich.align import Align
-    from rich.console import Console
+console = Console()
 
-
-def _print(console: Console | None, message: str | Align, **kwargs: object) -> None:
-    if console:
-        console.print(message, **kwargs)
-
-
-def get_clipboard_text(console: Console | None) -> str | None:
-    """Retrieves text from the clipboard."""
-    try:
-        original_text = pyperclip.paste()
-        if not original_text or not original_text.strip():
-            _print(console, "❌ Clipboard is empty.")
-            return None
-        return original_text
-    except pyperclip.PyperclipException:
-        _print(console, "❌ Could not read from clipboard.")
-        return None
+T = TypeVar("T")
 
 
 class Stoppable(Protocol):
@@ -61,6 +49,8 @@ class InteractiveStopEvent:
 
     def __init__(self) -> None:
         """Initialize the interactive stop event."""
+        import asyncio
+
         self._event = asyncio.Event()
         self._sigint_count = 0
 
@@ -83,10 +73,87 @@ class InteractiveStopEvent:
         return self._sigint_count
 
 
+def format_timedelta_to_ago(td: timedelta) -> str:
+    """Format a timedelta into a human-readable 'ago' string."""
+    seconds = int(td.total_seconds())
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+
+    if days > 0:
+        return f"{days} day{'s' if days != 1 else ''} ago"
+    if hours > 0:
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    if minutes > 0:
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    return f"{seconds} second{'s' if seconds != 1 else ''} ago"
+
+
+def create_spinner(text: str, style: str) -> Spinner:
+    """Creates a default spinner."""
+    return Spinner("dots", text=Text(text, style=style))
+
+
+def create_status(text: str, style: str = "bold yellow") -> Status:
+    """Creates a default status with spinner."""
+    spinner_text = Text(text, style=style)
+    return Status(spinner_text, console=console, spinner="dots")
+
+
+def print_input_panel(
+    text: str,
+    title: str = "Input",
+    style: str = "bold blue",
+) -> None:
+    """Prints a panel with the input text."""
+    console.print(Panel(text, title=title, border_style=style))
+
+
+def print_output_panel(
+    text: str,
+    title: str = "Output",
+    subtitle: str = "",
+    style: str = "bold green",
+) -> None:
+    """Prints a panel with the output text."""
+    console.print(Panel(text, title=title, subtitle=subtitle, border_style=style))
+
+
+def print_error_message(message: str, suggestion: str | None = None) -> None:
+    """Prints an error message in a panel."""
+    error_text = Text(message)
+    if suggestion:
+        error_text.append("\n\n")
+        error_text.append(suggestion)
+    console.print(Panel(error_text, title="Error", border_style="bold red"))
+
+
+def print_status_message(message: str, style: str = "bold green") -> None:
+    """Prints a status message."""
+    console.print(f"[{style}]{message}[/{style}]")
+
+
+def print_device_index(device_index: int | None, device_name: str | None) -> None:
+    """Prints the device index."""
+    if device_index is not None:
+        name = device_name or "Unknown Device"
+        print_status_message(f"Using {name} device with index {device_index}")
+
+
+def get_clipboard_text(*, quiet: bool = False) -> str | None:
+    """Get text from clipboard, with an optional status message."""
+    text = pyperclip.paste()
+    if not text:
+        if not quiet:
+            print_status_message("Clipboard is empty.", style="yellow")
+        return None
+    return text
+
+
 @contextmanager
 def signal_handling_context(
-    console: Console | None,
     logger: logging.Logger,
+    quiet: bool = False,
 ) -> Generator[InteractiveStopEvent, None, None]:
     """Context manager for graceful signal handling with double Ctrl+C support.
 
@@ -96,8 +163,8 @@ def signal_handling_context(
     - SIGTERM: Immediate graceful shutdown
 
     Args:
-        console: Rich console for user messages (None for quiet mode)
         logger: Logger instance for recording events
+        quiet: Whether to suppress console output
 
     Yields:
         stop_event: InteractiveStopEvent that gets set when shutdown is requested
@@ -110,14 +177,15 @@ def signal_handling_context(
 
         if sigint_count == 1:
             logger.info("First Ctrl+C received. Processing transcription.")
-            _print(
-                console,
-                "\n[yellow]Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)[/yellow]",
-            )
+            if not quiet:
+                console.print(
+                    "\n[yellow]Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)[/yellow]",
+                )
             stop_event.set()
         else:
             logger.info("Second Ctrl+C received. Force exiting.")
-            _print(console, "\n[red]Force exit![/red]")
+            if not quiet:
+                console.print("\n[red]Force exit![/red]")
             sys.exit(130)  # Standard exit code for Ctrl+C
 
     def sigterm_handler() -> None:
@@ -135,119 +203,37 @@ def signal_handling_context(
         pass
 
 
-def print_device_index(
-    console: Console | None,
-    device_index: int | None,
-    device_name: str | None,
-) -> None:
-    """Print the device index to the console."""
-    if device_index is not None:
-        msg = f"🎤 Using device [bold yellow]{device_index}[/bold yellow] ([italic]{device_name}[/italic])"
-    else:
-        msg = (
-            "[bold yellow]⚠️  No --device-index specified. Using default system input.[/bold yellow]"
-        )
-    _print(console, msg)
-
-
-# Standardized output formatting functions
-def print_input_panel(
-    console: Console | None,
-    text: str,
-    title: str = "📋 Input",
-    border_style: str = "cyan",
-) -> None:
-    """Print input text in a standardized panel format."""
-    if console:
-        console.print(
-            Panel(
-                text,
-                title=f"[bold {border_style}]{title}[/bold {border_style}]",
-                border_style=border_style,
-                padding=(1, 2),
-            ),
-        )
-
-
-def print_output_panel(
-    console: Console | None,
-    text: str,
-    title: str = "✨ Output",
-    border_style: str = "green",
-    subtitle: str | None = None,
-) -> None:
-    """Print output text in a standardized panel format."""
-    if console:
-        console.print(
-            Panel(
-                text,
-                title=f"[bold {border_style}]{title}[/bold {border_style}]",
-                border_style=border_style,
-                subtitle=subtitle,
-                padding=(1, 2),
-            ),
-        )
-
-
-def print_status_message(
-    console: Console | None,
-    message: str,
-    style: str = "green",
-) -> None:
-    """Print a status message with consistent formatting."""
-    if console:
-        console.print(f"[{style}]{message}[/{style}]")
-
-
-def print_error_message(
-    console: Console | None,
-    message: str,
-    detail: str | None = None,
-) -> None:
-    """Print an error message with consistent formatting."""
-    if console:
-        console.print(f"[bold red]❌ {message}[/bold red]")
-        if detail:
-            console.print(f"   {detail}")
-
-
-def format_timedelta_to_ago(td: timedelta) -> str:
-    """Format a timedelta into a human-readable 'ago' string."""
-    seconds = int(td.total_seconds())
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    days, hours = divmod(hours, 24)
-
-    if days > 0:
-        return f"{days} day{'s' if days != 1 else ''} ago"
-    if hours > 0:
-        return f"{hours} hour{'s' if hours != 1 else ''} ago"
-    if minutes > 0:
-        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
-    return f"{seconds} second{'s' if seconds != 1 else ''} ago"
-
-
 def stop_or_status(
     process_name: str,
     which: str,
-    console: Console,
-    stop: bool,  # noqa: FBT001
-    status: bool,  # noqa: FBT001
+    stop: bool,
+    status: bool,
+    *,
+    quiet: bool = False,
 ) -> bool:
     """Handle process control for a given process name."""
     if stop:
         if process_manager.kill_process(process_name):
-            print_status_message(console, f"✅ {which.capitalize()} stopped.")
-        else:
-            print_status_message(console, f"⚠️  No {which} is running.", style="yellow")
+            if not quiet:
+                print_status_message(f"✅ {which.capitalize()} stopped.")
+        elif not quiet:
+            print_status_message(f"⚠️  No {which} is running.", style="yellow")
         return True
 
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
-            print_status_message(console, f"✅ {which.capitalize()} is running (PID: {pid}).")
-        else:
-            print_status_message(console, f"⚠️ {which.capitalize()} is not running.", style="yellow")
+            if not quiet:
+                print_status_message(f"✅ {which.capitalize()} is running (PID: {pid}).")
+        elif not quiet:
+            print_status_message(f"⚠️ {which.capitalize()} is not running.", style="yellow")
         return True
 
     return False
+
+
+def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
+    """Create a live context manager if use_live is True."""
+    if use_live:
+        return Live(create_spinner("Transcribing...", "blue"), console=console, transient=True)
+    return nullcontext()

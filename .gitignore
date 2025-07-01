@@ -49,3 +49,12 @@ coverage.*
 .pytest_cache/
 .vscode/
 .vscode/
+
+# Examples - exclude downloaded models and data
+examples/ollama/models/
+examples/piper-data/
+examples/whisper-data/
+examples/ollama/id_ed25519*
+*.onnx
+*.onnx.json
+*.bin

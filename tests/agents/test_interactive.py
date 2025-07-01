@@ -254,7 +254,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             speaker=None,
             output_device_index=1,
             save_file=None,
-            console=mock_tts.call_args[1]["console"],
+            quiet=False,
             logger=mock_tts.call_args[1]["logger"],
             play_audio=True,
             stop_event=mock_stop_event,

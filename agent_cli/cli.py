@@ -6,7 +6,8 @@ import logging
 from typing import TYPE_CHECKING
 
 import typer
-from rich.console import Console
+
+from .utils import console
 
 if TYPE_CHECKING:
     from logging import Handler
@@ -17,8 +18,6 @@ app = typer.Typer(
     help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
     add_completion=True,
 )
-
-console = Console()
 
 
 @app.callback(invoke_without_command=True)

@@ -12,13 +12,11 @@ from agent_cli.utils import Stoppable, print_status_message
 if TYPE_CHECKING:
     import logging
 
-    from rich.console import Console
-
 
 async def _save_audio_file(
     audio_data: bytes,
     save_file: Path,
-    console: Console | None,
+    quiet: bool,
     logger: logging.Logger,
     *,
     description: str = "Audio",
@@ -26,14 +24,13 @@ async def _save_audio_file(
     try:
         save_path = Path(save_file)
         await asyncio.to_thread(save_path.write_bytes, audio_data)
-        if console:
-            print_status_message(console, f"💾 {description} saved to {save_file}")
+        if not quiet:
+            print_status_message(f"💾 {description} saved to {save_file}")
         logger.info("%s saved to %s", description, save_file)
     except (OSError, PermissionError) as e:
         logger.exception("Failed to save %s", description.lower())
-        if console:
+        if not quiet:
             print_status_message(
-                console,
                 f"❌ Failed to save {description.lower()}: {e}",
                 style="red",
             )
@@ -49,7 +46,7 @@ async def handle_tts_playback(
     speaker: str | None,
     output_device_index: int | None,
     save_file: Path | None,
-    console: Console | None,
+    quiet: bool,
     logger: logging.Logger,
     play_audio: bool = True,
     status_message: str = "🔊 Speaking...",
@@ -59,8 +56,8 @@ async def handle_tts_playback(
 ) -> bytes | None:
     """Handle TTS synthesis, playback, and file saving."""
     try:
-        if console and status_message:
-            print_status_message(console, status_message, style="blue")
+        if not quiet and status_message:
+            print_status_message(status_message, style="blue")
 
         audio_data = await tts.speak_text(
             text=text,
@@ -71,7 +68,7 @@ async def handle_tts_playback(
             language=tts_language,
             speaker=speaker,
             output_device_index=output_device_index,
-            console=console,
+            quiet=quiet,
             play_audio_flag=play_audio,
             stop_event=stop_event,
             speed=speed,
@@ -81,7 +78,7 @@ async def handle_tts_playback(
             await _save_audio_file(
                 audio_data,
                 save_file,
-                console,
+                quiet,
                 logger,
                 description=description,
             )
@@ -90,6 +87,6 @@ async def handle_tts_playback(
 
     except (OSError, ConnectionError, TimeoutError) as e:
         logger.warning("Failed TTS operation: %s", e)
-        if console:
-            print_status_message(console, f"⚠️ TTS failed: {e}", style="yellow")
+        if not quiet:
+            print_status_message(f"⚠️ TTS failed: {e}", style="yellow")
         return None
