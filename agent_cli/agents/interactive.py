@@ -187,6 +187,7 @@ async def _handle_conversation_turn(
             stop_event=stop_event,
             quiet=general_cfg.quiet,
             live=live,
+            listening_message="",  # Suppress duplicate message since we already printed one
         )
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
