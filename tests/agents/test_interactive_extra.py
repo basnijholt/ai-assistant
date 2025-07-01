@@ -1,6 +1,6 @@
 """Tests for the interactive agent."""
 
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -22,15 +22,17 @@ from agent_cli.utils import InteractiveStopEvent
 def test_setup_output_device():
     """Test the _setup_output_device function."""
     mock_p = MagicMock()
-    mock_console = MagicMock()
     mock_p.get_device_info_by_index.return_value = {"name": "Test Output Device"}
 
-    with patch("agent_cli.audio.output_device", return_value=(0, "Test Output Device")):
+    with (
+        patch("agent_cli.audio.output_device", return_value=(0, "Test Output Device")),
+        patch("agent_cli.utils.console") as mock_console,
+    ):
         device_index, device_name = _setup_output_device(
             mock_p,
-            mock_console,
-            "Test Output Device",
-            0,
+            quiet=False,
+            device_name="Test Output Device",
+            device_index=0,
         )
 
     assert device_index == 0
@@ -97,9 +99,9 @@ def test_interactive_command_stop_and_status():
         mock_stop_or_status.assert_called_with(
             "interactive",
             "interactive agent",
-            ANY,
-            True,  # noqa: FBT003
-            False,  # noqa: FBT003
+            True,  # noqa: FBT003, stop
+            False,  # noqa: FBT003, status
+            quiet=False,
         )
 
         result = runner.invoke(app, ["interactive", "--status"])
@@ -107,9 +109,9 @@ def test_interactive_command_stop_and_status():
         mock_stop_or_status.assert_called_with(
             "interactive",
             "interactive agent",
-            ANY,
-            False,  # noqa: FBT003
-            True,  # noqa: FBT003
+            False,  # noqa: FBT003, stop
+            True,  # noqa: FBT003, status
+            quiet=False,
         )
 
 
@@ -133,9 +135,7 @@ def test_interactive_command_list_output_devices():
 @pytest.mark.asyncio
 async def test_async_main_exception_handling():
     """Test that exceptions in async_main are caught and logged."""
-    mock_console = MagicMock()
-    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=True)
-    general_cfg.console = mock_console
+    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=False)
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=10300,
@@ -158,9 +158,12 @@ async def test_async_main_exception_handling():
     )
     file_config = FileConfig(save_file=None, history_dir=None)
 
-    with patch(
-        "agent_cli.agents.interactive.pyaudio_context",
-        side_effect=Exception("Test error"),
+    with (
+        patch(
+            "agent_cli.agents.interactive.pyaudio_context",
+            side_effect=Exception("Test error"),
+        ),
+        patch("agent_cli.agents.interactive.console") as mock_console,
     ):
         with pytest.raises(Exception, match="Test error"):
             await async_main(

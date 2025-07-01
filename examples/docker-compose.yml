@@ -5,6 +5,8 @@ services:
       dockerfile: examples/Dockerfile
     ports:
       - "11434:11434"
+    environment:
+      - OLLAMA_THINK=false
     volumes:
       - ./ollama:/root/.ollama
     # Uncomment the following lines to enable GPU acceleration

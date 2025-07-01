@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import pyaudio
-    from rich.console import Console
     from rich.live import Live
 
 
@@ -127,7 +126,7 @@ async def transcribe_audio(
     p: pyaudio.PyAudio,
     stop_event: Stoppable,
     *,
-    console: Console | None = None,
+    quiet: bool = False,
     live: Live | None = None,
     listening_message: str = "Listening...",
     chunk_callback: Callable[[str], None] | None = None,
@@ -142,7 +141,7 @@ async def transcribe_audio(
         logger: Logger instance
         p: PyAudio instance
         stop_event: Event to stop recording
-        console: Rich console for messages
+        quiet: If True, suppress all console output
         live: Rich Live display for progress
         listening_message: Message to display when starting
         chunk_callback: Callback for transcript chunks
@@ -158,8 +157,8 @@ async def transcribe_audio(
     try:
         async with AsyncClient.from_uri(uri) as client:
             logger.info("ASR connection established")
-            if console:
-                print_status_message(console, listening_message)
+            if not quiet:
+                print_status_message(listening_message)
 
             with open_pyaudio_stream(
                 p,
@@ -176,7 +175,7 @@ async def transcribe_audio(
                         stream,
                         stop_event,
                         logger,
-                        live=live,
+                        live=live if not quiet else None,
                     ),
                 )
                 recv_task = asyncio.create_task(
@@ -198,13 +197,14 @@ async def transcribe_audio(
                 return recv_task.result()
 
     except ConnectionRefusedError:
-        print_error_message(
-            console,
-            "ASR Connection refused.",
-            f"Is the server at {uri} running?",
-        )
+        if not quiet:
+            print_error_message(
+                "ASR Connection refused.",
+                f"Is the server at {uri} running?",
+            )
         return None
     except Exception as e:
         logger.exception("An error occurred during transcription.")
-        print_error_message(console, f"Transcription error: {e}")
+        if not quiet:
+            print_error_message(f"Transcription error: {e}")
         return None

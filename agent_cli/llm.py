@@ -4,22 +4,24 @@ from __future__ import annotations
 
 import sys
 import time
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
 import pyperclip
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
-from rich.status import Status
 
-from agent_cli.utils import print_error_message, print_output_panel
+from agent_cli.utils import (
+    create_status,
+    print_error_message,
+    print_output_panel,
+)
 
 if TYPE_CHECKING:
     import logging
 
     from pydantic_ai.tools import Tool
-    from rich.console import Console
 
 
 def build_agent(
@@ -63,7 +65,6 @@ async def get_llm_response(
     model: str,
     ollama_host: str,
     logger: logging.Logger,
-    console: Console | None,
     tools: list[Tool] | None = None,
 ) -> str | None:
     """Get a response from the LLM."""
@@ -75,13 +76,12 @@ async def get_llm_response(
         tools=tools,
     )
     try:
-        with _maybe_status(console, model):
+        with create_status(f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]"):
             result = await agent.run(user_input)
         return result.output
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
         print_error_message(
-            console,
             f"An unexpected LLM error occurred: {e}",
             f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
         )
@@ -104,19 +104,6 @@ async def process_with_llm(
     return result.output, t_end - t_start
 
 
-def _maybe_status(
-    console: Console | None,
-    model: str,
-) -> AbstractContextManager[Status | None]:
-    """Context manager for status display."""
-    if console:
-        return Status(
-            f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]",
-            console=console,
-        )
-    return nullcontext()
-
-
 async def process_and_update_clipboard(
     system_prompt: str,
     agent_instructions: str,
@@ -124,10 +111,10 @@ async def process_and_update_clipboard(
     model: str,
     ollama_host: str,
     logger: logging.Logger,
-    console: Console | None,
     original_text: str,
     instruction: str,
     clipboard: bool,
+    quiet: bool,
 ) -> None:
     """Processes the text with the LLM, updates the clipboard, and displays the result.
 
@@ -140,7 +127,12 @@ async def process_and_update_clipboard(
         instructions=agent_instructions,
     )
     try:
-        with _maybe_status(console, model):
+        cm = (
+            create_status(f"[bold yellow]🤖 Applying instruction with {model}...[/bold yellow]")
+            if not quiet
+            else nullcontext()
+        )
+        with cm:
             result_text, elapsed = await process_with_llm(
                 agent,
                 original_text,
@@ -151,9 +143,8 @@ async def process_and_update_clipboard(
             pyperclip.copy(result_text)
             logger.info("Copied result to clipboard.")
 
-        if console:
+        if not quiet:
             print_output_panel(
-                console,
                 result_text,
                 title="✨ Result (Copied to Clipboard)" if clipboard else "✨ Result",
                 subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
@@ -165,7 +156,6 @@ async def process_and_update_clipboard(
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
         print_error_message(
-            console,
             f"An unexpected LLM error occurred: {e}",
             f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
         )

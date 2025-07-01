@@ -44,6 +44,7 @@ from agent_cli.llm import get_llm_response
 from agent_cli.tools import ExecuteCodeTool, ReadFileTool
 from agent_cli.utils import (
     InteractiveStopEvent,
+    console,
     format_timedelta_to_ago,
     print_device_index,
     print_input_panel,
@@ -54,7 +55,6 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
-    from rich.console import Console
 
 
 LOGGER = logging.getLogger(__name__)
@@ -109,25 +109,26 @@ USER_MESSAGE_WITH_CONTEXT_TEMPLATE = """
 
 def _setup_input_device(
     p: pyaudio.PyAudio,
-    console: Console | None,
+    quiet: bool,
     device_name: str | None,
     device_index: int | None,
 ) -> tuple[int | None, str | None]:
     device_index, device_name = input_device(p, device_name, device_index)
-    print_device_index(console, device_index, device_name)
+    if not quiet:
+        print_device_index(device_index, device_name)
     return device_index, device_name
 
 
 def _setup_output_device(
     p: pyaudio.PyAudio,
-    console: Console | None,
+    quiet: bool,
     device_name: str | None,
     device_index: int | None,
 ) -> tuple[int | None, str | None]:
     device_index, device_name = output_device(p, device_name, device_index)
-    if device_index is not None and console:
+    if not quiet and device_index is not None:
         msg = f"🔊 TTS output device [bold yellow]{device_index}[/bold yellow] ([italic]{device_name}[/italic])"
-        print_status_message(console, msg)
+        print_status_message(msg)
     return device_index, device_name
 
 
@@ -170,7 +171,8 @@ async def _handle_conversation_turn(
 ) -> None:
     """Handles a single turn of the conversation."""
     # 1. Transcribe user's command
-    print_status_message(general_cfg.console, "Listening for your command...", style="bold cyan")
+    if not general_cfg.quiet:
+        print_status_message("Listening for your command...", style="bold cyan")
     instruction = await asr.transcribe_audio(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
@@ -178,21 +180,22 @@ async def _handle_conversation_turn(
         logger=LOGGER,
         p=p,
         stop_event=stop_event,
-        console=general_cfg.console,
+        quiet=general_cfg.quiet,
     )
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
     stop_event.clear()
 
     if not instruction or not instruction.strip():
-        print_status_message(
-            general_cfg.console,
-            "No instruction, listening again.",
-            style="yellow",
-        )
+        if not general_cfg.quiet:
+            print_status_message(
+                "No instruction, listening again.",
+                style="yellow",
+            )
         return
 
-    print_input_panel(general_cfg.console, instruction, title="You")
+    if not general_cfg.quiet:
+        print_input_panel(instruction, title="You")
 
     # 2. Add user message to history
     conversation_history.append(
@@ -219,15 +222,16 @@ async def _handle_conversation_turn(
         model=llm_config.model,
         ollama_host=llm_config.ollama_host,
         logger=LOGGER,
-        console=general_cfg.console,
         tools=tools,
     )
 
     if not response_text:
-        print_status_message(general_cfg.console, "No response from LLM.", style="yellow")
+        if not general_cfg.quiet:
+            print_status_message("No response from LLM.", style="yellow")
         return
 
-    print_input_panel(general_cfg.console, response_text, title="AI")
+    if not general_cfg.quiet:
+        print_input_panel(response_text, title="AI")
 
     # 5. Add AI response to history
     conversation_history.append(
@@ -254,7 +258,7 @@ async def _handle_conversation_turn(
             speaker=tts_config.speaker,
             output_device_index=tts_config.output_device_index,
             save_file=file_config.save_file,
-            console=general_cfg.console,
+            quiet=general_cfg.quiet,
             logger=LOGGER,
             play_audio=not file_config.save_file,
             stop_event=stop_event,
@@ -281,17 +285,17 @@ async def async_main(
         with pyaudio_context() as p:
             # Handle device listing
             if asr_config.list_devices:
-                list_input_devices(p, general_cfg.console)
+                list_input_devices(p, general_cfg.quiet)
                 return
 
             if tts_config.list_output_devices:
-                list_output_devices(p, general_cfg.console)
+                list_output_devices(p, general_cfg.quiet)
                 return
 
             # Setup devices
             device_index, _ = _setup_input_device(
                 p,
-                general_cfg.console,
+                general_cfg.quiet,
                 asr_config.device_name,
                 asr_config.device_index,
             )
@@ -300,7 +304,7 @@ async def async_main(
             if tts_config.enabled:
                 tts_output_device_index, _ = _setup_output_device(
                     p,
-                    general_cfg.console,
+                    general_cfg.quiet,
                     tts_config.output_device_name,
                     tts_config.output_device_index,
                 )
@@ -314,7 +318,7 @@ async def async_main(
                 history_file = history_path / "conversation.json"
                 conversation_history = _load_conversation_history(history_file)
 
-            with signal_handling_context(general_cfg.console, LOGGER) as stop_event:
+            with signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event:
                 while not stop_event.is_set():
                     await _handle_conversation_turn(
                         p=p,
@@ -327,8 +331,8 @@ async def async_main(
                         file_config=file_config,
                     )
     except Exception:
-        if general_cfg.console:
-            general_cfg.console.print_exception()
+        if not general_cfg.quiet:
+            console.print_exception()
         raise
 
 
@@ -380,7 +384,13 @@ def interactive(
         clipboard=False,  # Not used in interactive mode
     )
     process_name = "interactive"
-    if stop_or_status(process_name, "interactive agent", general_cfg.console, stop, status):
+    if stop_or_status(
+        process_name,
+        "interactive agent",
+        stop,
+        status,
+        quiet=general_cfg.quiet,
+    ):
         return
 
     # Use context manager for PID file management
