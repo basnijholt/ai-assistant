@@ -17,7 +17,7 @@ from agent_cli.agents._config import GeneralConfig, LLMConfig
 def test_system_prompt_and_instructions():
     """Test that the system prompt and instructions are properly defined."""
     assert autocorrect.SYSTEM_PROMPT
-    assert "editor" in autocorrect.SYSTEM_PROMPT.lower()
+    assert "text correction tool" in autocorrect.SYSTEM_PROMPT.lower()
     assert "correct" in autocorrect.SYSTEM_PROMPT.lower()
 
     assert autocorrect.AGENT_INSTRUCTIONS
@@ -128,7 +128,8 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
-    mock_agent.run.assert_called_once_with("this is text")
+    expected_input = "\n<text-to-correct>\nthis is text\n</text-to-correct>\n\nPlease correct any grammar, spelling, or punctuation errors in the text above.\n"
+    mock_agent.run.assert_called_once_with(expected_input)
 
 
 def test_configuration_constants():
@@ -180,7 +181,8 @@ async def test_autocorrect_command_with_text(
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
-    mock_agent.run.assert_called_once_with("input text")
+    expected_input = "\n<text-to-correct>\ninput text\n</text-to-correct>\n\nPlease correct any grammar, spelling, or punctuation errors in the text above.\n"
+    mock_agent.run.assert_called_once_with(expected_input)
 
 
 @pytest.mark.asyncio
@@ -221,7 +223,8 @@ async def test_autocorrect_command_from_clipboard(
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
-    mock_agent.run.assert_called_once_with("clipboard text")
+    expected_input = "\n<text-to-correct>\nclipboard text\n</text-to-correct>\n\nPlease correct any grammar, spelling, or punctuation errors in the text above.\n"
+    mock_agent.run.assert_called_once_with(expected_input)
 
 
 @pytest.mark.asyncio
