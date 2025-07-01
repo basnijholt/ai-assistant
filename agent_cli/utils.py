@@ -160,6 +160,7 @@ def get_clipboard_text(*, quiet: bool = False) -> str | None:
 @contextmanager
 def signal_handling_context(
     logger: logging.Logger,
+    live: Live,
     quiet: bool = False,
 ) -> Generator[InteractiveStopEvent, None, None]:
     """Context manager for graceful signal handling with double Ctrl+C support.
@@ -172,6 +173,7 @@ def signal_handling_context(
     Args:
         logger: Logger instance for recording events
         quiet: Whether to suppress console output
+        live: Live instance for displaying status messages
 
     Yields:
         stop_event: InteractiveStopEvent that gets set when shutdown is requested
@@ -185,9 +187,13 @@ def signal_handling_context(
         if sigint_count == 1:
             logger.info("First Ctrl+C received. Processing transcription.")
             if not quiet:
-                console.print(
-                    "\n[yellow]Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)[/yellow]",
+                # Update the existing Live display with the Ctrl+C message
+                ctrl_c_text = Text(
+                    "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)",
+                    style="yellow",
                 )
+                live.update(ctrl_c_text)
+
             stop_event.set()
         else:
             logger.info("Second Ctrl+C received. Force exiting.")

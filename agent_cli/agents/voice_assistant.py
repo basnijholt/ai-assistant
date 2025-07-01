@@ -164,8 +164,8 @@ async def async_main(
             print_input_panel(original_text, title="📝 Text to Process")
 
         with (
-            signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event,
             maybe_live(not general_cfg.quiet) as live,
+            signal_handling_context(LOGGER, live, general_cfg.quiet) as stop_event,
         ):
             # Define callbacks for voice assistant specific formatting
             def chunk_callback(chunk_text: str) -> None:

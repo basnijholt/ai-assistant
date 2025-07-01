@@ -47,6 +47,7 @@ from agent_cli.utils import (
     Timer,
     console,
     format_timedelta_to_ago,
+    live_timer,
     maybe_live,
     print_device_index,
     print_input_panel,
@@ -54,11 +55,11 @@ from agent_cli.utils import (
     print_status_message,
     signal_handling_context,
     stop_or_status,
-    timed_live_async,
 )
 
 if TYPE_CHECKING:
     import pyaudio
+    from rich.live import Live
 
 
 LOGGER = logging.getLogger(__name__)
@@ -172,20 +173,20 @@ async def _handle_conversation_turn(
     llm_config: LLMConfig,
     tts_config: TTSConfig,
     file_config: FileConfig,
+    live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
     # 1. Transcribe user's command
-    with maybe_live(not general_cfg.quiet) as live:
-        instruction = await asr.transcribe_audio(
-            asr_server_ip=asr_config.server_ip,
-            asr_server_port=asr_config.server_port,
-            device_index=asr_config.device_index,
-            logger=LOGGER,
-            p=p,
-            stop_event=stop_event,
-            quiet=general_cfg.quiet,
-            live=live,
-        )
+    instruction = await asr.transcribe_audio(
+        asr_server_ip=asr_config.server_ip,
+        asr_server_port=asr_config.server_port,
+        device_index=asr_config.device_index,
+        logger=LOGGER,
+        p=p,
+        stop_event=stop_event,
+        quiet=general_cfg.quiet,
+        live=live,
+    )
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
     stop_event.clear()
@@ -221,11 +222,12 @@ async def _handle_conversation_turn(
     tools = [ReadFileTool, ExecuteCodeTool]
     timer = Timer()
 
-    async with timed_live_async(
+    async with live_timer(
+        live,
         f"🤖 Processing with {llm_config.model}",
         style="bold yellow",
         quiet=general_cfg.quiet,
-    ) as live:
+    ):
         # Create a dummy Live for get_llm_response since we're using our own timer display
         response_text = await get_llm_response(
             system_prompt=SYSTEM_PROMPT,
@@ -269,23 +271,22 @@ async def _handle_conversation_turn(
 
     # 7. Handle TTS playback
     if tts_config.enabled:
-        with maybe_live(not general_cfg.quiet) as live:
-            await handle_tts_playback(
-                response_text,
-                tts_server_ip=tts_config.server_ip,
-                tts_server_port=tts_config.server_port,
-                voice_name=tts_config.voice_name,
-                tts_language=tts_config.language,
-                speaker=tts_config.speaker,
-                output_device_index=tts_config.output_device_index,
-                save_file=file_config.save_file,
-                quiet=general_cfg.quiet,
-                logger=LOGGER,
-                play_audio=not file_config.save_file,
-                stop_event=stop_event,
-                speed=tts_config.speed,
-                live=live,
-            )
+        await handle_tts_playback(
+            response_text,
+            tts_server_ip=tts_config.server_ip,
+            tts_server_port=tts_config.server_port,
+            voice_name=tts_config.voice_name,
+            tts_language=tts_config.language,
+            speaker=tts_config.speaker,
+            output_device_index=tts_config.output_device_index,
+            save_file=file_config.save_file,
+            quiet=general_cfg.quiet,
+            logger=LOGGER,
+            play_audio=not file_config.save_file,
+            stop_event=stop_event,
+            speed=tts_config.speed,
+            live=live,
+        )
 
     # Reset stop_event for next iteration
     stop_event.clear()
@@ -340,7 +341,10 @@ async def async_main(
                 history_file = history_path / "conversation.json"
                 conversation_history = _load_conversation_history(history_file)
 
-            with signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event:
+            with (
+                maybe_live(not general_cfg.quiet) as live,
+                signal_handling_context(LOGGER, live, general_cfg.quiet) as stop_event,
+            ):
                 while not stop_event.is_set():
                     await _handle_conversation_turn(
                         p=p,
@@ -351,6 +355,7 @@ async def async_main(
                         llm_config=llm_config,
                         tts_config=tts_config,
                         file_config=file_config,
+                        live=live,
                     )
     except Exception:
         if not general_cfg.quiet:

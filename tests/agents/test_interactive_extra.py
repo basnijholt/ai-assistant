@@ -68,6 +68,7 @@ async def test_handle_conversation_turn_no_instruction():
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=None)
+    mock_live = MagicMock()
 
     with patch(
         "agent_cli.agents.interactive.asr.transcribe_audio",
@@ -82,6 +83,7 @@ async def test_handle_conversation_turn_no_instruction():
             llm_config=llm_config,
             tts_config=tts_config,
             file_config=file_config,
+            live=mock_live,
         )
         mock_transcribe.assert_awaited_once()
     assert not conversation_history
