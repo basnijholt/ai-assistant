@@ -226,6 +226,7 @@ async def _handle_conversation_turn(
         ollama_host=llm_config.ollama_host,
         logger=LOGGER,
         tools=tools,
+        quiet=general_cfg.quiet,
     )
 
     if not response_text:

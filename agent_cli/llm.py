@@ -12,10 +12,10 @@ from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from agent_cli.utils import (
-    create_status,
     live_timer,
     print_error_message,
     print_output_panel,
+    timed_live_async,
 )
 
 if TYPE_CHECKING:
@@ -67,6 +67,7 @@ async def get_llm_response(
     ollama_host: str,
     logger: logging.Logger,
     tools: list[Tool] | None = None,
+    quiet: bool = False,
 ) -> str | None:
     """Get a response from the LLM."""
     agent = build_agent(
@@ -77,7 +78,11 @@ async def get_llm_response(
         tools=tools,
     )
     try:
-        with create_status(f"🤖 Applying instruction with {model}...", "bold yellow"):
+        async with timed_live_async(
+            f"🤖 Applying instruction with {model}",
+            style="bold yellow",
+            quiet=quiet,
+        ):
             result = await agent.run(user_input)
         return result.output
     except Exception as e:
@@ -131,9 +136,10 @@ async def process_and_update_clipboard(
     try:
         # Use the clean timer context manager
         async with live_timer(
-            live if not quiet else None,
+            live,
             f"🤖 Applying instruction with {model}",
             style="bold yellow",
+            quiet=quiet,
         ):
             result_text, elapsed = await process_with_llm(agent, original_text, instruction)
 

@@ -248,9 +248,10 @@ def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
 
 @asynccontextmanager
 async def live_timer(
-    live: Live | None,
+    live: Live,
     base_message: str,
     *,
+    quiet: bool = False,
     style: str = "blue",
 ) -> AsyncGenerator[None, None]:
     """Async context manager that automatically manages a timer for a Live display.
@@ -259,6 +260,7 @@ async def live_timer(
         live: Live instance to update (or None to do nothing)
         base_message: Base message to display
         style: Rich style for the text
+        quiet: If True, don't show any display
 
     Usage:
         async with live_timer(live, "🤖 Processing", style="bold yellow"):
@@ -266,7 +268,7 @@ async def live_timer(
             await some_operation()
 
     """
-    if not live:
+    if quiet:
         yield
         return
 
