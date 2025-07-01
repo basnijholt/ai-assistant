@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agent_cli.tools import execute_code, read_file
+from agent_cli._tools import execute_code, read_file
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -7,9 +7,6 @@ import time
 from typing import TYPE_CHECKING
 
 import pyperclip
-from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
-from pydantic_ai.providers.openai import OpenAIProvider
 from rich.live import Live
 
 from agent_cli.utils import (
@@ -22,6 +19,7 @@ from agent_cli.utils import (
 if TYPE_CHECKING:
     import logging
 
+    from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
 
@@ -34,6 +32,10 @@ def build_agent(
     tools: list[Tool] | None = None,
 ) -> Agent:
     """Construct and return a PydanticAI agent configured for local Ollama."""
+    from pydantic_ai import Agent
+    from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
+    from pydantic_ai.providers.openai import OpenAIProvider
+
     ollama_provider = OpenAIProvider(base_url=f"{ollama_host}/v1")
     ollama_model = OpenAIModel(model_name=model, provider=ollama_provider)
     return Agent(

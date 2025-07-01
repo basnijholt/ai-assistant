@@ -41,7 +41,6 @@ from agent_cli.audio import (
 )
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import get_llm_response
-from agent_cli.tools import ExecuteCodeTool, ReadFileTool
 from agent_cli.utils import (
     InteractiveStopEvent,
     Timer,
@@ -176,6 +175,8 @@ async def _handle_conversation_turn(
     live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
+    from agent_cli._tools import ExecuteCodeTool, ReadFileTool
+
     # 1. Transcribe user's command
     instruction = await asr.transcribe_audio(
         asr_server_ip=asr_config.server_ip,

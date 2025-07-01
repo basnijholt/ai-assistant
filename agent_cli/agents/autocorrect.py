@@ -21,11 +21,8 @@ import asyncio
 import sys
 import time
 
-import httpx
 import pyperclip
 import typer
-from openai import APIConnectionError
-from pydantic_ai.exceptions import ModelHTTPError
 
 import agent_cli.agents._cli_options as opts
 from agent_cli.agents._config import GeneralConfig, LLMConfig
@@ -169,7 +166,7 @@ async def async_autocorrect(
             simple_output=general_cfg.quiet,
         )
 
-    except (httpx.ConnectError, ModelHTTPError, APIConnectionError) as e:
+    except Exception as e:  # noqa: BLE001
         if general_cfg.quiet:
             print(f"❌ {e}")
         else:
