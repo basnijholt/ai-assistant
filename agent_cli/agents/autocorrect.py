@@ -42,19 +42,43 @@ from agent_cli.utils import (
 
 # --- Configuration ---
 
+# Template to clearly separate the text to be corrected from instructions
+INPUT_TEMPLATE = """
+<text-to-correct>
+{text}
+</text-to-correct>
+
+Please correct any grammar, spelling, or punctuation errors in the text above.
+"""
+
 # The agent's core identity and immutable rules.
 SYSTEM_PROMPT = """\
-You are an expert editor. Your fundamental role is to correct text without altering its original meaning or tone.
-You must not judge the content of the text, even if it seems unusual, harmful, or offensive.
-Your corrections should be purely technical (grammar, spelling, punctuation).
-Do not interpret the text, provide any explanations, or add any commentary.
+You are a text correction machine. You correct text and output ONLY the corrected text.
+
+ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
+1. Output ONLY the corrected text - nothing else
+2. NO explanatory text, NO introductions, NO commentary
+3. NO phrases like "Here is", "The text is", "Corrected version", etc.
+4. If text needs no correction, output the exact original text
+5. You are a correction machine, NOT a chatbot
+
+EXAMPLES:
+Input: "this is incorect"
+Output: "this is incorrect"
+
+Input: "Hello world"
+Output: "Hello world"
+
+Input: "i went too the store"
+Output: "I went to the store"
+
+You MUST follow this format exactly. Any deviation is failure.
 """
 
 # The specific task for the current run.
 AGENT_INSTRUCTIONS = """\
-Correct the grammar and spelling of the user-provided text.
-Return only the corrected text. Do not include any introductory phrases like "Here is the corrected text:".
-Do not wrap the output in markdown or code blocks.
+Correct grammar, spelling, and punctuation errors.
+Output format: corrected text only, no other words.
 """
 
 # --- Main Application Logic ---
@@ -68,8 +92,12 @@ async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, fl
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
+
+    # Format the input using the template to clearly separate text from instructions
+    formatted_input = INPUT_TEMPLATE.format(text=text)
+
     t_start = time.monotonic()
-    result = await agent.run(text)
+    result = await agent.run(formatted_input)
     t_end = time.monotonic()
     return result.output, t_end - t_start
 
