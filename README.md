@@ -674,6 +674,11 @@ This package provides multiple command-line tools, each designed for a specific 
 │                                                 conversation history.        │
 │                                                 [default:                    │
 │                                                 ~/.config/agent-cli/history] │
+│ --last-n-messages                      INTEGER  Number of messages to        │
+│                                                 include in the conversation  │
+│                                                 history. Set to 0 to disable │
+│                                                 history.                     │
+│                                                 [default: 50]                │
 │ --help                                          Show this message and exit.  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
