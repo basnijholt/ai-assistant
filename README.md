@@ -103,7 +103,7 @@ This will start three services:
 Run the following command to build and start the services:
 
 ```bash
-docker-compose -f examples/docker-compose.yml up --build
+docker compose -f examples/docker-compose.yml up --build
 ```
 
 This command will build the `ollama` image from the `examples/Dockerfile` and start all the services in the background.
@@ -111,7 +111,7 @@ This command will build the `ollama` image from the `examples/Dockerfile` and st
 To check if everything is running correctly, you can view the logs of the services:
 
 ```bash
-docker-compose -f examples/docker-compose.yml logs
+docker compose -f examples/docker-compose.yml logs
 ```
 
 You should see logs from all three services, and the `ollama` logs should indicate that the `gemma:2b` model has been pulled successfully.
@@ -119,7 +119,7 @@ You should see logs from all three services, and the `ollama` logs should indica
 To stop the services, run:
 
 ```bash
-docker-compose -f examples/docker-compose.yml down
+docker compose -f examples/docker-compose.yml down
 ```
 
 > [!WARNING]
