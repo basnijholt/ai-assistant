@@ -75,37 +75,36 @@ async def async_main(
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
-    with (
-        signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event,
-        maybe_live(not general_cfg.quiet) as live,
-    ):
-        transcript = await asr.transcribe_audio(
-            asr_server_ip=asr_config.server_ip,
-            asr_server_port=asr_config.server_port,
-            device_index=asr_config.device_index,
-            logger=LOGGER,
-            p=p,
-            stop_event=stop_event,
-            quiet=general_cfg.quiet,
-            live=live,
-            listening_message="Listening...",
-        )
+    with maybe_live(not general_cfg.quiet) as live:
+        with signal_handling_context(LOGGER, quiet=general_cfg.quiet) as stop_event:
+            transcript = await asr.transcribe_audio(
+                asr_server_ip=asr_config.server_ip,
+                asr_server_port=asr_config.server_port,
+                device_index=asr_config.device_index,
+                logger=LOGGER,
+                p=p,
+                stop_event=stop_event,
+                quiet=general_cfg.quiet,
+                live=live,
+                listening_message="Listening...",
+            )
 
-    if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
-        if not general_cfg.quiet:
-            print_input_panel(transcript, title="📝 Raw Transcript")
-        await process_and_update_clipboard(
-            system_prompt=SYSTEM_PROMPT,
-            agent_instructions=AGENT_INSTRUCTIONS,
-            model=llm_config.model,
-            ollama_host=llm_config.ollama_host,
-            logger=LOGGER,
-            original_text=transcript,
-            instruction=INSTRUCTION,
-            clipboard=general_cfg.clipboard,
-            quiet=general_cfg.quiet,
-        )
-        return
+        if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
+            if not general_cfg.quiet:
+                print_input_panel(transcript, title="📝 Raw Transcript")
+            await process_and_update_clipboard(
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=AGENT_INSTRUCTIONS,
+                model=llm_config.model,
+                ollama_host=llm_config.ollama_host,
+                logger=LOGGER,
+                original_text=transcript,
+                instruction=INSTRUCTION,
+                clipboard=general_cfg.clipboard,
+                quiet=general_cfg.quiet,
+                live=live,
+            )
+            return
 
     # When not using LLM, show transcript in output panel for consistency
     if transcript:

@@ -213,6 +213,7 @@ async def async_main(
                 instruction=instruction,
                 clipboard=general_cfg.clipboard,
                 quiet=general_cfg.quiet,
+                live=live,
             )
 
             # Handle TTS response if enabled

@@ -94,9 +94,10 @@ def create_spinner(text: str, style: str) -> Spinner:
     return Spinner("dots", text=Text(text, style=style))
 
 
-def create_status(text: str, style: str) -> Status:
-    """Creates a default status."""
-    return Status(create_spinner(text, style), console=console)
+def create_status(text: str, style: str = "bold yellow") -> Status:
+    """Creates a default status with spinner."""
+    spinner_text = Text(text, style=style)
+    return Status(spinner_text, console=console, spinner="dots")
 
 
 def print_input_panel(

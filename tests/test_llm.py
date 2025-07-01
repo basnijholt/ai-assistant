@@ -77,6 +77,8 @@ def test_process_and_update_clipboard(
 ) -> None:
     """Test the process_and_update_clipboard function."""
     mock_process_with_llm.return_value = ("hello", 0.1)
+    mock_live = MagicMock()
+
     asyncio.run(
         process_and_update_clipboard(
             system_prompt="test",
@@ -88,6 +90,7 @@ def test_process_and_update_clipboard(
             instruction="test",
             clipboard=True,
             quiet=True,
+            live=mock_live,
         ),
     )
 

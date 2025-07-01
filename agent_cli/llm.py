@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import sys
 import time
-from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
 import pyperclip
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
+from rich.text import Text
 
 from agent_cli.utils import (
     create_status,
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     import logging
 
     from pydantic_ai.tools import Tool
+    from rich.live import Live
 
 
 def build_agent(
@@ -115,6 +116,7 @@ async def process_and_update_clipboard(
     instruction: str,
     clipboard: bool,
     quiet: bool,
+    live: Live,
 ) -> None:
     """Processes the text with the LLM, updates the clipboard, and displays the result.
 
@@ -127,17 +129,15 @@ async def process_and_update_clipboard(
         instructions=agent_instructions,
     )
     try:
-        cm = (
-            create_status(f"🤖 Applying instruction with {model}...", "bold yellow")
-            if not quiet
-            else nullcontext()
+        # Update the Live display with progress
+        if not quiet:
+            live.update(Text(f"🤖 Applying instruction with {model}...", style="bold yellow"))
+
+        result_text, elapsed = await process_with_llm(
+            agent,
+            original_text,
+            instruction,
         )
-        with cm:
-            result_text, elapsed = await process_with_llm(
-                agent,
-                original_text,
-                instruction,
-            )
 
         if clipboard:
             pyperclip.copy(result_text)
