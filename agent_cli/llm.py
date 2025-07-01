@@ -10,10 +10,10 @@ import pyperclip
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
-from rich.text import Text
 
 from agent_cli.utils import (
     create_status,
+    live_timer,
     print_error_message,
     print_output_panel,
 )
@@ -129,15 +129,13 @@ async def process_and_update_clipboard(
         instructions=agent_instructions,
     )
     try:
-        # Update the Live display with progress
-        if not quiet:
-            live.update(Text(f"🤖 Applying instruction with {model}...", style="bold yellow"))
-
-        result_text, elapsed = await process_with_llm(
-            agent,
-            original_text,
-            instruction,
-        )
+        # Use the clean timer context manager
+        async with live_timer(
+            live if not quiet else None,
+            f"🤖 Applying instruction with {model}",
+            style="bold yellow",
+        ):
+            result_text, elapsed = await process_with_llm(agent, original_text, instruction)
 
         if clipboard:
             pyperclip.copy(result_text)

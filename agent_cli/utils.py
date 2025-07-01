@@ -5,7 +5,14 @@ from __future__ import annotations
 import asyncio
 import signal
 import sys
-from contextlib import AbstractContextManager, contextmanager, nullcontext
+import time
+from contextlib import (
+    AbstractContextManager,
+    asynccontextmanager,
+    contextmanager,
+    nullcontext,
+    suppress,
+)
 from typing import TYPE_CHECKING, Protocol, TypeVar
 
 import pyperclip
@@ -20,7 +27,7 @@ from agent_cli import process_manager
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator, Generator
     from datetime import timedelta
 
 console = Console()
@@ -237,3 +244,79 @@ def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
     if use_live:
         return Live(create_spinner("Transcribing...", "blue"), console=console, transient=True)
     return nullcontext()
+
+
+@asynccontextmanager
+async def live_timer(
+    live: Live | None,
+    base_message: str,
+    *,
+    style: str = "blue",
+) -> AsyncGenerator[None, None]:
+    """Async context manager that automatically manages a timer for a Live display.
+
+    Args:
+        live: Live instance to update (or None to do nothing)
+        base_message: Base message to display
+        style: Rich style for the text
+
+    Usage:
+        async with live_timer(live, "🤖 Processing", style="bold yellow"):
+            # Do your work here, timer updates automatically
+            await some_operation()
+
+    """
+    if not live:
+        yield
+        return
+
+    # Start the timer task
+    start_time = time.monotonic()
+
+    async def update_timer() -> None:
+        """Update the timer display."""
+        while True:
+            elapsed = time.monotonic() - start_time
+            live.update(Text(f"{base_message}... ({elapsed:.1f}s)", style=style))
+            await asyncio.sleep(0.1)
+
+    timer_task = asyncio.create_task(update_timer())
+
+    try:
+        yield
+    finally:
+        # Clean up timer task automatically
+        timer_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await timer_task
+
+
+@asynccontextmanager
+async def timed_live_async(
+    base_message: str,
+    *,
+    style: str = "blue",
+    quiet: bool = False,
+) -> AsyncGenerator[Live | None, None]:
+    """Async context manager for Live display with automatic timer.
+
+    Args:
+        base_message: Base message to display (e.g., "🤖 Processing")
+        style: Rich style for the text
+        quiet: If True, don't show any display
+
+    Usage:
+        async with timed_live_async("🤖 Processing", style="bold yellow") as live:
+            # Do work here, timer updates automatically
+            await some_operation()
+
+    """
+    if quiet:
+        yield None
+        return
+
+    initial_text = Text(f"{base_message}...", style=style)
+
+    with Live(initial_text, console=console, refresh_per_second=10) as live:
+        async with live_timer(live, base_message, style=style):
+            yield live

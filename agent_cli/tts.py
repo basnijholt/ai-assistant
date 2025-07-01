@@ -17,7 +17,12 @@ from agent_cli.audio import (
     open_pyaudio_stream,
     pyaudio_context,
 )
-from agent_cli.utils import Stoppable, print_error_message, print_status_message
+from agent_cli.utils import (
+    Stoppable,
+    print_error_message,
+    print_status_message,
+    timed_live_async,
+)
 
 if TYPE_CHECKING:
     import logging
@@ -136,24 +141,21 @@ async def synthesize_speech(
 
     try:
         async with AsyncClient.from_uri(uri) as client:
-            logger.info("TTS connection established")
-            if not quiet:
-                print_status_message(f"🔊 Synthesizing: {text[:50]}...")
+            async with timed_live_async("🔊 Synthesizing text", style="blue", quiet=quiet):
+                # Create and send synthesis request
+                synthesize_event = _create_synthesis_request(
+                    text,
+                    voice_name=voice_name,
+                    language=language,
+                    speaker=speaker,
+                )
+                await client.write_event(synthesize_event.event())
 
-            # Create and send synthesis request
-            synthesize_event = _create_synthesis_request(
-                text,
-                voice_name=voice_name,
-                language=language,
-                speaker=speaker,
-            )
-            await client.write_event(synthesize_event.event())
-
-            # Process audio events
-            audio_data, sample_rate, sample_width, channels = await _process_audio_events(
-                client,
-                logger,
-            )
+                # Process audio events
+                audio_data, sample_rate, sample_width, channels = await _process_audio_events(
+                    client,
+                    logger,
+                )
 
             # Convert to WAV format if we have valid audio data and metadata
             if sample_rate and sample_width and channels and audio_data:
@@ -235,12 +237,6 @@ async def play_audio(
 
     """
     try:
-        if not quiet:
-            msg = (
-                f"🔊 Playing audio at {speed}x speed..." if speed != 1.0 else "🔊 Playing audio..."
-            )
-            print_status_message(msg)
-
         # Apply high-quality speed adjustment if possible
         wav_io = io.BytesIO(audio_data)
         wav_io, speed_changed = _apply_speed_adjustment(wav_io, speed)
@@ -256,32 +252,37 @@ async def play_audio(
         if not speed_changed:
             sample_rate = int(sample_rate * speed)
 
-        with (
-            pyaudio_context() as p,
-            open_pyaudio_stream(
-                p,
-                format=p.get_format_from_width(sample_width),
-                channels=channels,
-                rate=sample_rate,
-                output=True,
-                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                output_device_index=output_device_index,
-            ) as stream,
-        ):
-            # Play in chunks to avoid blocking
-            chunk_size = config.PYAUDIO_CHUNK_SIZE
-            for i in range(0, len(frames), chunk_size):
-                # Check for interruption
-                if stop_event and stop_event.is_set():
-                    logger.info("Audio playback interrupted")
-                    if not quiet:
-                        print_status_message("⏹️ Audio playback interrupted", style="yellow")
-                    break
-                chunk = frames[i : i + chunk_size]
-                stream.write(chunk)
+        # Determine message
+        base_msg = f"🔊 Playing audio at {speed}x speed" if speed != 1.0 else "🔊 Playing audio"
 
-                # Yield control to the event loop so signal handlers can run
-                await asyncio.sleep(0)
+        # Use clean async timer context manager
+        async with timed_live_async(base_msg, style="blue", quiet=quiet):
+            with (
+                pyaudio_context() as p,
+                open_pyaudio_stream(
+                    p,
+                    format=p.get_format_from_width(sample_width),
+                    channels=channels,
+                    rate=sample_rate,
+                    output=True,
+                    frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
+                    output_device_index=output_device_index,
+                ) as stream,
+            ):
+                # Play in chunks to avoid blocking
+                chunk_size = config.PYAUDIO_CHUNK_SIZE
+                for i in range(0, len(frames), chunk_size):
+                    # Check for interruption
+                    if stop_event and stop_event.is_set():
+                        logger.info("Audio playback interrupted")
+                        if not quiet:
+                            print_status_message("⏹️ Audio playback interrupted", style="yellow")
+                        break
+                    chunk = frames[i : i + chunk_size]
+                    stream.write(chunk)
+
+                    # Yield control to the event loop so signal handlers can run
+                    await asyncio.sleep(0)
 
         if not (stop_event and stop_event.is_set()):
             logger.info("Audio playback completed (speed: %.1fx)", speed)
