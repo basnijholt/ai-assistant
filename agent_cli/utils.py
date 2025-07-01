@@ -279,7 +279,8 @@ async def live_timer(
         """Update the timer display."""
         while True:
             elapsed = time.monotonic() - start_time
-            live.update(Text(f"{base_message}... ({elapsed:.1f}s)", style=style))
+            spinner = create_spinner(f"{base_message}... ({elapsed:.1f}s)", style)
+            live.update(spinner)
             await asyncio.sleep(0.1)
 
     timer_task = asyncio.create_task(update_timer())
@@ -317,9 +318,9 @@ async def timed_live_async(
         yield None
         return
 
-    initial_text = Text(f"{base_message}...", style=style)
+    initial_spinner = create_spinner(f"{base_message}...", style)
 
-    with Live(initial_text, console=console, refresh_per_second=10) as live:
+    with Live(initial_spinner, console=console, refresh_per_second=10) as live:
         async with live_timer(live, base_message, style=style):
             yield live
 

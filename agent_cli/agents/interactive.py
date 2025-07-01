@@ -224,7 +224,7 @@ async def _handle_conversation_turn(
     timer = Timer()
 
     async with timed_live_async(
-        "🤖 Processing",
+        f"🤖 Processing with {llm_config.model}",
         style="bold yellow",
         quiet=general_cfg.quiet,
     ) as live:
@@ -238,7 +238,7 @@ async def _handle_conversation_turn(
             logger=LOGGER,
             tools=tools,
             quiet=True,  # Suppress internal output since we're showing our own timer
-            live=None,
+            live=live,
         )
 
     elapsed_time = timer.stop()
