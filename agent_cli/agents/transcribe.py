@@ -86,7 +86,6 @@ async def async_main(
                 stop_event=stop_event,
                 quiet=general_cfg.quiet,
                 live=live,
-                listening_message="Listening...",
             )
 
         if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:

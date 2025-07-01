@@ -12,7 +12,7 @@ from wyoming.client import AsyncClient
 
 from agent_cli import config
 from agent_cli.audio import open_pyaudio_stream
-from agent_cli.utils import Stoppable, print_error_message, print_status_message
+from agent_cli.utils import Stoppable, print_error_message
 
 if TYPE_CHECKING:
     import logging
@@ -129,7 +129,6 @@ async def transcribe_audio(
     *,
     live: Live,
     quiet: bool = False,
-    listening_message: str = "Listening...",
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
 ) -> str | None:
@@ -158,9 +157,6 @@ async def transcribe_audio(
     try:
         async with AsyncClient.from_uri(uri) as client:
             logger.info("ASR connection established")
-            if not quiet:
-                print_status_message(listening_message)
-
             with open_pyaudio_stream(
                 p,
                 format=config.PYAUDIO_FORMAT,

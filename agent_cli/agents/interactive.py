@@ -175,8 +175,6 @@ async def _handle_conversation_turn(
 ) -> None:
     """Handles a single turn of the conversation."""
     # 1. Transcribe user's command
-    if not general_cfg.quiet:
-        print_status_message("Listening for your command...", style="bold cyan")
     with maybe_live(not general_cfg.quiet) as live:
         instruction = await asr.transcribe_audio(
             asr_server_ip=asr_config.server_ip,
@@ -187,7 +185,6 @@ async def _handle_conversation_turn(
             stop_event=stop_event,
             quiet=general_cfg.quiet,
             live=live,
-            listening_message="",  # Suppress duplicate message since we already printed one
         )
 
     # Clear the stop event after ASR completes - it was only meant to stop recording

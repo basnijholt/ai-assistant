@@ -190,7 +190,6 @@ async def async_main(
                 stop_event=stop_event,
                 quiet=general_cfg.quiet,
                 live=live,
-                listening_message="Listening for your command...",
                 chunk_callback=chunk_callback,
                 final_callback=final_callback,
             )
