@@ -69,14 +69,12 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     mock_agent.run.assert_called_once_with("test")
 
 
-@patch("agent_cli.llm.process_with_llm", new_callable=AsyncMock)
-@patch("pyperclip.copy")
+@patch("agent_cli.llm.get_llm_response", new_callable=AsyncMock)
 def test_process_and_update_clipboard(
-    mock_copy: MagicMock,
-    mock_process_with_llm: AsyncMock,
+    mock_get_llm_response: AsyncMock,
 ) -> None:
     """Test the process_and_update_clipboard function."""
-    mock_process_with_llm.return_value = ("hello", 0.1)
+    mock_get_llm_response.return_value = "hello"
     mock_live = MagicMock()
 
     asyncio.run(
@@ -94,5 +92,11 @@ def test_process_and_update_clipboard(
         ),
     )
 
-    mock_copy.assert_called_once_with("hello")
-    mock_process_with_llm.assert_called_once()
+    # Verify get_llm_response was called with the right parameters
+    mock_get_llm_response.assert_called_once()
+    call_args = mock_get_llm_response.call_args
+    assert call_args.kwargs["clipboard"] is True
+    assert call_args.kwargs["quiet"] is True
+    assert call_args.kwargs["live"] is mock_live
+    assert call_args.kwargs["show_output"] is True
+    assert call_args.kwargs["exit_on_error"] is True

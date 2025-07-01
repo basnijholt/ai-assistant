@@ -68,8 +68,31 @@ async def get_llm_response(
     logger: logging.Logger,
     tools: list[Tool] | None = None,
     quiet: bool = False,
+    clipboard: bool = False,
+    live: Live | None = None,
+    show_output: bool = False,
+    exit_on_error: bool = False,
 ) -> str | None:
-    """Get a response from the LLM."""
+    """Get a response from the LLM with optional clipboard and output handling.
+
+    Args:
+        system_prompt: System prompt for the LLM
+        agent_instructions: Agent instructions
+        user_input: Input text for the LLM
+        model: Model name
+        ollama_host: Ollama server host
+        logger: Logger instance
+        tools: Optional tools for the agent
+        quiet: If True, suppress timer display
+        clipboard: If True, copy result to clipboard
+        live: Existing Live instance (if None, creates new one)
+        show_output: If True, display result in rich panel
+        exit_on_error: If True, exit on error instead of returning None
+
+    Returns:
+        LLM response text or None if error and exit_on_error=False
+
+    """
     agent = build_agent(
         model=model,
         ollama_host=ollama_host,
@@ -77,37 +100,57 @@ async def get_llm_response(
         instructions=agent_instructions,
         tools=tools,
     )
+
+    start_time = time.monotonic()
+
     try:
-        async with timed_live_async(
-            f"🤖 Applying instruction with {model}",
-            style="bold yellow",
-            quiet=quiet,
-        ):
-            result = await agent.run(user_input)
-        return result.output
+        if live is not None:
+            # Use existing Live instance with live_timer
+            async with live_timer(
+                live if not quiet else None,
+                f"🤖 Applying instruction with {model}",
+                style="bold yellow",
+            ):
+                result = await agent.run(user_input)
+        else:
+            # Create new Live instance with timed_live_async
+            async with timed_live_async(
+                f"🤖 Applying instruction with {model}",
+                style="bold yellow",
+                quiet=quiet,
+            ):
+                result = await agent.run(user_input)
+
+        elapsed = time.monotonic() - start_time
+        result_text = result.output
+
+        # Handle clipboard copying
+        if clipboard:
+            pyperclip.copy(result_text)
+            logger.info("Copied result to clipboard.")
+
+        # Handle output display
+        if show_output and not quiet:
+            print_output_panel(
+                result_text,
+                title="✨ Result (Copied to Clipboard)" if clipboard else "✨ Result",
+                subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
+            )
+        elif quiet and clipboard:
+            # Quiet mode: print result to stdout for Keyboard Maestro to capture
+            print(result_text)
+
+        return result_text
+
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
         print_error_message(
             f"An unexpected LLM error occurred: {e}",
             f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
         )
+        if exit_on_error:
+            sys.exit(1)
         return None
-
-
-async def process_with_llm(
-    agent: Agent,
-    original_text: str,
-    instruction: str,
-) -> tuple[str, float]:
-    """Run the agent asynchronously and return corrected text and elapsed time."""
-    user_input = INPUT_TEMPLATE.format(
-        original_text=original_text,
-        instruction=instruction,
-    )
-    t_start = time.monotonic()
-    result = await agent.run(user_input)
-    t_end = time.monotonic()
-    return result.output, t_end - t_start
 
 
 async def process_and_update_clipboard(
@@ -127,40 +170,22 @@ async def process_and_update_clipboard(
 
     In quiet mode, only the result is printed to stdout.
     """
-    agent = build_agent(
+    # Format input using the template
+    user_input = INPUT_TEMPLATE.format(
+        original_text=original_text,
+        instruction=instruction,
+    )
+
+    await get_llm_response(
+        system_prompt=system_prompt,
+        agent_instructions=agent_instructions,
+        user_input=user_input,
         model=model,
         ollama_host=ollama_host,
-        system_prompt=system_prompt,
-        instructions=agent_instructions,
+        logger=logger,
+        quiet=quiet,
+        clipboard=clipboard,
+        live=live,
+        show_output=True,
+        exit_on_error=True,
     )
-    try:
-        # Use the clean timer context manager
-        async with live_timer(
-            live,
-            f"🤖 Applying instruction with {model}",
-            style="bold yellow",
-            quiet=quiet,
-        ):
-            result_text, elapsed = await process_with_llm(agent, original_text, instruction)
-
-        if clipboard:
-            pyperclip.copy(result_text)
-            logger.info("Copied result to clipboard.")
-
-        if not quiet:
-            print_output_panel(
-                result_text,
-                title="✨ Result (Copied to Clipboard)" if clipboard else "✨ Result",
-                subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
-            )
-        else:
-            # Quiet mode: print result to stdout for Keyboard Maestro to capture
-            print(result_text)
-
-    except Exception as e:
-        logger.exception("An error occurred during LLM processing.")
-        print_error_message(
-            f"An unexpected LLM error occurred: {e}",
-            f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
-        )
-        sys.exit(1)
