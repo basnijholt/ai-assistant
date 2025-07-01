@@ -71,12 +71,8 @@ async def send_audio(
             if live and not quiet:
                 # Check if Ctrl+C was pressed
                 if stop_event.ctrl_c_pressed:
-                    live.update(
-                        Text(
-                            "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)",
-                            style="yellow",
-                        ),
-                    )
+                    msg = "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)"
+                    live.update(Text(msg, style="yellow"))
                 else:
                     live.update(Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"))
 
