@@ -242,7 +242,7 @@ def stop_or_status(
 def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
     """Create a live context manager if use_live is True."""
     if use_live:
-        return Live(create_spinner("Transcribing...", "blue"), console=console, transient=True)
+        return Live(create_spinner("", "blue"), console=console, transient=True)
     return nullcontext()
 
 
