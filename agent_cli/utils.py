@@ -320,7 +320,7 @@ async def timed_live_async(
 
     initial_spinner = create_spinner(f"{base_message}...", style)
 
-    with Live(initial_spinner, console=console, refresh_per_second=10) as live:
+    with Live(initial_spinner, console=console, refresh_per_second=10, transient=True) as live:
         async with live_timer(live, base_message, style=style):
             yield live
 
