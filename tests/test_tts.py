@@ -26,6 +26,7 @@ async def test_speak_text(mock_synthesize_speech: AsyncMock) -> None:
         output_device_index=None,
         play_audio_flag=False,
         logger=MagicMock(),
+        live=MagicMock(),
     )
     assert audio_data == b"audio data"
 

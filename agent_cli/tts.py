@@ -19,13 +19,15 @@ from agent_cli.audio import (
 )
 from agent_cli.utils import (
     Stoppable,
+    live_timer,
     print_error_message,
     print_status_message,
-    timed_live_async,
 )
 
 if TYPE_CHECKING:
     import logging
+
+    from rich.live import Live
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
@@ -119,6 +121,7 @@ async def synthesize_speech(
     language: str | None = None,
     speaker: str | None = None,
     quiet: bool = False,
+    live: Live,
 ) -> bytes | None:
     """Synthesize speech from text using Wyoming TTS server.
 
@@ -131,6 +134,7 @@ async def synthesize_speech(
         language: Optional language
         speaker: Optional speaker name
         quiet: If true, suppress console messages
+        live: Live instance for timer display
 
     Returns:
         WAV audio data as bytes, or None if error
@@ -141,7 +145,8 @@ async def synthesize_speech(
 
     try:
         async with AsyncClient.from_uri(uri) as client:
-            async with timed_live_async("🔊 Synthesizing text", style="blue", quiet=quiet):
+            # Use live_timer with the provided Live instance
+            async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
                 # Create and send synthesis request
                 synthesize_event = _create_synthesis_request(
                     text,
@@ -224,6 +229,7 @@ async def play_audio(
     quiet: bool = False,
     stop_event: Stoppable | None = None,
     speed: float = 1.0,
+    live: Live,
 ) -> None:
     """Play WAV audio data using PyAudio with proper resource management.
 
@@ -234,8 +240,11 @@ async def play_audio(
         quiet: If true, suppress console messages
         stop_event: Optional stop event to interrupt playback
         speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
+        live: Live instance for timer display
 
     """
+    from agent_cli.utils import live_timer
+
     try:
         # Apply high-quality speed adjustment if possible
         wav_io = io.BytesIO(audio_data)
@@ -255,8 +264,8 @@ async def play_audio(
         # Determine message
         base_msg = f"🔊 Playing audio at {speed}x speed" if speed != 1.0 else "🔊 Playing audio"
 
-        # Use clean async timer context manager
-        async with timed_live_async(base_msg, style="blue", quiet=quiet):
+        # Use live_timer with the provided Live instance
+        async with live_timer(live, base_msg, style="blue", quiet=quiet):
             with (
                 pyaudio_context() as p,
                 open_pyaudio_stream(
@@ -309,6 +318,7 @@ async def speak_text(
     play_audio_flag: bool = True,
     stop_event: Stoppable | None = None,
     speed: float = 1.0,
+    live: Live,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text.
 
@@ -325,6 +335,7 @@ async def speak_text(
         play_audio_flag: Whether to play the audio immediately
         stop_event: Optional stop event to interrupt playback
         speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
+        live: Live instance for timer display
 
     Returns:
         WAV audio data as bytes, or None if error
@@ -340,6 +351,7 @@ async def speak_text(
         language=language,
         speaker=speaker,
         quiet=quiet,
+        live=live,
     )
 
     # Play audio if requested and synthesis succeeded
@@ -351,6 +363,7 @@ async def speak_text(
             quiet=quiet,
             stop_event=stop_event,
             speed=speed,
+            live=live,
         )
 
     return audio_data

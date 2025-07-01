@@ -15,7 +15,6 @@ from agent_cli.utils import (
     live_timer,
     print_error_message,
     print_output_panel,
-    timed_live_async,
 )
 
 if TYPE_CHECKING:
@@ -66,10 +65,10 @@ async def get_llm_response(
     model: str,
     ollama_host: str,
     logger: logging.Logger,
+    live: Live,
     tools: list[Tool] | None = None,
     quiet: bool = False,
     clipboard: bool = False,
-    live: Live | None = None,
     show_output: bool = False,
     exit_on_error: bool = False,
 ) -> str | None:
@@ -82,10 +81,10 @@ async def get_llm_response(
         model: Model name
         ollama_host: Ollama server host
         logger: Logger instance
-        tools: Optional tools for the agent
+        live: Existing Live instance
+        tools: Optional list of tools for the agent
         quiet: If True, suppress timer display
         clipboard: If True, copy result to clipboard
-        live: Existing Live instance (if None, creates new one)
         show_output: If True, display result in rich panel
         exit_on_error: If True, exit on error instead of returning None
 
@@ -104,22 +103,13 @@ async def get_llm_response(
     start_time = time.monotonic()
 
     try:
-        if live is not None:
-            # Use existing Live instance with live_timer
-            async with live_timer(
-                live if not quiet else None,
-                f"🤖 Applying instruction with {model}",
-                style="bold yellow",
-            ):
-                result = await agent.run(user_input)
-        else:
-            # Create new Live instance with timed_live_async
-            async with timed_live_async(
-                f"🤖 Applying instruction with {model}",
-                style="bold yellow",
-                quiet=quiet,
-            ):
-                result = await agent.run(user_input)
+        async with live_timer(
+            live,
+            f"🤖 Applying instruction with {model}",
+            style="bold yellow",
+            quiet=quiet,
+        ):
+            result = await agent.run(user_input)
 
         elapsed = time.monotonic() - start_time
         result_text = result.output

@@ -40,6 +40,7 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
         model="test",
         ollama_host="test",
         logger=MagicMock(),
+        live=MagicMock(),
     )
 
     assert response == "hello"
@@ -62,6 +63,7 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
         model="test",
         ollama_host="test",
         logger=MagicMock(),
+        live=MagicMock(),
     )
 
     assert response is None

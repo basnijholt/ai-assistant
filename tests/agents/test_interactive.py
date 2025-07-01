@@ -255,10 +255,11 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             output_device_index=1,
             save_file=None,
             quiet=False,
-            logger=mock_tts.call_args[1]["logger"],
+            logger=mock_tts.call_args.kwargs["logger"],
             play_audio=True,
-            stop_event=mock_stop_event,
+            stop_event=mock_tts.call_args.kwargs["stop_event"],
             speed=1.0,
+            live=mock_tts.call_args.kwargs["live"],
         )
 
         # Verify that history was saved

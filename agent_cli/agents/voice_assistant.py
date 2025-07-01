@@ -235,6 +235,7 @@ async def async_main(
                         status_message="🔊 Speaking response...",
                         description="TTS audio",
                         speed=tts_config.speed,
+                        live=live,
                     )
 
 

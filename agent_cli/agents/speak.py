@@ -17,6 +17,7 @@ from agent_cli.audio import list_output_devices, output_device, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
+    maybe_live,
     print_input_panel,
     print_status_message,
     stop_or_status,
@@ -60,22 +61,24 @@ async def async_main(
             print_input_panel(text, title="📝 Text to Speak")
 
         # Handle TTS playback and saving
-        await handle_tts_playback(
-            text,
-            tts_server_ip=tts_config.server_ip,
-            tts_server_port=tts_config.server_port,
-            voice_name=tts_config.voice_name,
-            tts_language=tts_config.language,
-            speaker=tts_config.speaker,
-            output_device_index=output_device_index,
-            save_file=file_config.save_file,
-            quiet=general_cfg.quiet,
-            logger=LOGGER,
-            play_audio=not file_config.save_file,  # Don't play if saving to file
-            status_message="🔊 Synthesizing speech...",
-            description="Audio",
-            speed=tts_config.speed,
-        )
+        with maybe_live(not general_cfg.quiet) as live:
+            await handle_tts_playback(
+                text,
+                tts_server_ip=tts_config.server_ip,
+                tts_server_port=tts_config.server_port,
+                voice_name=tts_config.voice_name,
+                tts_language=tts_config.language,
+                speaker=tts_config.speaker,
+                output_device_index=output_device_index,
+                save_file=file_config.save_file,
+                quiet=general_cfg.quiet,
+                logger=LOGGER,
+                play_audio=not file_config.save_file,  # Don't play if saving to file
+                status_message="🔊 Synthesizing speech...",
+                description="Audio",
+                speed=tts_config.speed,
+                live=live,
+            )
 
 
 @app.command("speak")

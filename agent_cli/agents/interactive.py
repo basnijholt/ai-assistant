@@ -218,16 +218,18 @@ async def _handle_conversation_turn(
 
     # 4. Get LLM response
     tools = [ReadFileTool, ExecuteCodeTool]
-    response_text = await get_llm_response(
-        system_prompt=SYSTEM_PROMPT,
-        agent_instructions=AGENT_INSTRUCTIONS,
-        user_input=user_message_with_context,
-        model=llm_config.model,
-        ollama_host=llm_config.ollama_host,
-        logger=LOGGER,
-        tools=tools,
-        quiet=general_cfg.quiet,
-    )
+    with maybe_live(not general_cfg.quiet) as live:
+        response_text = await get_llm_response(
+            system_prompt=SYSTEM_PROMPT,
+            agent_instructions=AGENT_INSTRUCTIONS,
+            user_input=user_message_with_context,
+            model=llm_config.model,
+            ollama_host=llm_config.ollama_host,
+            logger=LOGGER,
+            tools=tools,
+            quiet=general_cfg.quiet,
+            live=live,
+        )
 
     if not response_text:
         if not general_cfg.quiet:
@@ -253,21 +255,23 @@ async def _handle_conversation_turn(
 
     # 7. Handle TTS playback
     if tts_config.enabled:
-        await handle_tts_playback(
-            response_text,
-            tts_server_ip=tts_config.server_ip,
-            tts_server_port=tts_config.server_port,
-            voice_name=tts_config.voice_name,
-            tts_language=tts_config.language,
-            speaker=tts_config.speaker,
-            output_device_index=tts_config.output_device_index,
-            save_file=file_config.save_file,
-            quiet=general_cfg.quiet,
-            logger=LOGGER,
-            play_audio=not file_config.save_file,
-            stop_event=stop_event,
-            speed=tts_config.speed,
-        )
+        with maybe_live(not general_cfg.quiet) as live:
+            await handle_tts_playback(
+                response_text,
+                tts_server_ip=tts_config.server_ip,
+                tts_server_port=tts_config.server_port,
+                voice_name=tts_config.voice_name,
+                tts_language=tts_config.language,
+                speaker=tts_config.speaker,
+                output_device_index=tts_config.output_device_index,
+                save_file=file_config.save_file,
+                quiet=general_cfg.quiet,
+                logger=LOGGER,
+                play_audio=not file_config.save_file,
+                stop_event=stop_event,
+                speed=tts_config.speed,
+                live=live,
+            )
 
     # Reset stop_event for next iteration
     stop_event.clear()

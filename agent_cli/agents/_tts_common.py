@@ -12,6 +12,8 @@ from agent_cli.utils import Stoppable, print_status_message
 if TYPE_CHECKING:
     import logging
 
+    from rich.live import Live
+
 
 async def _save_audio_file(
     audio_data: bytes,
@@ -53,6 +55,7 @@ async def handle_tts_playback(
     description: str = "Audio",
     stop_event: Stoppable | None = None,
     speed: float = 1.0,
+    live: Live,
 ) -> bytes | None:
     """Handle TTS synthesis, playback, and file saving."""
     try:
@@ -72,6 +75,7 @@ async def handle_tts_playback(
             play_audio_flag=play_audio,
             stop_event=stop_event,
             speed=speed,
+            live=live,
         )
 
         if save_file and audio_data:

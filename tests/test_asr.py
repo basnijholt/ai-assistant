@@ -32,7 +32,7 @@ async def test_send_audio() -> None:
     # Act
     # No need to create a task and sleep, just await the coroutine.
     # The side_effect will stop the loop.
-    await asr.send_audio(client, stream, stop_event, logger)
+    await asr.send_audio(client, stream, stop_event, logger, live=MagicMock(), quiet=False)
 
     # Assert
     assert client.write_event.call_count == 4
@@ -113,6 +113,7 @@ async def test_transcribe_audio() -> None:
                 p,
                 stop_event,
                 quiet=True,
+                live=MagicMock(),
             ),
         )
         # Simulate stopping after a brief period
@@ -152,6 +153,7 @@ async def test_transcribe_audio_connection_error() -> None:
             p,
             stop_event,
             quiet=True,
+            live=MagicMock(),
         )
 
         # Assert

@@ -28,7 +28,8 @@ async def send_audio(
     stop_event: Stoppable,
     logger: logging.Logger,
     *,
-    live: Live | None = None,
+    live: Live,
+    quiet: bool = False,
 ) -> None:
     """Read from mic and send to Wyoming server.
 
@@ -38,7 +39,7 @@ async def send_audio(
         stop_event: Event to stop recording
         logger: Logger instance
         live: Rich Live display for progress (transcribe mode)
-        console: Rich Console for manual timing display (voice-assistant mode)
+        quiet: If True, suppress all console output
 
     """
     await client.write_event(Transcribe().event())
@@ -67,7 +68,7 @@ async def send_audio(
 
             # Update display timing
             seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
-            if live:
+            if live and not quiet:
                 live.update(Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"))
 
     finally:
@@ -126,8 +127,8 @@ async def transcribe_audio(
     p: pyaudio.PyAudio,
     stop_event: Stoppable,
     *,
+    live: Live,
     quiet: bool = False,
-    live: Live | None = None,
     listening_message: str = "Listening...",
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
@@ -141,8 +142,8 @@ async def transcribe_audio(
         logger: Logger instance
         p: PyAudio instance
         stop_event: Event to stop recording
-        quiet: If True, suppress all console output
         live: Rich Live display for progress
+        quiet: If True, suppress all console output
         listening_message: Message to display when starting
         chunk_callback: Callback for transcript chunks
         final_callback: Callback for final transcript
@@ -175,7 +176,8 @@ async def transcribe_audio(
                         stream,
                         stop_event,
                         logger,
-                        live=live if not quiet else None,
+                        live=live,
+                        quiet=quiet,
                     ),
                 )
                 recv_task = asyncio.create_task(
