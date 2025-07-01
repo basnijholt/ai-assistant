@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
 import typer
+from rich.live import Live
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -44,14 +45,17 @@ from agent_cli.llm import get_llm_response
 from agent_cli.tools import ExecuteCodeTool, ReadFileTool
 from agent_cli.utils import (
     InteractiveStopEvent,
+    Timer,
     console,
     format_timedelta_to_ago,
     maybe_live,
     print_device_index,
     print_input_panel,
+    print_output_panel,
     print_status_message,
     signal_handling_context,
     stop_or_status,
+    timed_live_async,
 )
 
 if TYPE_CHECKING:
@@ -198,7 +202,7 @@ async def _handle_conversation_turn(
         return
 
     if not general_cfg.quiet:
-        print_input_panel(instruction, title="You")
+        print_input_panel(instruction, title="👤 You")
 
     # 2. Add user message to history
     conversation_history.append(
@@ -216,9 +220,17 @@ async def _handle_conversation_turn(
         instruction=instruction,
     )
 
-    # 4. Get LLM response
+    # 4. Get LLM response with timing
     tools = [ReadFileTool, ExecuteCodeTool]
-    with maybe_live(not general_cfg.quiet) as live:
+    timer = Timer()
+
+    async with timed_live_async(
+        "🤖 Processing",
+        style="bold yellow",
+        quiet=general_cfg.quiet,
+    ) as live:
+        # Create a dummy Live for get_llm_response since we're using our own timer display
+        dummy_live = Live(console=console) if live is None else live
         response_text = await get_llm_response(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
@@ -227,9 +239,11 @@ async def _handle_conversation_turn(
             ollama_host=llm_config.ollama_host,
             logger=LOGGER,
             tools=tools,
-            quiet=general_cfg.quiet,
-            live=live,
+            quiet=True,  # Suppress internal output since we're showing our own timer
+            live=dummy_live,
         )
+
+    elapsed_time = timer.stop()
 
     if not response_text:
         if not general_cfg.quiet:
@@ -237,7 +251,11 @@ async def _handle_conversation_turn(
         return
 
     if not general_cfg.quiet:
-        print_input_panel(response_text, title="AI")
+        print_output_panel(
+            response_text,
+            title="🤖 AI",
+            subtitle=f"took {elapsed_time:.2f}s",
+        )
 
     # 5. Add AI response to history
     conversation_history.append(

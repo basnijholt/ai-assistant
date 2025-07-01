@@ -322,3 +322,17 @@ async def timed_live_async(
     with Live(initial_text, console=console, refresh_per_second=10) as live:
         async with live_timer(live, base_message, style=style):
             yield live
+
+
+class Timer:
+    """Simple timer class for tracking elapsed time."""
+
+    def __init__(self) -> None:
+        """Initialize the timer."""
+        self.start_time = time.monotonic()
+        self.elapsed = 0.0
+
+    def stop(self) -> float:
+        """Stop the timer and return elapsed time."""
+        self.elapsed = time.monotonic() - self.start_time
+        return self.elapsed
