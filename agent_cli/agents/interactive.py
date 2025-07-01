@@ -52,7 +52,7 @@ from agent_cli.utils import (
     print_device_index,
     print_input_panel,
     print_output_panel,
-    print_status_message,
+    print_with_style,
     signal_handling_context,
     stop_or_status,
 )
@@ -133,7 +133,7 @@ def _setup_output_device(
     device_index, device_name = output_device(p, device_name, device_index)
     if not quiet and device_index is not None:
         msg = f"🔊 TTS output device [bold yellow]{device_index}[/bold yellow] ([italic]{device_name}[/italic])"
-        print_status_message(msg)
+        print_with_style(msg)
     return device_index, device_name
 
 
@@ -193,7 +193,7 @@ async def _handle_conversation_turn(
 
     if not instruction or not instruction.strip():
         if not general_cfg.quiet:
-            print_status_message(
+            print_with_style(
                 "No instruction, listening again.",
                 style="yellow",
             )
@@ -246,7 +246,7 @@ async def _handle_conversation_turn(
 
     if not response_text:
         if not general_cfg.quiet:
-            print_status_message("No response from LLM.", style="yellow")
+            print_with_style("No response from LLM.", style="yellow")
         return
 
     if not general_cfg.quiet:

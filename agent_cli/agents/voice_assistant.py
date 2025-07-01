@@ -68,7 +68,7 @@ from agent_cli.utils import (
     maybe_live,
     print_device_index,
     print_input_panel,
-    print_status_message,
+    print_with_style,
     signal_handling_context,
     stop_or_status,
 )
@@ -154,7 +154,7 @@ async def async_main(
             )
             if tts_output_device_index is not None and not general_cfg.quiet:
                 msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
-                print_status_message(msg)
+                print_with_style(msg)
 
         original_text = get_clipboard_text()
         if not original_text:
@@ -176,7 +176,7 @@ async def async_main(
             def final_callback(transcript_text: str) -> None:
                 """Format the final instruction result."""
                 if not general_cfg.quiet:
-                    print_status_message(
+                    print_with_style(
                         f"\n🎯 Instruction: {transcript_text}",
                         style="bold green",
                     )
@@ -196,7 +196,7 @@ async def async_main(
 
             if not instruction or not instruction.strip():
                 if not general_cfg.quiet:
-                    print_status_message(
+                    print_with_style(
                         "No instruction was transcribed. Exiting.",
                         style="yellow",
                     )

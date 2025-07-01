@@ -37,7 +37,7 @@ from agent_cli.utils import (
     print_error_message,
     print_input_panel,
     print_output_panel,
-    print_status_message,
+    print_with_style,
 )
 
 # --- Configuration ---
@@ -129,9 +129,7 @@ def _display_result(
             title="✨ Corrected Text",
             subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
         )
-        print_status_message(
-            "✅ Success! Corrected text has been copied to your clipboard.",
-        )
+        print_with_style("✅ Success! Corrected text has been copied to your clipboard.")
 
 
 async def async_autocorrect(

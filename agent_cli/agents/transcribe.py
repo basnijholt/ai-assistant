@@ -20,7 +20,7 @@ from agent_cli.utils import (
     print_device_index,
     print_input_panel,
     print_output_panel,
-    print_status_message,
+    print_with_style,
     signal_handling_context,
     stop_or_status,
 )
@@ -125,7 +125,7 @@ async def async_main(
     else:
         LOGGER.info("Transcript empty.")
         if not general_cfg.quiet:
-            print_status_message(
+            print_with_style(
                 "⚠️ No transcript captured.",
                 style="yellow",
             )

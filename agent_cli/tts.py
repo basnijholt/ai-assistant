@@ -21,7 +21,7 @@ from agent_cli.utils import (
     InteractiveStopEvent,
     live_timer,
     print_error_message,
-    print_status_message,
+    print_with_style,
 )
 
 if TYPE_CHECKING:
@@ -285,7 +285,7 @@ async def play_audio(
                     if stop_event and stop_event.is_set():
                         logger.info("Audio playback interrupted")
                         if not quiet:
-                            print_status_message("⏹️ Audio playback interrupted", style="yellow")
+                            print_with_style("⏹️ Audio playback interrupted", style="yellow")
                         break
                     chunk = frames[i : i + chunk_size]
                     stream.write(chunk)
@@ -296,7 +296,7 @@ async def play_audio(
         if not (stop_event and stop_event.is_set()):
             logger.info("Audio playback completed (speed: %.1fx)", speed)
             if not quiet:
-                print_status_message("✅ Audio playback finished")
+                print_with_style("✅ Audio playback finished")
 
     except Exception as e:
         logger.exception("Error during audio playback")

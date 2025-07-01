@@ -123,7 +123,7 @@ def print_error_message(message: str, suggestion: str | None = None) -> None:
     console.print(Panel(error_text, title="Error", border_style="bold red"))
 
 
-def print_status_message(message: str, style: str = "bold green") -> None:
+def print_with_style(message: str, style: str = "bold green") -> None:
     """Prints a status message."""
     console.print(f"[{style}]{message}[/{style}]")
 
@@ -132,7 +132,7 @@ def print_device_index(device_index: int | None, device_name: str | None) -> Non
     """Prints the device index."""
     if device_index is not None:
         name = device_name or "Unknown Device"
-        print_status_message(f"Using {name} device with index {device_index}")
+        print_with_style(f"Using {name} device with index {device_index}")
 
 
 def get_clipboard_text(*, quiet: bool = False) -> str | None:
@@ -140,7 +140,7 @@ def get_clipboard_text(*, quiet: bool = False) -> str | None:
     text = pyperclip.paste()
     if not text:
         if not quiet:
-            print_status_message("Clipboard is empty.", style="yellow")
+            print_with_style("Clipboard is empty.", style="yellow")
         return None
     return text
 
@@ -207,18 +207,18 @@ def stop_or_status(
     if stop:
         if process_manager.kill_process(process_name):
             if not quiet:
-                print_status_message(f"✅ {which.capitalize()} stopped.")
+                print_with_style(f"✅ {which.capitalize()} stopped.")
         elif not quiet:
-            print_status_message(f"⚠️  No {which} is running.", style="yellow")
+            print_with_style(f"⚠️  No {which} is running.", style="yellow")
         return True
 
     if status:
         if process_manager.is_process_running(process_name):
             pid = process_manager.read_pid_file(process_name)
             if not quiet:
-                print_status_message(f"✅ {which.capitalize()} is running (PID: {pid}).")
+                print_with_style(f"✅ {which.capitalize()} is running (PID: {pid}).")
         elif not quiet:
-            print_status_message(f"⚠️ {which.capitalize()} is not running.", style="yellow")
+            print_with_style(f"⚠️ {which.capitalize()} is not running.", style="yellow")
         return True
 
     return False

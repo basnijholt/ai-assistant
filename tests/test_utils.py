@@ -60,9 +60,9 @@ def test_print_output_panel() -> None:
 
 
 def test_print_status_message() -> None:
-    """Test the print_status_message function."""
+    """Test the print_with_style function."""
     with patch("agent_cli.utils.console") as mock_console:
-        utils.print_status_message("hello")
+        utils.print_with_style("hello")
         mock_console.print.assert_called_once()
 
 

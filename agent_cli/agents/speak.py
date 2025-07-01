@@ -19,7 +19,7 @@ from agent_cli.utils import (
     get_clipboard_text,
     maybe_live,
     print_input_panel,
-    print_status_message,
+    print_with_style,
     stop_or_status,
 )
 
@@ -48,7 +48,7 @@ async def async_main(
         )
         if not general_cfg.quiet and output_device_index is not None:
             msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
-            print_status_message(msg)
+            print_with_style(msg)
 
         # Get text from argument or clipboard
         if text is None:
