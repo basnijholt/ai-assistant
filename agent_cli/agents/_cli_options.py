@@ -128,6 +128,12 @@ TOGGLE: bool = typer.Option(
 )
 
 # --- General Options ---
+CONFIG_FILE: str | None = typer.Option(
+    None,
+    "--config",
+    help="Path to a TOML configuration file.",
+    is_eager=True,
+)
 CLIPBOARD: bool = typer.Option(
     True,  # noqa: FBT003
     "--clipboard/--no-clipboard",

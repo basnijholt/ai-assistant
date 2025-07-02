@@ -14,7 +14,7 @@ import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
 from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
 from agent_cli.audio import input_device, list_input_devices, pyaudio_context
-from agent_cli.cli import app, setup_logging
+from agent_cli.cli import app, set_config_defaults, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
     maybe_live,
@@ -28,6 +28,7 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
+    import typer
 
 LOGGER = logging.getLogger()
 
@@ -139,10 +140,11 @@ async def async_main(
 
 @app.command("transcribe")
 def transcribe(
+    ctx: typer.Context,
     *,
+    # ASR
     device_index: int | None = opts.DEVICE_INDEX,
     device_name: str | None = opts.DEVICE_NAME,
-    # ASR
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
@@ -159,6 +161,7 @@ def transcribe(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
+    config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """Wyoming ASR Client for streaming microphone audio to a transcription server.
 
@@ -168,6 +171,7 @@ def transcribe(
     - Check status: agent-cli transcribe --status
     - Stop background process: agent-cli transcribe --stop
     """
+    set_config_defaults(ctx, config_file)
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(
         log_level=log_level,

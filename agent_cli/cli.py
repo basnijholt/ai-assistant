@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import typer
 
+from .config_loader import load_config
 from .utils import console
 
 if TYPE_CHECKING:
@@ -27,6 +28,16 @@ def main(ctx: typer.Context) -> None:
         console.print("[bold red]No command specified.[/bold red]")
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
         console.print(ctx.get_help())
+        raise typer.Exit
+
+
+def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
+    """Set the default values for the CLI based on the config file."""
+    config = load_config(config_file)
+    wildcard_config = config.get("*", {})
+    command_config = config.get(ctx.invoked_subcommand, {})
+    # Merge wildcard and command-specific configs, with command-specific taking precedence
+    ctx.default_map = dict(wildcard_config, **command_config)
 
 
 def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:

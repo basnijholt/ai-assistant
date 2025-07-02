@@ -14,7 +14,7 @@ from agent_cli import process_manager
 from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import list_output_devices, output_device, pyaudio_context
-from agent_cli.cli import app, setup_logging
+from agent_cli.cli import app, set_config_defaults, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
     maybe_live,
@@ -83,11 +83,12 @@ async def async_main(
 
 @app.command("speak")
 def speak(
+    ctx: typer.Context,
+    *,
     text: str | None = typer.Argument(
         None,
         help="Text to speak. Reads from clipboard if not provided.",
     ),
-    *,
     # TTS parameters
     tts_server_ip: str = opts.TTS_SERVER_IP,
     tts_server_port: int = opts.TTS_SERVER_PORT,
@@ -113,6 +114,7 @@ def speak(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
+    config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """Convert text to speech using Wyoming TTS server.
 
@@ -125,6 +127,7 @@ def speak(
     - Use specific voice: agent-cli speak "Hello" --voice en_US-lessac-medium
     - Run in background: agent-cli speak "Hello" &
     """
+    set_config_defaults(ctx, config_file)
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
     process_name = "speak"

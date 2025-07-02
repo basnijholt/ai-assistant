@@ -60,7 +60,7 @@ from agent_cli.audio import (
     output_device,
     pyaudio_context,
 )
-from agent_cli.cli import app, setup_logging
+from agent_cli.cli import app, set_config_defaults, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
     console,
@@ -75,6 +75,7 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
+    import typer
 
 LOGGER = logging.getLogger()
 
@@ -241,10 +242,11 @@ async def async_main(
 
 @app.command("voice-assistant")
 def voice_assistant(
-    device_index: int | None = opts.DEVICE_INDEX,
-    device_name: str | None = opts.DEVICE_NAME,
+    ctx: typer.Context,
     *,
     # ASR
+    device_index: int | None = opts.DEVICE_INDEX,
+    device_name: str | None = opts.DEVICE_NAME,
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
@@ -260,6 +262,7 @@ def voice_assistant(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
+    config_file: str | None = opts.CONFIG_FILE,
     # TTS parameters
     enable_tts: bool = opts.ENABLE_TTS,
     tts_server_ip: str = opts.TTS_SERVER_IP,
@@ -284,6 +287,7 @@ def voice_assistant(
     - List output devices: agent-cli voice-assistant --list-output-devices
     - Save TTS to file: agent-cli voice-assistant --tts --save-file response.wav
     """
+    set_config_defaults(ctx, config_file)
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(
         log_level=log_level,

@@ -1,0 +1,32 @@
+# Example configuration for agent-cli
+# Copy this file to ~/.config/agent-cli/config.toml or ./agent-cli-config.toml and edit
+
+[autocorrect]
+# model = "llama3"
+# ollama_host = "http://localhost:11434"
+# log_level = "INFO"
+# quiet = true
+
+[interactive]
+# device_name = "MacBook Pro Microphone"
+# model = "llama3"
+# ollama_host = "http://localhost:11434"
+# enable_tts = true
+# voice_name = "en_US-lessac-medium"
+# tts_speed = 1.2
+
+[speak]
+# output_device_name = "MacBook Pro Speakers"
+# voice_name = "en_US-lessac-medium"
+# tts_speed = 1.0
+
+[transcribe]
+# device_name = "MacBook Pro Microphone"
+# llm = true
+# model = "llama3"
+
+[voice-assistant]
+# device_name = "MacBook Pro Microphone"
+# model = "llama3"
+# enable_tts = true
+# output_device_name = "MacBook Pro Speakers"
