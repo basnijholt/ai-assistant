@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from contextlib import suppress
 from typing import TYPE_CHECKING
 
@@ -75,6 +76,7 @@ async def async_main(
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
+    time_start = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
             transcript = await asr.transcribe_audio(
@@ -87,10 +89,14 @@ async def async_main(
                 quiet=general_cfg.quiet,
                 live=live,
             )
-
+        elapsed = time.monotonic() - time_start
         if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
             if not general_cfg.quiet:
-                print_input_panel(transcript, title="📝 Raw Transcript")
+                print_input_panel(
+                    transcript,
+                    title="📝 Raw Transcript",
+                    subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
+                )
             await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,

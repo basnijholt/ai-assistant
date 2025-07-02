@@ -299,17 +299,3 @@ async def live_timer(
         timer_task.cancel()
         with suppress(asyncio.CancelledError):
             await timer_task
-
-
-class Timer:
-    """Simple timer class for tracking elapsed time."""
-
-    def __init__(self) -> None:
-        """Initialize the timer."""
-        self.start_time = time.monotonic()
-        self.elapsed = 0.0
-
-    def stop(self) -> float:
-        """Stop the timer and return elapsed time."""
-        self.elapsed = time.monotonic() - self.start_time
-        return self.elapsed

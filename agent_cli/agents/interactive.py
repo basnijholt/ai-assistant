@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
@@ -44,7 +45,6 @@ from agent_cli.cli import app, setup_logging
 from agent_cli.llm import get_llm_response
 from agent_cli.utils import (
     InteractiveStopEvent,
-    Timer,
     console,
     format_timedelta_to_ago,
     live_timer,
@@ -207,7 +207,7 @@ async def _handle_conversation_turn(
     )
 
     # 1. Transcribe user's command
-    timer_asr = Timer()
+    time_start = time.monotonic()
     instruction = await asr.transcribe_audio(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
@@ -218,7 +218,7 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
         live=live,
     )
-    elapsed_time = timer_asr.stop()
+    elapsed = time.monotonic() - time_start
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
     stop_event.clear()
@@ -232,7 +232,7 @@ async def _handle_conversation_turn(
         return
 
     if not general_cfg.quiet:
-        print_input_panel(instruction, title="👤 You", subtitle=f"took {elapsed_time:.2f}s")
+        print_input_panel(instruction, title="👤 You", subtitle=f"took {elapsed:.2f}s")
 
     # 2. Add user message to history
     conversation_history.append(
@@ -261,7 +261,7 @@ async def _handle_conversation_turn(
         ListMemoryCategoresTool,
         duckduckgo_search_tool(),
     ]
-    timer_ai = Timer()
+    time_start = time.monotonic()
 
     async with live_timer(
         live,
@@ -283,7 +283,7 @@ async def _handle_conversation_turn(
             live=live,
         )
 
-    elapsed_time = timer_ai.stop()
+    elapsed = time.monotonic() - time_start
 
     if not response_text:
         if not general_cfg.quiet:
@@ -294,7 +294,7 @@ async def _handle_conversation_turn(
         print_output_panel(
             response_text,
             title="🤖 AI",
-            subtitle=f"took {elapsed_time:.2f}s",
+            subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
         )
 
     # 5. Add AI response to history

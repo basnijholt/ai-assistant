@@ -103,6 +103,7 @@ def test_interactive_command_stop_and_status():
             "interactive agent",
             True,  # noqa: FBT003, stop
             False,  # noqa: FBT003, status
+            False,  # noqa: FBT003, toggle
             quiet=False,
         )
 
@@ -113,6 +114,7 @@ def test_interactive_command_stop_and_status():
             "interactive agent",
             False,  # noqa: FBT003, stop
             True,  # noqa: FBT003, status
+            False,  # noqa: FBT003, toggle
             quiet=False,
         )
 
