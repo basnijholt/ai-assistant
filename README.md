@@ -166,7 +166,7 @@ You can also specify a path to a configuration file using the `--config` option,
 
 Command-line options always take precedence over settings in the configuration file.
 
-An example configuration file is provided in `agent-cli-config.toml.example`.
+An example configuration file is provided in `example.agent-cli-config.toml`.
 
 ### `autocorrect`
 
