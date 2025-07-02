@@ -18,7 +18,7 @@ runner = CliRunner()
 @pytest.fixture
 def config_file(tmp_path: Path) -> Path:
     config_content = """
-["*"]
+[defaults]
 model = "wildcard-model"
 log_level = "INFO"
 

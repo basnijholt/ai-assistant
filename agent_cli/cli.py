@@ -34,7 +34,7 @@ def main(ctx: typer.Context) -> None:
 def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
     """Set the default values for the CLI based on the config file."""
     config = load_config(config_file)
-    wildcard_config = config.get("*", {})
+    wildcard_config = config.get("defaults", {})
     command_config = config.get(ctx.invoked_subcommand, {})
     # Merge wildcard and command-specific configs, with command-specific taking precedence
     ctx.default_map = dict(wildcard_config, **command_config)
