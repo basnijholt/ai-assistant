@@ -29,7 +29,7 @@ jobs:
         env:
           TERM: dumb
           NO_COLOR: 1
-          TERMINAL_WIDTH: 80
+          TERMINAL_WIDTH: 90
         run: |
           uvx --with . markdown-code-runner README.md
           sed -i '' 's/[[:space:]]*$//' README.md

@@ -196,7 +196,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
-<!-- export TERMINAL_WIDTH=80 -->
+<!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli autocorrect --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
@@ -260,7 +260,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
-<!-- export TERMINAL_WIDTH=80 -->
+<!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli transcribe --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
@@ -369,7 +369,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
-<!-- export TERMINAL_WIDTH=80 -->
+<!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli speak --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
@@ -467,7 +467,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
-<!-- export TERMINAL_WIDTH=80 -->
+<!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli voice-assistant --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
@@ -635,7 +635,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
-<!-- export TERMINAL_WIDTH=80 -->
+<!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli interactive --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
