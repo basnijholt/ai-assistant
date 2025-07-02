@@ -257,12 +257,6 @@ def voice_assistant(
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    # General
-    clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
-    log_file: str | None = opts.LOG_FILE,
-    quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,
     # TTS parameters
     enable_tts: bool = opts.ENABLE_TTS,
     tts_server_ip: str = opts.TTS_SERVER_IP,
@@ -276,6 +270,12 @@ def voice_assistant(
     list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
     # Output
     save_file: Path | None = opts.SAVE_FILE,
+    # General
+    clipboard: bool = opts.CLIPBOARD,
+    log_level: str = opts.LOG_LEVEL,
+    log_file: str | None = opts.LOG_FILE,
+    quiet: bool = opts.QUIET,
+    config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
 

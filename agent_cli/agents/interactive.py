@@ -431,11 +431,6 @@ def interactive(
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    # General
-    log_level: str = opts.LOG_LEVEL,
-    log_file: str | None = opts.LOG_FILE,
-    quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,
     # TTS parameters
     enable_tts: bool = opts.ENABLE_TTS,
     tts_server_ip: str = opts.TTS_SERVER_IP,
@@ -461,6 +456,11 @@ def interactive(
         help="Number of messages to include in the conversation history."
         " Set to 0 to disable history.",
     ),
+    # General
+    log_level: str = opts.LOG_LEVEL,
+    log_file: str | None = opts.LOG_FILE,
+    quiet: bool = opts.QUIET,
+    config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """An interactive agent that you can talk to."""
     set_config_defaults(ctx, config_file)
