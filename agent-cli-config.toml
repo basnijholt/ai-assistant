@@ -1,8 +1,14 @@
 # Example configuration for agent-cli
 # Copy this file to ~/.config/agent-cli/config.toml or ./agent-cli-config.toml and edit
 
+[defaults]
+model = "devstral:24b"
+ollama_host = "http://192.168.1.143:11434"
+device_name = "logitech,airpods"
+device_output_name = "iloud,airpods,dell,macbook"
+
 [autocorrect]
-# model = "llama3"
+# model = "devstral:24b"
 # ollama_host = "http://localhost:11434"
 # log_level = "INFO"
 # quiet = true
