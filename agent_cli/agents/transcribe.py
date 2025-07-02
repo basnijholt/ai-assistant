@@ -9,6 +9,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 
 import pyperclip
+import typer  # noqa: TC002
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -28,7 +29,6 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
-    import typer
 
 LOGGER = logging.getLogger()
 
