@@ -84,7 +84,7 @@ async def test_voice_assistant_e2e(
             server_port=10300,
             input_device_index=0,
             input_device_name=None,
-            list_devices=False,
+            list_input_devices=False,
         )
         llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
         tts_config = TTSConfig(

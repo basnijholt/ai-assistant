@@ -128,7 +128,7 @@ async def async_main(
     """Main async function, consumes parsed arguments."""
     with pyaudio_context() as p:
         # Handle device listing
-        if asr_config.list_devices:
+        if asr_config.list_input_devices:
             list_input_devices(p, not general_cfg.quiet)
             return
 
@@ -245,7 +245,7 @@ def voice_assistant(
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
-    list_devices: bool = opts.LIST_DEVICES,
+    list_input_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
     # LLM
@@ -310,7 +310,7 @@ def voice_assistant(
             server_port=asr_server_port,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            list_devices=list_devices,
+            list_input_devices=list_input_devices,
         )
         llm_config = LLMConfig(model=model, ollama_host=ollama_host)
         tts_config = TTSConfig(

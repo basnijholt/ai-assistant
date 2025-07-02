@@ -49,7 +49,7 @@ async def test_transcribe_main(
             server_port=12345,
             input_device_index=None,
             input_device_name=None,
-            list_devices=False,
+            list_input_devices=False,
         )
         general_cfg = GeneralConfig(
             log_level="INFO",

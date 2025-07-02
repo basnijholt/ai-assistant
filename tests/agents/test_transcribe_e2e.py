@@ -48,7 +48,7 @@ async def test_transcribe_e2e(
         server_port=10300,
         input_device_index=0,
         input_device_name=None,
-        list_devices=False,
+        list_input_devices=False,
     )
     general_cfg = GeneralConfig(
         log_level="INFO",

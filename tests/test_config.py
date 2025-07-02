@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import tomllib
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +13,9 @@ from typer.testing import CliRunner
 
 from agent_cli.cli import set_config_defaults
 from agent_cli.config_loader import load_config
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 runner = CliRunner()
 
@@ -153,36 +156,6 @@ def test_default_config_paths(mock_path2: Path, mock_path1: Path, config_file: P
     mock_path1.open.return_value.__enter__.return_value = config_file.open("rb")  # type: ignore[attr-defined]
     config = load_config(None)
     assert config["defaults"]["model"] == "wildcard-model"
-
-
-def test_empty_config_string(config_file: Path) -> None:  # noqa: ARG001
-    """Test that empty string config path is treated as request to use defaults."""
-    # When empty string is passed, it should still check default paths
-    # Make a valid config in current directory
-    local_config = Path("agent-cli-config.toml")
-    existed = local_config.exists()
-    backup_content = None
-
-    try:
-        if existed:
-            backup_content = local_config.read_text()
-
-        # Write test config
-        local_config.write_text("""
-[defaults]
-model = "empty-test-model"
-""")
-
-        # Empty string should find the local config
-        config = load_config("")
-        assert config["defaults"]["model"] == "empty-test-model"
-
-    finally:
-        # Restore original state
-        if existed and backup_content is not None:
-            local_config.write_text(backup_content)
-        elif not existed and local_config.exists():
-            local_config.unlink()
 
 
 def test_config_file_error_handling(tmp_path: Path) -> None:

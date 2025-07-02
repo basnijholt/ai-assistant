@@ -79,7 +79,7 @@ def test_format_conversation_for_llm() -> None:
 
 @pytest.mark.asyncio
 async def test_async_main_list_devices(tmp_path: Path) -> None:
-    """Test the async_main function with list_devices=True."""
+    """Test the async_main function with list_input_devices=True."""
     general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
@@ -92,7 +92,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         server_port=1234,
         input_device_index=None,
         input_device_name=None,
-        list_devices=True,
+        list_input_devices=True,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -139,7 +139,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         server_port=1234,
         input_device_index=None,
         input_device_name=None,
-        list_devices=False,
+        list_input_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -189,7 +189,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         server_port=1234,
         input_device_index=1,
         input_device_name=None,
-        list_devices=False,
+        list_input_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(

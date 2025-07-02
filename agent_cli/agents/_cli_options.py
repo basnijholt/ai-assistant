@@ -38,7 +38,7 @@ DEVICE_NAME: str | None = typer.Option(
 )
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
-    "--list-devices",
+    "--list-input-devices",
     help="List available audio input devices and exit.",
     is_eager=True,
 )

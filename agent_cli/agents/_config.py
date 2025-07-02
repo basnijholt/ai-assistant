@@ -25,7 +25,7 @@ class ASRConfig:
     server_port: int
     input_device_index: int | None
     input_device_name: str | None
-    list_devices: bool
+    list_input_devices: bool
 
 
 @dataclass

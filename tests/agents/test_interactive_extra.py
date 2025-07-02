@@ -52,7 +52,7 @@ async def test_handle_conversation_turn_no_instruction():
         server_port=10300,
         input_device_index=None,
         input_device_name=None,
-        list_devices=False,
+        list_input_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -145,7 +145,7 @@ async def test_async_main_exception_handling():
         server_port=10300,
         input_device_index=None,
         input_device_name=None,
-        list_devices=True,
+        list_input_devices=True,
     )  # To trigger an early exit
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(

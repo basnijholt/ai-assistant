@@ -292,7 +292,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                      First matching device   │
 │                                                      is selected.            │
 │                                                      [default: None]         │
-│ --list-devices                                       List available audio    │
+│ --list-input-devices                                       List available audio    │
 │                                                      input devices and exit. │
 │ --asr-server-ip                             TEXT     Wyoming ASR server IP   │
 │                                                      address.                │
@@ -501,7 +501,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       First matching device  │
 │                                                       is selected.           │
 │                                                       [default: None]        │
-│ --list-devices                                        List available audio   │
+│ --list-input-devices                                        List available audio   │
 │                                                       input devices and      │
 │                                                       exit.                  │
 │ --asr-server-ip                              TEXT     Wyoming ASR server IP  │
@@ -657,7 +657,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                 (case-insensitive). First    │
 │                                                 matching device is selected. │
 │                                                 [default: None]              │
-│ --list-devices                                  List available audio input   │
+│ --list-input-devices                                  List available audio input   │
 │                                                 devices and exit.            │
 │ --asr-server-ip                        TEXT     Wyoming ASR server IP        │
 │                                                 address.                     │
