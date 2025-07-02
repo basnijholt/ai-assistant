@@ -296,8 +296,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                      input devices and exit. │
 │ --asr-server-ip                             TEXT     Wyoming ASR server IP   │
 │                                                      address.                │
-│                                                      [default:               │
-│                                                      192.168.1.143]          │
+│                                                      [default: localhost]    │
 │ --asr-server-port                           INTEGER  Wyoming ASR server      │
 │                                                      port.                   │
 │                                                      [default: 10300]        │
@@ -393,7 +392,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --tts-server-ip                TEXT     Wyoming TTS server IP address.       │
-│                                         [default: 192.168.1.143]             │
+│                                         [default: localhost]                 │
 │ --tts-server-port              INTEGER  Wyoming TTS server port.             │
 │                                         [default: 10200]                     │
 │ --voice                        TEXT     Voice name to use for TTS (e.g.,     │
@@ -507,8 +506,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       exit.                  │
 │ --asr-server-ip                              TEXT     Wyoming ASR server IP  │
 │                                                       address.               │
-│                                                       [default:              │
-│                                                       192.168.1.143]         │
+│                                                       [default: localhost]   │
 │ --asr-server-port                            INTEGER  Wyoming ASR server     │
 │                                                       port.                  │
 │                                                       [default: 10300]       │
@@ -538,8 +536,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       [default: no-tts]      │
 │ --tts-server-ip                              TEXT     Wyoming TTS server IP  │
 │                                                       address.               │
-│                                                       [default:              │
-│                                                       192.168.1.143]         │
+│                                                       [default: localhost]   │
 │ --tts-server-port                            INTEGER  Wyoming TTS server     │
 │                                                       port.                  │
 │                                                       [default: 10200]       │
@@ -664,7 +661,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                 devices and exit.            │
 │ --asr-server-ip                        TEXT     Wyoming ASR server IP        │
 │                                                 address.                     │
-│                                                 [default: 192.168.1.143]     │
+│                                                 [default: localhost]         │
 │ --asr-server-port                      INTEGER  Wyoming ASR server port.     │
 │                                                 [default: 10300]             │
 │ --model                -m              TEXT     The Ollama model to use.     │
@@ -690,7 +687,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                 [default: no-tts]            │
 │ --tts-server-ip                        TEXT     Wyoming TTS server IP        │
 │                                                 address.                     │
-│                                                 [default: 192.168.1.143]     │
+│                                                 [default: localhost]         │
 │ --tts-server-port                      INTEGER  Wyoming TTS server port.     │
 │                                                 [default: 10200]             │
 │ --voice                                TEXT     Voice name to use for TTS    │
