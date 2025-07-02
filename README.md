@@ -129,7 +129,13 @@ docker compose -f examples/docker-compose.yml down
 
 ## Installation
 
-Install `agent-cli` using pip:
+Install `agent-cli` using `uv`:
+
+```bash
+uv tools install agent-cli
+```
+
+or using `pip`:
 
 ```bash
 pip install agent-cli
