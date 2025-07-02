@@ -93,7 +93,7 @@ def test_interactive_command_stop_and_status():
     """Test the stop and status flags of the interactive command."""
     runner = CliRunner()
     with patch(
-        "agent_cli.agents.interactive.stop_or_status",
+        "agent_cli.agents.interactive.stop_or_status_or_toggle",
         return_value=True,
     ) as mock_stop_or_status:
         result = runner.invoke(app, ["interactive", "--stop"])

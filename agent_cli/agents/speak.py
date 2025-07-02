@@ -20,7 +20,7 @@ from agent_cli.utils import (
     maybe_live,
     print_input_panel,
     print_with_style,
-    stop_or_status,
+    stop_or_status_or_toggle,
 )
 
 LOGGER = logging.getLogger()
@@ -108,6 +108,7 @@ def speak(
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
+    toggle: bool = opts.TOGGLE,
     # General
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
@@ -127,7 +128,14 @@ def speak(
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
     process_name = "speak"
-    if stop_or_status(process_name, "speak process", stop, status, quiet=general_cfg.quiet):
+    if stop_or_status_or_toggle(
+        process_name,
+        "speak process",
+        stop,
+        status,
+        toggle,
+        quiet=general_cfg.quiet,
+    ):
         return
 
     # Use context manager for PID file management

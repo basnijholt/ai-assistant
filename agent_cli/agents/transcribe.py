@@ -22,7 +22,7 @@ from agent_cli.utils import (
     print_output_panel,
     print_with_style,
     signal_handling_context,
-    stop_or_status,
+    stop_or_status_or_toggle,
 )
 
 if TYPE_CHECKING:
@@ -147,6 +147,7 @@ def transcribe(
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
+    toggle: bool = opts.TOGGLE,
     # General
     clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
@@ -169,7 +170,14 @@ def transcribe(
         clipboard=clipboard,
     )
     process_name = "transcribe"
-    if stop_or_status(process_name, "transcribe", stop, status, quiet=general_cfg.quiet):
+    if stop_or_status_or_toggle(
+        process_name,
+        "transcribe",
+        stop,
+        status,
+        toggle,
+        quiet=general_cfg.quiet,
+    ):
         return
 
     with pyaudio_context() as p:

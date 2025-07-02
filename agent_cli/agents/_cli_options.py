@@ -119,7 +119,13 @@ STATUS: bool = typer.Option(
     "--status",
     help="Check if a background process is running.",
 )
-
+TOGGLE: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--toggle",
+    help="Toggle the background process on/off. "
+    "If the process is running, it will be stopped. "
+    "If the process is not running, it will be started.",
+)
 
 # --- General Options ---
 CLIPBOARD: bool = typer.Option(

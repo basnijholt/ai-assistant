@@ -70,7 +70,7 @@ from agent_cli.utils import (
     print_input_panel,
     print_with_style,
     signal_handling_context,
-    stop_or_status,
+    stop_or_status_or_toggle,
 )
 
 if TYPE_CHECKING:
@@ -253,6 +253,7 @@ def voice_assistant(
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
+    toggle: bool = opts.TOGGLE,
     # General
     clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
@@ -290,7 +291,14 @@ def voice_assistant(
         clipboard=clipboard,
     )
     process_name = "voice-assistant"
-    if stop_or_status(process_name, "voice assistant", stop, status, quiet=general_cfg.quiet):
+    if stop_or_status_or_toggle(
+        process_name,
+        "voice assistant",
+        stop,
+        status,
+        toggle,
+        quiet=general_cfg.quiet,
+    ):
         return
 
     # Use context manager for PID file management

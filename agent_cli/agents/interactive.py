@@ -54,7 +54,7 @@ from agent_cli.utils import (
     print_output_panel,
     print_with_style,
     signal_handling_context,
-    stop_or_status,
+    stop_or_status_or_toggle,
 )
 
 if TYPE_CHECKING:
@@ -429,6 +429,7 @@ def interactive(
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
+    toggle: bool = opts.TOGGLE,
     # General
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
@@ -468,11 +469,12 @@ def interactive(
         clipboard=False,  # Not used in interactive mode
     )
     process_name = "interactive"
-    if stop_or_status(
+    if stop_or_status_or_toggle(
         process_name,
         "interactive agent",
         stop,
         status,
+        toggle,
         quiet=general_cfg.quiet,
     ):
         return

@@ -196,11 +196,12 @@ def signal_handling_context(
         pass
 
 
-def stop_or_status(
+def stop_or_status_or_toggle(
     process_name: str,
     which: str,
     stop: bool,
     status: bool,
+    toggle: bool,
     *,
     quiet: bool = False,
 ) -> bool:
@@ -221,6 +222,14 @@ def stop_or_status(
         elif not quiet:
             print_with_style(f"⚠️ {which.capitalize()} is not running.", style="yellow")
         return True
+
+    if toggle:
+        if process_manager.is_process_running(process_name):
+            if process_manager.kill_process(process_name) and not quiet:
+                print_with_style(f"✅ {which.capitalize()} stopped.")
+            return True
+        if not quiet:
+            print_with_style(f"⚠️ {which.capitalize()} is not running.", style="yellow")
 
     return False
 
