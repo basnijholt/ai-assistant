@@ -41,7 +41,7 @@ from agent_cli.audio import (
     output_device,
     pyaudio_context,
 )
-from agent_cli.cli import app, set_config_defaults, setup_logging
+from agent_cli.cli import app, setup_logging
 from agent_cli.llm import get_llm_response
 from agent_cli.utils import (
     InteractiveStopEvent,
@@ -416,7 +416,6 @@ async def async_main(
 
 @app.command("interactive")
 def interactive(
-    ctx: typer.Context,
     *,
     # ASR
     device_index: int | None = opts.DEVICE_INDEX,
@@ -460,10 +459,9 @@ def interactive(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,
+    config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
     """An interactive agent that you can talk to."""
-    set_config_defaults(ctx, config_file)
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(
         log_level=log_level,

@@ -28,7 +28,7 @@ import typer
 
 import agent_cli.agents._cli_options as opts
 from agent_cli.agents._config import GeneralConfig, LLMConfig
-from agent_cli.cli import app, set_config_defaults, setup_logging
+from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
 from agent_cli.utils import (
     create_status,
@@ -183,7 +183,6 @@ async def async_autocorrect(
 
 @app.command("autocorrect")
 def autocorrect(
-    ctx: typer.Context,
     *,
     text: str | None = typer.Argument(
         None,
@@ -194,10 +193,9 @@ def autocorrect(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,
+    config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
     """Correct text from clipboard using a local Ollama model."""
-    set_config_defaults(ctx, config_file)
     llm_config = LLMConfig(model=model, ollama_host=ollama_host)
     general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
     asyncio.run(

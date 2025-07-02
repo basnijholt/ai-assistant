@@ -128,11 +128,21 @@ TOGGLE: bool = typer.Option(
 )
 
 # --- General Options ---
+
+
+def _conf_callback(ctx: typer.Context, param: typer.CallbackParam, value: str) -> str:  # noqa: ARG001
+    from agent_cli.cli import set_config_defaults
+
+    set_config_defaults(ctx, value)
+    return value
+
+
 CONFIG_FILE: str | None = typer.Option(
     None,
     "--config",
     help="Path to a TOML configuration file.",
     is_eager=True,
+    callback=_conf_callback,
 )
 CLIPBOARD: bool = typer.Option(
     True,  # noqa: FBT003

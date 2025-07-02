@@ -24,7 +24,7 @@ def test_voice_assistant_agent(
     """Test the voice assistant agent."""
     mock_get_clipboard_text.return_value = "hello"
     mock_transcribe_audio.return_value = "world"
-    result = runner.invoke(app, ["voice-assistant"])
+    result = runner.invoke(app, ["voice-assistant", "--config", "missing.toml"])
     assert result.exit_code == 0
     mock_pyaudio_context.assert_called_once()
     mock_process_and_update_clipboard.assert_called_once()
