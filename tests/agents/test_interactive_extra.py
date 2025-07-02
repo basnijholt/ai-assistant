@@ -28,15 +28,15 @@ def test_setup_output_device():
         patch("agent_cli.audio.output_device", return_value=(0, "Test Output Device")),
         patch("agent_cli.utils.console") as mock_console,
     ):
-        device_index, device_name = _setup_output_device(
+        input_device_index, input_device_name = _setup_output_device(
             mock_p,
             quiet=False,
-            device_name="Test Output Device",
-            device_index=0,
+            input_device_name="Test Output Device",
+            input_device_index=0,
         )
 
-    assert device_index == 0
-    assert device_name == "Test Output Device"
+    assert input_device_index == 0
+    assert input_device_name == "Test Output Device"
     mock_console.print.assert_called_once()
 
 
@@ -50,8 +50,8 @@ async def test_handle_conversation_turn_no_instruction():
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=10300,
-        device_index=None,
-        device_name=None,
+        input_device_index=None,
+        input_device_name=None,
         list_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
@@ -143,8 +143,8 @@ async def test_async_main_exception_handling():
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=10300,
-        device_index=None,
-        device_name=None,
+        input_device_index=None,
+        input_device_name=None,
         list_devices=True,
     )  # To trigger an early exit
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")

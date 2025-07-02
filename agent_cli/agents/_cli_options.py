@@ -28,12 +28,12 @@ LLM: bool = typer.Option(
 # --- ASR (Audio) Options ---
 DEVICE_INDEX: int | None = typer.Option(
     None,
-    "--device-index",
+    "--input-device-index",
     help="Index of the PyAudio input device to use.",
 )
 DEVICE_NAME: str | None = typer.Option(
     None,
-    "--device-name",
+    "--input-device-name",
     help="Device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
 )
 LIST_DEVICES: bool = typer.Option(

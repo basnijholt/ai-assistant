@@ -129,11 +129,11 @@ def print_with_style(message: str, style: str = "bold green") -> None:
     console.print(f"[{style}]{message}[/{style}]")
 
 
-def print_device_index(device_index: int | None, device_name: str | None) -> None:
+def print_device_index(input_device_index: int | None, input_device_name: str | None) -> None:
     """Prints the device index."""
-    if device_index is not None:
-        name = device_name or "Unknown Device"
-        print_with_style(f"Using {name} device with index {device_index}")
+    if input_device_index is not None:
+        name = input_device_name or "Unknown Device"
+        print_with_style(f"Using {name} device with index {input_device_index}")
 
 
 def get_clipboard_text(*, quiet: bool = False) -> str | None:

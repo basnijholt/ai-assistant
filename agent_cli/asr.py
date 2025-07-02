@@ -127,7 +127,7 @@ async def receive_text(
 async def transcribe_audio(
     asr_server_ip: str,
     asr_server_port: int,
-    device_index: int | None,
+    input_device_index: int | None,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
@@ -142,7 +142,7 @@ async def transcribe_audio(
     Args:
         asr_server_ip: Wyoming server IP
         asr_server_port: Wyoming server port
-        device_index: Audio input device index
+        input_device_index: Audio input device index
         logger: Logger instance
         p: PyAudio instance
         stop_event: Event to stop recording
@@ -169,7 +169,7 @@ async def transcribe_audio(
                 rate=config.PYAUDIO_RATE,
                 input=True,
                 frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=device_index,
+                input_device_index=input_device_index,
             ) as stream:
                 send_task = asyncio.create_task(
                     send_audio(

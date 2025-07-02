@@ -82,7 +82,7 @@ async def async_main(
             transcript = await asr.transcribe_audio(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,
-                device_index=asr_config.device_index,
+                input_device_index=asr_config.input_device_index,
                 logger=LOGGER,
                 p=p,
                 stop_event=stop_event,
@@ -141,8 +141,8 @@ async def async_main(
 def transcribe(
     *,
     # ASR
-    device_index: int | None = opts.DEVICE_INDEX,
-    device_name: str | None = opts.DEVICE_NAME,
+    input_device_index: int | None = opts.DEVICE_INDEX,
+    input_device_name: str | None = opts.DEVICE_NAME,
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
@@ -164,8 +164,8 @@ def transcribe(
     """Wyoming ASR Client for streaming microphone audio to a transcription server.
 
     Usage:
-    - Run in foreground: agent-cli transcribe --device-index 1
-    - Run in background: agent-cli transcribe --device-index 1 &
+    - Run in foreground: agent-cli transcribe --input-device-index 1
+    - Run in background: agent-cli transcribe --input-device-index 1 &
     - Check status: agent-cli transcribe --status
     - Stop background process: agent-cli transcribe --stop
     """
@@ -191,17 +191,21 @@ def transcribe(
         if list_devices:
             list_input_devices(p, quiet)
             return
-        device_index, device_name = input_device(p, device_name, device_index)
+        input_device_index, input_device_name = input_device(
+            p,
+            input_device_name,
+            input_device_index,
+        )
         if not quiet:
-            print_device_index(device_index, device_name)
+            print_device_index(input_device_index, input_device_name)
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
             asr_config = ASRConfig(
                 server_ip=asr_server_ip,
                 server_port=asr_server_port,
-                device_index=device_index,
-                device_name=device_name,
+                input_device_index=input_device_index,
+                input_device_name=input_device_name,
                 list_devices=list_devices,
             )
             llm_config = LLMConfig(model=model, ollama_host=ollama_host)

@@ -2,9 +2,9 @@
 # Copy this file to ~/.config/agent-cli/config.toml or ./agent-cli-config.toml and edit
 
 [defaults]
-model = "devstral:24b"
-ollama_host = "http://192.168.1.143:11434"
-device_name = "logitech,airpods"
+model = "gemma3:4b"
+ollama_host = "http://localhost:11434"
+input_device_name = "logitech,airpods"
 device_output_name = "iloud,airpods,dell,macbook"
 
 [autocorrect]
@@ -14,7 +14,7 @@ device_output_name = "iloud,airpods,dell,macbook"
 # quiet = true
 
 [interactive]
-# device_name = "MacBook Pro Microphone"
+# input_device_name = "MacBook Pro Microphone"
 # model = "llama3"
 # ollama_host = "http://localhost:11434"
 # enable_tts = true
@@ -27,12 +27,12 @@ device_output_name = "iloud,airpods,dell,macbook"
 # tts_speed = 1.0
 
 [transcribe]
-# device_name = "MacBook Pro Microphone"
+# input_device_name = "MacBook Pro Microphone"
 # llm = true
 # model = "llama3"
 
 [voice-assistant]
-# device_name = "MacBook Pro Microphone"
+# input_device_name = "MacBook Pro Microphone"
 # model = "llama3"
 # enable_tts = true
 # output_device_name = "MacBook Pro Speakers"

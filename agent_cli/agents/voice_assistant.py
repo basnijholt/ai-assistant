@@ -27,7 +27,7 @@ To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
 
 4. Else Actions (if process is not running):
    - Display Text Briefly: "📋 Listening for command..."
-   - Execute Shell Script: voice-assistant --device-index 1 --quiet &
+   - Execute Shell Script: voice-assistant --input-device-index 1 --quiet &
    - Select "Display results in a notification"
 
 This approach uses standard Unix background processes (&) instead of Python daemons!
@@ -108,13 +108,13 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 def _setup_input_device(
     p: pyaudio.PyAudio,
     quiet: bool,
-    device_name: str | None,
-    device_index: int | None,
+    input_device_name: str | None,
+    input_device_index: int | None,
 ) -> tuple[int | None, str | None]:
-    device_index, device_name = input_device(p, device_name, device_index)
+    input_device_index, input_device_name = input_device(p, input_device_name, input_device_index)
     if not quiet:
-        print_device_index(device_index, device_name)
-    return device_index, device_name
+        print_device_index(input_device_index, input_device_name)
+    return input_device_index, input_device_name
 
 
 async def async_main(
@@ -137,11 +137,11 @@ async def async_main(
             return
 
         # Setup input device for ASR
-        device_index, device_name = _setup_input_device(
+        input_device_index, input_device_name = _setup_input_device(
             p,
             general_cfg.quiet,
-            asr_config.device_name,
-            asr_config.device_index,
+            asr_config.input_device_name,
+            asr_config.input_device_index,
         )
 
         # Setup output device for TTS if enabled
@@ -185,7 +185,7 @@ async def async_main(
             instruction = await asr.transcribe_audio(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,
-                device_index=device_index,
+                input_device_index=input_device_index,
                 logger=LOGGER,
                 p=p,
                 stop_event=stop_event,
@@ -243,8 +243,8 @@ async def async_main(
 def voice_assistant(
     *,
     # ASR
-    device_index: int | None = opts.DEVICE_INDEX,
-    device_name: str | None = opts.DEVICE_NAME,
+    input_device_index: int | None = opts.DEVICE_INDEX,
+    input_device_name: str | None = opts.DEVICE_NAME,
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
@@ -278,8 +278,8 @@ def voice_assistant(
     """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
 
     Usage:
-    - Run in foreground: agent-cli voice-assistant --device-index 1
-    - Run in background: agent-cli voice-assistant --device-index 1 &
+    - Run in foreground: agent-cli voice-assistant --input-device-index 1
+    - Run in background: agent-cli voice-assistant --input-device-index 1 &
     - Check status: agent-cli voice-assistant --status
     - Stop background process: agent-cli voice-assistant --stop
     - List output devices: agent-cli voice-assistant --list-output-devices
@@ -308,8 +308,8 @@ def voice_assistant(
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
             server_port=asr_server_port,
-            device_index=device_index,
-            device_name=device_name,
+            input_device_index=input_device_index,
+            input_device_name=input_device_name,
             list_devices=list_devices,
         )
         llm_config = LLMConfig(model=model, ollama_host=ollama_host)

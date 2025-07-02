@@ -127,26 +127,26 @@ USER_MESSAGE_WITH_CONTEXT_TEMPLATE = """
 def _setup_input_device(
     p: pyaudio.PyAudio,
     quiet: bool,
-    device_name: str | None,
-    device_index: int | None,
+    input_device_name: str | None,
+    input_device_index: int | None,
 ) -> tuple[int | None, str | None]:
-    device_index, device_name = input_device(p, device_name, device_index)
+    input_device_index, input_device_name = input_device(p, input_device_name, input_device_index)
     if not quiet:
-        print_device_index(device_index, device_name)
-    return device_index, device_name
+        print_device_index(input_device_index, input_device_name)
+    return input_device_index, input_device_name
 
 
 def _setup_output_device(
     p: pyaudio.PyAudio,
     quiet: bool,
-    device_name: str | None,
-    device_index: int | None,
+    input_device_name: str | None,
+    input_device_index: int | None,
 ) -> tuple[int | None, str | None]:
-    device_index, device_name = output_device(p, device_name, device_index)
-    if not quiet and device_index is not None:
-        msg = f"🔊 TTS output device [bold yellow]{device_index}[/bold yellow] ([italic]{device_name}[/italic])"
+    input_device_index, input_device_name = output_device(p, input_device_name, input_device_index)
+    if not quiet and input_device_index is not None:
+        msg = f"🔊 TTS output device [bold yellow]{input_device_index}[/bold yellow] ([italic]{input_device_name}[/italic])"
         print_with_style(msg)
-    return device_index, device_name
+    return input_device_index, input_device_name
 
 
 def _load_conversation_history(history_file: Path, last_n_messages: int) -> list[ConversationEntry]:
@@ -211,7 +211,7 @@ async def _handle_conversation_turn(
     instruction = await asr.transcribe_audio(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
-        device_index=asr_config.device_index,
+        input_device_index=asr_config.input_device_index,
         logger=LOGGER,
         p=p,
         stop_event=stop_event,
@@ -362,13 +362,13 @@ async def async_main(
                 return
 
             # Setup devices
-            device_index, _ = _setup_input_device(
+            input_device_index, _ = _setup_input_device(
                 p,
                 general_cfg.quiet,
-                asr_config.device_name,
-                asr_config.device_index,
+                asr_config.input_device_name,
+                asr_config.input_device_index,
             )
-            asr_config.device_index = device_index  # Update with the selected index
+            asr_config.input_device_index = input_device_index  # Update with the selected index
 
             if tts_config.enabled:
                 tts_output_device_index, _ = _setup_output_device(
@@ -418,8 +418,8 @@ async def async_main(
 def interactive(
     *,
     # ASR
-    device_index: int | None = opts.DEVICE_INDEX,
-    device_name: str | None = opts.DEVICE_NAME,
+    input_device_index: int | None = opts.DEVICE_INDEX,
+    input_device_name: str | None = opts.DEVICE_NAME,
     list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
@@ -485,8 +485,8 @@ def interactive(
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
             server_port=asr_server_port,
-            device_index=device_index,
-            device_name=device_name,
+            input_device_index=input_device_index,
+            input_device_name=input_device_name,
             list_devices=list_devices,
         )
         llm_config = LLMConfig(model=model, ollama_host=ollama_host)

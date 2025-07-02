@@ -82,8 +82,8 @@ async def test_voice_assistant_e2e(
         asr_config = ASRConfig(
             server_ip="mock-asr-host",
             server_port=10300,
-            device_index=0,
-            device_name=None,
+            input_device_index=0,
+            input_device_name=None,
             list_devices=False,
         )
         llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")

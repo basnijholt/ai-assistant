@@ -90,8 +90,8 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=1234,
-        device_index=None,
-        device_name=None,
+        input_device_index=None,
+        input_device_name=None,
         list_devices=True,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
@@ -137,8 +137,8 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=1234,
-        device_index=None,
-        device_name=None,
+        input_device_index=None,
+        input_device_name=None,
         list_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
@@ -187,8 +187,8 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=1234,
-        device_index=1,
-        device_name=None,
+        input_device_index=1,
+        input_device_name=None,
         list_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")

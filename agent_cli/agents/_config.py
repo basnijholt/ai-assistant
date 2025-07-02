@@ -23,8 +23,8 @@ class ASRConfig:
 
     server_ip: str
     server_port: int
-    device_index: int | None
-    device_name: str | None
+    input_device_index: int | None
+    input_device_name: str | None
     list_devices: bool
 
 

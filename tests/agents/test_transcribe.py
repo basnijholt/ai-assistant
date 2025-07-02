@@ -47,8 +47,8 @@ async def test_transcribe_main(
         asr_config = ASRConfig(
             server_ip="localhost",
             server_port=12345,
-            device_index=None,
-            device_name=None,
+            input_device_index=None,
+            input_device_name=None,
             list_devices=False,
         )
         general_cfg = GeneralConfig(

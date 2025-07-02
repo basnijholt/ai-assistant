@@ -60,11 +60,11 @@ class MockPyAudio:
         """Get number of audio devices."""
         return len(self.device_info)
 
-    def get_device_info_by_index(self, device_index: int) -> dict[str, Any]:
+    def get_device_info_by_index(self, input_device_index: int) -> dict[str, Any]:
         """Get device info by index."""
-        if 0 <= device_index < len(self.device_info):
-            return self.device_info[device_index]
-        msg = f"Invalid device index: {device_index}"
+        if 0 <= input_device_index < len(self.device_info):
+            return self.device_info[input_device_index]
+        msg = f"Invalid device index: {input_device_index}"
         raise ValueError(msg)
 
     def get_format_from_width(self, width: int) -> str:

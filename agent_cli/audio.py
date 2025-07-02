@@ -60,12 +60,12 @@ def get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
     return devices
 
 
-def get_device_by_index(p: pyaudio.PyAudio, device_index: int) -> dict:
+def get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
     """Get device info by index from cached device list.
 
     Args:
         p: PyAudio instance
-        device_index: Device index to look up
+        input_device_index: Device index to look up
 
     Returns:
         Device info dictionary
@@ -75,9 +75,9 @@ def get_device_by_index(p: pyaudio.PyAudio, device_index: int) -> dict:
 
     """
     for device in get_all_devices(p):
-        if device["index"] == device_index:
+        if device["index"] == input_device_index:
             return device
-    msg = f"Device index {device_index} not found"
+    msg = f"Device index {input_device_index} not found"
     raise ValueError(msg)
 
 
@@ -120,20 +120,20 @@ def list_all_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
 
 def _in_or_out_device(
     p: pyaudio.PyAudio,
-    device_name: str | None,
-    device_index: int | None,
+    input_device_name: str | None,
+    input_device_index: int | None,
     key: str,
     what: str,
 ) -> tuple[int | None, str | None]:
     """Find an input device by a prioritized, comma-separated list of keywords."""
-    if device_name is None and device_index is None:
+    if input_device_name is None and input_device_index is None:
         return None, None
 
-    if device_index is not None:
-        info = get_device_by_index(p, device_index)
-        return device_index, info.get("name")
-    assert device_name is not None
-    search_terms = [term.strip().lower() for term in device_name.split(",") if term.strip()]
+    if input_device_index is not None:
+        info = get_device_by_index(p, input_device_index)
+        return input_device_index, info.get("name")
+    assert input_device_name is not None
+    search_terms = [term.strip().lower() for term in input_device_name.split(",") if term.strip()]
 
     if not search_terms:
         msg = "Device name string is empty or contains only whitespace."
@@ -150,23 +150,29 @@ def _in_or_out_device(
             if term in name.lower():
                 return index, name
 
-    msg = f"No {what} device found matching any of the keywords in {device_name!r}"
+    msg = f"No {what} device found matching any of the keywords in {input_device_name!r}"
     raise ValueError(msg)
 
 
 def input_device(
     p: pyaudio.PyAudio,
-    device_name: str | None,
-    device_index: int | None,
+    input_device_name: str | None,
+    input_device_index: int | None,
 ) -> tuple[int | None, str | None]:
     """Find an input device by a prioritized, comma-separated list of keywords."""
-    return _in_or_out_device(p, device_name, device_index, "maxInputChannels", "input")
+    return _in_or_out_device(p, input_device_name, input_device_index, "maxInputChannels", "input")
 
 
 def output_device(
     p: pyaudio.PyAudio,
-    device_name: str | None,
-    device_index: int | None,
+    input_device_name: str | None,
+    input_device_index: int | None,
 ) -> tuple[int | None, str | None]:
     """Find an output device by a prioritized, comma-separated list of keywords."""
-    return _in_or_out_device(p, device_name, device_index, "maxOutputChannels", "output")
+    return _in_or_out_device(
+        p,
+        input_device_name,
+        input_device_index,
+        "maxOutputChannels",
+        "output",
+    )

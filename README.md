@@ -219,8 +219,8 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                              devstral:24b.                                   │
 │                              [default: devstral:24b]                         │
 │ --ollama-host          TEXT  The Ollama server host. Default is              │
-│                              http://localhost:11434.                         │
-│                              [default: http://localhost:11434]               │
+│                              http://pc.local:11434.                          │
+│                              [default: http://pc.local:11434]                │
 │ --log-level            TEXT  Set logging level. [default: WARNING]           │
 │ --log-file             TEXT  Path to a file to write logs to.                │
 │                              [default: None]                                 │
@@ -250,8 +250,8 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 
 **How to Use It:**
 
-- **Simple Transcription**: `agent-cli transcribe --device-index 1`
-- **With LLM Cleanup**: `agent-cli transcribe --device-index 1 --llm`
+- **Simple Transcription**: `agent-cli transcribe --input-device-index 1`
+- **With LLM Cleanup**: `agent-cli transcribe --input-device-index 1 --llm`
 
 <details>
 <summary>See the output of <code>agent-cli transcribe --help</code></summary>
@@ -272,65 +272,72 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 
  Wyoming ASR Client for streaming microphone audio to a transcription server.
 
- Usage: - Run in foreground: agent-cli transcribe --device-index 1 - Run in
- background: agent-cli transcribe --device-index 1 & - Check status: agent-cli
- transcribe --status - Stop background process: agent-cli transcribe --stop
+ Usage: - Run in foreground: agent-cli transcribe --input-device-index 1 - Run
+ in background: agent-cli transcribe --input-device-index 1 & - Check status:
+ agent-cli transcribe --status - Stop background process: agent-cli transcribe
+ --stop
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --device-index                           INTEGER  Index of the PyAudio input │
-│                                                   device to use.             │
-│                                                   [default: None]            │
-│ --device-name                            TEXT     Device name keywords for   │
-│                                                   partial matching. Supports │
-│                                                   comma-separated list where │
-│                                                   each term can partially    │
-│                                                   match device names         │
-│                                                   (case-insensitive). First  │
-│                                                   matching device is         │
-│                                                   selected.                  │
-│                                                   [default: None]            │
-│ --list-devices                                    List available audio input │
-│                                                   devices and exit.          │
-│ --asr-server-ip                          TEXT     Wyoming ASR server IP      │
-│                                                   address.                   │
-│                                                   [default: 192.168.1.143]   │
-│ --asr-server-port                        INTEGER  Wyoming ASR server port.   │
-│                                                   [default: 10300]           │
-│ --model            -m                    TEXT     The Ollama model to use.   │
-│                                                   Default is devstral:24b.   │
-│                                                   [default: devstral:24b]    │
-│ --ollama-host                            TEXT     The Ollama server host.    │
-│                                                   Default is                 │
-│                                                   http://localhost:11434.    │
-│                                                   [default:                  │
-│                                                   http://localhost:11434]    │
-│ --llm                  --no-llm                   Use an LLM to process the  │
-│                                                   transcript.                │
-│                                                   [default: no-llm]          │
-│ --stop                                            Stop any running           │
-│                                                   background process.        │
-│ --status                                          Check if a background      │
-│                                                   process is running.        │
-│ --toggle                                          Toggle the background      │
-│                                                   process on/off. If the     │
-│                                                   process is running, it     │
-│                                                   will be stopped. If the    │
-│                                                   process is not running, it │
-│                                                   will be started.           │
-│ --clipboard            --no-clipboard             Copy result to clipboard.  │
-│                                                   [default: clipboard]       │
-│ --log-level                              TEXT     Set logging level.         │
-│                                                   [default: WARNING]         │
-│ --log-file                               TEXT     Path to a file to write    │
-│                                                   logs to.                   │
-│                                                   [default: None]            │
-│ --quiet            -q                             Suppress console output    │
-│                                                   from rich.                 │
-│ --config                                 TEXT     Path to a TOML             │
-│                                                   configuration file.        │
-│                                                   [default: None]            │
-│ --help                                            Show this message and      │
-│                                                   exit.                      │
+│ --input-device-index                        INTEGER  Index of the PyAudio    │
+│                                                      input device to use.    │
+│                                                      [default: None]         │
+│ --input-device-name                         TEXT     Device name keywords    │
+│                                                      for partial matching.   │
+│                                                      Supports                │
+│                                                      comma-separated list    │
+│                                                      where each term can     │
+│                                                      partially match device  │
+│                                                      names                   │
+│                                                      (case-insensitive).     │
+│                                                      First matching device   │
+│                                                      is selected.            │
+│                                                      [default: None]         │
+│ --list-devices                                       List available audio    │
+│                                                      input devices and exit. │
+│ --asr-server-ip                             TEXT     Wyoming ASR server IP   │
+│                                                      address.                │
+│                                                      [default:               │
+│                                                      192.168.1.143]          │
+│ --asr-server-port                           INTEGER  Wyoming ASR server      │
+│                                                      port.                   │
+│                                                      [default: 10300]        │
+│ --model               -m                    TEXT     The Ollama model to     │
+│                                                      use. Default is         │
+│                                                      devstral:24b.           │
+│                                                      [default: devstral:24b] │
+│ --ollama-host                               TEXT     The Ollama server host. │
+│                                                      Default is              │
+│                                                      http://pc.local:11434.  │
+│                                                      [default:               │
+│                                                      http://pc.local:11434]  │
+│ --llm                     --no-llm                   Use an LLM to process   │
+│                                                      the transcript.         │
+│                                                      [default: no-llm]       │
+│ --stop                                               Stop any running        │
+│                                                      background process.     │
+│ --status                                             Check if a background   │
+│                                                      process is running.     │
+│ --toggle                                             Toggle the background   │
+│                                                      process on/off. If the  │
+│                                                      process is running, it  │
+│                                                      will be stopped. If the │
+│                                                      process is not running, │
+│                                                      it will be started.     │
+│ --clipboard               --no-clipboard             Copy result to          │
+│                                                      clipboard.              │
+│                                                      [default: clipboard]    │
+│ --log-level                                 TEXT     Set logging level.      │
+│                                                      [default: WARNING]      │
+│ --log-file                                  TEXT     Path to a file to write │
+│                                                      logs to.                │
+│                                                      [default: None]         │
+│ --quiet               -q                             Suppress console output │
+│                                                      from rich.              │
+│ --config                                    TEXT     Path to a TOML          │
+│                                                      configuration file.     │
+│                                                      [default: None]         │
+│ --help                                               Show this message and   │
+│                                                      exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -473,18 +480,18 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
  Interact with clipboard text via a voice command using Wyoming and an Ollama
  LLM.
 
- Usage: - Run in foreground: agent-cli voice-assistant --device-index 1 - Run
- in background: agent-cli voice-assistant --device-index 1 & - Check status:
- agent-cli voice-assistant --status - Stop background process: agent-cli
- voice-assistant --stop - List output devices: agent-cli voice-assistant
- --list-output-devices - Save TTS to file: agent-cli voice-assistant --tts
- --save-file response.wav
+ Usage: - Run in foreground: agent-cli voice-assistant --input-device-index 1 -
+ Run in background: agent-cli voice-assistant --input-device-index 1 & - Check
+ status: agent-cli voice-assistant --status - Stop background process:
+ agent-cli voice-assistant --stop - List output devices: agent-cli
+ voice-assistant --list-output-devices - Save TTS to file: agent-cli
+ voice-assistant --tts --save-file response.wav
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --device-index                               INTEGER  Index of the PyAudio   │
+│ --input-device-index                         INTEGER  Index of the PyAudio   │
 │                                                       input device to use.   │
 │                                                       [default: None]        │
-│ --device-name                                TEXT     Device name keywords   │
+│ --input-device-name                          TEXT     Device name keywords   │
 │                                                       for partial matching.  │
 │                                                       Supports               │
 │                                                       comma-separated list   │
@@ -512,9 +519,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       devstral:24b]          │
 │ --ollama-host                                TEXT     The Ollama server      │
 │                                                       host. Default is       │
-│                                                       http://localhost:1143… │
+│                                                       http://pc.local:11434. │
 │                                                       [default:              │
-│                                                       http://localhost:1143… │
+│                                                       http://pc.local:11434] │
 │ --stop                                                Stop any running       │
 │                                                       background process.    │
 │ --status                                              Check if a background  │
@@ -615,7 +622,7 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 
 **How to Use It:**
 
-- **Start the agent**: `agent-cli interactive --device-index 1 --tts`
+- **Start the agent**: `agent-cli interactive --input-device-index 1 --tts`
 - **Have a conversation**:
   - _You_: "Read the pyproject.toml file and tell me the project version."
   - _AI_: (Reads file) "The project version is 0.1.0."
@@ -642,10 +649,10 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --device-index                         INTEGER  Index of the PyAudio input   │
+│ --input-device-index                   INTEGER  Index of the PyAudio input   │
 │                                                 device to use.               │
 │                                                 [default: None]              │
-│ --device-name                          TEXT     Device name keywords for     │
+│ --input-device-name                    TEXT     Device name keywords for     │
 │                                                 partial matching. Supports   │
 │                                                 comma-separated list where   │
 │                                                 each term can partially      │
@@ -665,9 +672,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                 [default: devstral:24b]      │
 │ --ollama-host                          TEXT     The Ollama server host.      │
 │                                                 Default is                   │
-│                                                 http://localhost:11434.      │
+│                                                 http://pc.local:11434.       │
 │                                                 [default:                    │
-│                                                 http://localhost:11434]      │
+│                                                 http://pc.local:11434]       │
 │ --stop                                          Stop any running background  │
 │                                                 process.                     │
 │ --status                                        Check if a background        │
