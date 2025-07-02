@@ -24,16 +24,8 @@ app = typer.Typer(
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
-    config: str | None = typer.Option(
-        None,
-        "--config",
-        "-c",
-        help="Path to the configuration file. If not provided, the tool will look in "
-        "~/.config/agent-cli/config.toml and ./agent-cli-config.toml",
-    ),
 ) -> None:
     """A suite of AI-powered tools."""
-    set_config_defaults(ctx, config)
     if ctx.invoked_subcommand is None:
         console.print("[bold red]No command specified.[/bold red]")
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
