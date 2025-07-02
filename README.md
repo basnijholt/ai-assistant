@@ -215,7 +215,7 @@ An example configuration file is provided in `agent-cli-config.toml.example`.
 │                              [default: devstral:24b]                         │
 │ --ollama-host          TEXT  The Ollama server host. Default is              │
 │                              http://localhost:11434.                         │
-│                              [default: http://localhost:11434]               │
+│                              [default: http://192.168.1.143:11434]           │
 │ --log-level            TEXT  Set logging level. [default: WARNING]           │
 │ --log-file             TEXT  Path to a file to write logs to.                │
 │                              [default: None]                                 │
@@ -283,7 +283,8 @@ An example configuration file is provided in `agent-cli-config.toml.example`.
 │                                                   (case-insensitive). First  │
 │                                                   matching device is         │
 │                                                   selected.                  │
-│                                                   [default: None]            │
+│                                                   [default:                  │
+│                                                   logitech,airpods]          │
 │ --list-devices                                    List available audio input │
 │                                                   devices and exit.          │
 │ --asr-server-ip                          TEXT     Wyoming ASR server IP      │
@@ -298,7 +299,7 @@ An example configuration file is provided in `agent-cli-config.toml.example`.
 │                                                   Default is                 │
 │                                                   http://localhost:11434.    │
 │                                                   [default:                  │
-│                                                   http://localhost:11434]    │
+│                                                   http://192.168.1.143:1143… │
 │ --llm                  --no-llm                   Use an LLM to process the  │
 │                                                   transcript.                │
 │                                                   [default: no-llm]          │
@@ -489,7 +490,8 @@ An example configuration file is provided in `agent-cli-config.toml.example`.
 │                                                       (case-insensitive).    │
 │                                                       First matching device  │
 │                                                       is selected.           │
-│                                                       [default: None]        │
+│                                                       [default:              │
+│                                                       logitech,airpods]      │
 │ --list-devices                                        List available audio   │
 │                                                       input devices and      │
 │                                                       exit.                  │
@@ -509,7 +511,7 @@ An example configuration file is provided in `agent-cli-config.toml.example`.
 │                                                       host. Default is       │
 │                                                       http://localhost:1143… │
 │                                                       [default:              │
-│                                                       http://localhost:1143… │
+│                                                       http://192.168.1.143:… │
 │ --stop                                                Stop any running       │
 │                                                       background process.    │
 │ --status                                              Check if a background  │
@@ -647,7 +649,7 @@ An example configuration file is provided in `agent-cli-config.toml.example`.
 │                                                 match device names           │
 │                                                 (case-insensitive). First    │
 │                                                 matching device is selected. │
-│                                                 [default: None]              │
+│                                                 [default: logitech,airpods]  │
 │ --list-devices                                  List available audio input   │
 │                                                 devices and exit.            │
 │ --asr-server-ip                        TEXT     Wyoming ASR server IP        │
@@ -662,7 +664,7 @@ An example configuration file is provided in `agent-cli-config.toml.example`.
 │                                                 Default is                   │
 │                                                 http://localhost:11434.      │
 │                                                 [default:                    │
-│                                                 http://localhost:11434]      │
+│                                                 http://192.168.1.143:11434]  │
 │ --stop                                          Stop any running background  │
 │                                                 process.                     │
 │ --status                                        Check if a background        │
