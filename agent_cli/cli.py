@@ -22,8 +22,18 @@ app = typer.Typer(
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context) -> None:
+def main(
+    ctx: typer.Context,
+    config: str | None = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to the configuration file. If not provided, the tool will look in "
+        "~/.config/agent-cli/config.toml and ./agent-cli-config.toml",
+    ),
+) -> None:
     """A suite of AI-powered tools."""
+    set_config_defaults(ctx, config)
     if ctx.invoked_subcommand is None:
         console.print("[bold red]No command specified.[/bold red]")
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
@@ -35,9 +45,24 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
     """Set the default values for the CLI based on the config file."""
     config = load_config(config_file)
     wildcard_config = config.get("defaults", {})
+
+    # If there's no subcommand, we can just set the default map for the main command
+    if not ctx.invoked_subcommand:
+        ctx.default_map = wildcard_config
+        return
+
     command_config = config.get(ctx.invoked_subcommand, {})
     # Merge wildcard and command-specific configs, with command-specific taking precedence
-    ctx.default_map = dict(wildcard_config, **command_config)
+    defaults = dict(wildcard_config, **command_config)
+
+    # The recommended way to set defaults dynamically is to update the command's parameters
+    if ctx.invoked_subcommand in ctx.command.commands:
+        command = ctx.command.commands[ctx.invoked_subcommand]
+        for param in command.params:
+            if param.name in defaults:
+                # This callback runs before parsing for the subcommand,
+                # so we can set the default value for the parameter.
+                param.default = defaults[param.name]
 
 
 def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
