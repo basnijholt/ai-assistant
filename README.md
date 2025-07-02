@@ -37,7 +37,8 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 </details>
 
-> [!IMPORTANT] > **Local and Private by Design**
+> [!IMPORTANT]
+> **Local and Private by Design**
 > All agents in this toolkit are designed to run **100% locally**. Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API. This ensures your privacy and allows the tools to work completely offline.
 
 ## Features
@@ -122,8 +123,7 @@ To stop the services, run:
 docker compose -f examples/docker-compose.yml down
 ```
 
-> [!WARNING]
-> The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-assistant`, or `interactive` agents, you may need to increase the memory allocated to Docker.
+> ⚠️ The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-assistant`, or `interactive` agents, you may need to increase the memory allocated to Docker.
 
 </details>
 
