@@ -219,8 +219,8 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                              devstral:24b.                                   │
 │                              [default: devstral:24b]                         │
 │ --ollama-host          TEXT  The Ollama server host. Default is              │
-│                              http://pc.local:11434.                          │
-│                              [default: http://pc.local:11434]                │
+│                              http://localhost:11434.                         │
+│                              [default: http://localhost:11434]               │
 │ --log-level            TEXT  Set logging level. [default: WARNING]           │
 │ --log-file             TEXT  Path to a file to write logs to.                │
 │                              [default: None]                                 │
@@ -307,9 +307,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                      [default: devstral:24b] │
 │ --ollama-host                               TEXT     The Ollama server host. │
 │                                                      Default is              │
-│                                                      http://pc.local:11434.  │
+│                                                      http://localhost:11434. │
 │                                                      [default:               │
-│                                                      http://pc.local:11434]  │
+│                                                      http://localhost:11434] │
 │ --llm                     --no-llm                   Use an LLM to process   │
 │                                                      the transcript.         │
 │                                                      [default: no-llm]       │
@@ -519,9 +519,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       devstral:24b]          │
 │ --ollama-host                                TEXT     The Ollama server      │
 │                                                       host. Default is       │
-│                                                       http://pc.local:11434. │
+│                                                       http://localhost:1143… │
 │                                                       [default:              │
-│                                                       http://pc.local:11434] │
+│                                                       http://localhost:1143… │
 │ --stop                                                Stop any running       │
 │                                                       background process.    │
 │ --status                                              Check if a background  │
@@ -672,9 +672,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                 [default: devstral:24b]      │
 │ --ollama-host                          TEXT     The Ollama server host.      │
 │                                                 Default is                   │
-│                                                 http://pc.local:11434.       │
+│                                                 http://localhost:11434.      │
 │                                                 [default:                    │
-│                                                 http://pc.local:11434]       │
+│                                                 http://localhost:11434]      │
 │ --stop                                          Stop any running background  │
 │                                                 process.                     │
 │ --status                                        Check if a background        │
