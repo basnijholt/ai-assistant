@@ -32,6 +32,7 @@ jobs:
           TERMINAL_WIDTH: 80
         run: |
           uvx --with . markdown-code-runner README.md
+          sed -i '' 's/[[:space:]]*$//' README.md
 
       - name: Commit updated README.md
         id: commit
