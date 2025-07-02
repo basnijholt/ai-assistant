@@ -18,8 +18,10 @@ Pro-tip:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import sys
 import time
+from typing import TYPE_CHECKING
 
 import pyperclip
 import typer
@@ -36,6 +38,9 @@ from agent_cli.utils import (
     print_output_panel,
     print_with_style,
 )
+
+if TYPE_CHECKING:
+    from rich.status import Status
 
 # --- Configuration ---
 
@@ -129,6 +134,12 @@ def _display_result(
         print_with_style("✅ Success! Corrected text has been copied to your clipboard.")
 
 
+def _maybe_status(llm_config: LLMConfig, quiet: bool) -> Status | contextlib.nullcontext:
+    if not quiet:
+        return create_status(f"🤖 Correcting with {llm_config.model}...", "bold yellow")
+    return contextlib.nullcontext()
+
+
 async def async_autocorrect(
     *,
     text: str | None,
@@ -145,19 +156,12 @@ async def async_autocorrect(
     display_original_text(original_text, general_cfg.quiet)
 
     try:
-        if general_cfg.quiet:
+        with _maybe_status(llm_config, general_cfg.quiet):
             corrected_text, elapsed = await process_text(
                 original_text,
                 llm_config.model,
                 llm_config.ollama_host,
             )
-        else:
-            with create_status(f"🤖 Correcting with {llm_config.model}...", "bold yellow"):
-                corrected_text, elapsed = await process_text(
-                    original_text,
-                    llm_config.model,
-                    llm_config.ollama_host,
-                )
 
         _display_result(
             corrected_text,
