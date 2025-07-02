@@ -176,9 +176,10 @@ async def async_main(
             def final_callback(transcript_text: str) -> None:
                 """Format the final instruction result."""
                 if not general_cfg.quiet:
-                    print_with_style(
-                        f"\n🎯 Instruction: {transcript_text}",
-                        style="bold green",
+                    print_input_panel(
+                        transcript_text,
+                        title="🎯 Instruction",
+                        style="bold yellow",
                     )
 
             instruction = await asr.transcribe_audio(
