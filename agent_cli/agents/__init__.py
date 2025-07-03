@@ -1,5 +1,5 @@
 """Agent implementations for the Agent CLI."""
 
-from . import interactive
+from . import interactive, wake_word_assistant
 
-__all__ = ["interactive"]
+__all__ = ["interactive", "wake_word_assistant"]
