@@ -42,7 +42,6 @@ dev = [
     "notebook",
 ]
 speed = ["audiostretchy>=1.3.0"]
-memory = ["chromadb>=0.4.0", "sentence-transformers>=2.0.0"]
 
 # Duplicate of test+dev optional-dependencies groups
 [dependency-groups]
