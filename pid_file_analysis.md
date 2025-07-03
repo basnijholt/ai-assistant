@@ -26,6 +26,36 @@ with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt)
     # Main agent logic here
 ```
 
+## The Keyboard Maestro Integration
+
+The **voice-assistant** has detailed instructions for Keyboard Maestro integration:
+
+```
+KEYBOARD MAESTRO INTEGRATION:
+To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
+
+1. Trigger: Hot Key (e.g., Cmd+Shift+A for "Assistant")
+
+2. If/Then/Else Action:
+   - Condition: Shell script returns success
+   - Script: voice-assistant --status >/dev/null 2>&1
+
+3. Then Actions (if process is running):
+   - Display Text Briefly: "🗣️ Processing command..."
+   - Execute Shell Script: voice-assistant --stop --quiet
+   - (The script will show its own "Done" notification)
+
+4. Else Actions (if process is not running):
+   - Display Text Briefly: "📋 Listening for command..."
+   - Execute Shell Script: voice-assistant --input-device-index 1 --quiet &
+   - Select "Display results in a notification"
+```
+
+**This workflow relies entirely on the PID file mechanism for:**
+1. **Status checking** (`--status`) to determine if the process is running
+2. **Process termination** (`--stop`) to stop the background listener
+3. **Single hotkey toggle behavior** - same key starts/stops the agent
+
 ## The "Recording" Context
 
 Based on the code analysis, "recording" refers to:
@@ -33,103 +63,117 @@ Based on the code analysis, "recording" refers to:
 2. **Continuous listening** for voice commands
 3. **Background process lifecycle** where agents run until explicitly stopped
 
-The `--stop` command doesn't just "stop recording and start processing" - it **terminates the entire background process**.
+The `--stop` command doesn't just "stop recording and start processing" - it **terminates the entire background process**. But this is **intentional for the Keyboard Maestro workflow**:
+
+1. Copy text to clipboard
+2. Press hotkey → starts `voice-assistant &` (background listening)
+3. Speak command
+4. Press same hotkey → runs `voice-assistant --stop` (stops listening, processes command, exits)
+5. Result is in clipboard
 
 ## Analysis: Is PID File Mechanism Needed?
 
-### ❌ **Arguments Against PID Files**
+### ✅ **Strong Arguments FOR PID Files**
 
-#### 1. **Misleading Mental Model**
-- The user's description suggests `--stop` should pause recording → process → resume
-- Reality: `--stop` kills the entire process, requiring manual restart
-- This disconnect suggests the PID mechanism doesn't match the intended workflow
+#### 1. **Essential for Keyboard Maestro Integration**
+- **Status checking**: `--status` enables conditional logic in KM macros
+- **Toggle behavior**: Single hotkey can start/stop based on current state
+- **Background process control**: Enables external automation to manage long-running processes
+- **Cross-session persistence**: KM can detect if agent is running even after system restarts
 
-#### 2. **Signal Handling Already Exists**
-- The codebase has sophisticated signal handling via `signal_handling_context()`:
-  - First Ctrl+C: Graceful shutdown (stops recording, processes transcription)
-  - Second Ctrl+C: Force exit
-  - SIGTERM: Immediate graceful shutdown
-- **Recording control is already handled via signals without PID files**
+#### 2. **Prevents Multiple Instance Issues**
+- Only one voice-assistant can run at a time (prevents audio conflicts)
+- Clean process lifecycle management
+- Prevents resource leaks from abandoned processes
 
-#### 3. **Race Conditions & Cleanup Issues**
-- Stale PID files require cleanup logic when processes crash
-- Multiple instances of same agent cannot run simultaneously
-- File system state can become inconsistent
+#### 3. **System Integration**
+- Standard Unix process management pattern
+- Works with any external automation tool (not just KM)
+- Enables scripting and monitoring by system administrators
 
-#### 4. **Workflow Mismatch**
-For the described workflow ("stop recording → process → resume"), the current approach requires:
+#### 4. **Clean Architecture**
+- Separates process control from application logic
+- Enables background operation with foreground control
+- Provides reliable cleanup on exit
+
+### ❌ **Minor Arguments Against PID Files**
+
+#### 1. **Terminology Confusion**
+- "Stop recording" suggests pause/resume, but `--stop` terminates the process
+- This is actually **correct behavior** for the KM workflow, just confusing terminology
+
+#### 2. **File System Dependencies**
+- PID files can become stale if processes crash
+- But the code handles cleanup well (`get_running_pid()` cleans stale files)
+
+## Alternative Architectures (NOT Recommended)
+
+### Option 1: Signal-Based Control Only
 ```bash
-agent-cli voice-assistant --stop    # Kill entire process
-agent-cli voice-assistant &         # Start new process
+# Instead of PID files, use signals
+kill -USR1 $(pgrep voice-assistant)  # Stop recording, process
+kill -USR2 $(pgrep voice-assistant)  # Resume recording
 ```
-Instead of a simple pause/resume mechanism.
 
-### ✅ **Arguments For PID Files**
+**Problems**:
+- **Breaks KM integration**: No way to check if process is running reliably
+- **Multiple instances**: No prevention of duplicate processes
+- **Complex state management**: Application needs internal state machine
+- **Poor user experience**: No simple status checking
 
-#### 1. **Cross-Process Communication**
-- Enables external tools (Keyboard Maestro, scripts) to control background processes
-- `--status` provides process discovery for automation
-- Useful for system integration where processes start via different mechanisms
+### Option 2: In-Process Pause/Resume
+```python
+class VoiceAssistant:
+    def handle_pause_signal(self):
+        self.recording = False
+        # Process and exit
+```
 
-#### 2. **Process Lifecycle Management**
-- Prevents multiple instances of same agent
-- Provides clean shutdown mechanism via `--stop`
-- Enables "toggle" functionality for hotkey integration
-
-#### 3. **Background Process Tracking**
-- Users can check if agents are running without guessing
-- System administrators can monitor active agent processes
+**Problems**:
+- **Wrong mental model**: KM workflow expects process termination, not pause
+- **Breaks the clipboard workflow**: Process needs to exit to complete the task
+- **Session management**: Would need persistent process for clipboard operations
 
 ## Recommendations
 
-### Option 1: **Remove PID Files** (If workflow is pause/resume)
-If the intended behavior is truly "stop recording → process → resume recording":
+### ✅ **Keep PID Files** (Strongly Recommended)
+The PID file mechanism is **perfectly designed** for your Keyboard Maestro workflow:
 
-```python
-# Replace current approach with in-process control
-class VoiceAssistant:
-    def __init__(self):
-        self.recording = False
-        self.processing = False
-    
-    async def handle_stop_signal(self):
-        """Stop recording, process, then resume"""
-        self.recording = False
-        self.processing = True
-        # Process transcription
-        await self.process_command()
-        self.processing = False
-        self.recording = True
-```
+1. **Maintain current architecture** - it's working as intended
+2. **Clarify documentation** to explain the KM integration context
+3. **Update terminology** - `--stop` means "complete the task and exit" not "pause recording"
 
-**Pros**: Simpler, matches described workflow, no file system dependencies
-**Cons**: Loses cross-process control capabilities
+### Possible Improvements
 
-### Option 2: **Keep PID Files** (If background process control is needed)
-If external process control is valuable:
-
-1. **Clarify documentation** - `--stop` kills the process, doesn't pause
-2. **Add pause/resume functionality** via additional signals:
+1. **Better naming**:
    ```bash
-   kill -USR1 $(cat ~/.cache/agent-cli/voice-assistant.pid)  # Pause
-   kill -USR2 $(cat ~/.cache/agent-cli/voice-assistant.pid)  # Resume
+   --complete    # Instead of --stop (complete task and exit)
+   --terminate   # More explicit about process termination
    ```
-3. **Consider adding `--pause`/`--resume` CLI flags**
 
-### Option 3: **Hybrid Approach**
-- Keep PID files for process management (`--stop`, `--status`, `--toggle`)
-- Add in-process pause/resume via signals (USR1/USR2)
-- Document the distinction clearly
+2. **Enhanced status messages**:
+   ```bash
+   agent-cli voice-assistant --status
+   # Output: "✅ Voice assistant is listening for commands (PID: 1234)"
+   ```
+
+3. **Add `--toggle` examples to KM docs**:
+   ```bash
+   voice-assistant --toggle  # Simpler than if/then/else logic
+   ```
 
 ## Conclusion
 
-**The PID file mechanism appears to be over-engineered for the described use case.**
+**The PID file mechanism is ESSENTIAL and well-designed for your use case.**
 
-If the primary goal is "stop recording → process → resume recording," then:
-- **Signal handling already provides this functionality** (Ctrl+C stops recording, processes transcription)
-- **PID files add complexity without solving the core problem**
-- **The current `--stop` behavior (process termination) doesn't match the described workflow**
+Your Keyboard Maestro workflow depends on:
+- ✅ **Status checking** to determine current state
+- ✅ **Background process management** for the listening phase  
+- ✅ **Reliable termination** to complete the clipboard workflow
+- ✅ **Single hotkey toggle** behavior
 
-**Recommendation**: Remove PID files and rely on signal-based control for recording lifecycle. This would simplify the codebase while providing the exact workflow described.
+**DO NOT remove PID files** - they are the foundation that makes your automation workflow possible.
 
-If cross-process control is truly needed for automation, keep PID files but clarify that `--stop` means "terminate process," not "pause recording."
+The only "issue" is terminological: `--stop` doesn't mean "pause recording" in your context - it means "complete the voice command task and exit." This is actually the correct behavior for a clipboard-based workflow where each hotkey press represents a complete interaction cycle.
+
+**Recommendation**: Keep the PID mechanism exactly as it is. It's a well-architected solution for your automation needs.
