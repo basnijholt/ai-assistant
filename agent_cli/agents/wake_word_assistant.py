@@ -30,7 +30,6 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-import wave
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
@@ -58,6 +57,7 @@ from agent_cli.audio import (
 )
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
+from agent_cli.tts import _create_wav_data  # Reuse existing WAV creation
 from agent_cli.utils import (
     InteractiveStopEvent,
     console,
@@ -105,6 +105,9 @@ async def record_audio_to_buffer(
 ) -> bytes:
     """Record audio to a buffer until stop event is set.
 
+    This function follows the same pattern as the ASR send_audio function
+    but captures audio to a buffer instead of sending to a server.
+
     Args:
         p: PyAudio instance
         input_device_index: Audio input device index
@@ -129,8 +132,9 @@ async def record_audio_to_buffer(
         if not quiet:
             print_with_style("🎤 Recording... Say the wake word again to stop", style="green")
         
-        while not stop_event.is_set():
-            try:
+        try:
+            while not stop_event.is_set():
+                # Use the same async pattern as ASR module
                 chunk = await asyncio.to_thread(
                     stream.read,
                     num_frames=config.PYAUDIO_CHUNK_SIZE,
@@ -138,25 +142,30 @@ async def record_audio_to_buffer(
                 )
                 audio_buffer.write(chunk)
                 logger.debug("Recorded %d bytes", len(chunk))
-            except Exception as e:
-                logger.error("Error reading audio: %s", e)
-                break
+        except Exception as e:
+            logger.error("Error reading audio: %s", e)
     
     return audio_buffer.getvalue()
 
 
 async def save_audio_as_wav(audio_data: bytes, filename: str) -> None:
-    """Save raw audio data as WAV file for debugging.
+    """Save raw audio data as WAV file using existing TTS functionality.
 
     Args:
         audio_data: Raw audio bytes
         filename: Output filename
     """
-    with wave.open(filename, 'wb') as wav_file:
-        wav_file.setnchannels(config.PYAUDIO_CHANNELS)
-        wav_file.setsampwidth(2)  # 16-bit audio
-        wav_file.setframerate(config.PYAUDIO_RATE)
-        wav_file.writeframes(audio_data)
+    # Reuse the WAV creation logic from TTS module
+    wav_data = _create_wav_data(
+        audio_data,
+        sample_rate=config.PYAUDIO_RATE,
+        sample_width=2,  # 16-bit audio
+        channels=config.PYAUDIO_CHANNELS,
+    )
+    
+    # Write the WAV data to file
+    with open(filename, 'wb') as f:
+        f.write(wav_data)
 
 
 async def async_main(
