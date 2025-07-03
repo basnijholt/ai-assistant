@@ -88,7 +88,8 @@ class TestSendAudioForWakeDetection:
 
     @pytest.mark.asyncio
     @patch("agent_cli.wake_word.asyncio.to_thread")
-    async def test_reads_and_sends_audio_chunks(self, mock_to_thread, mock_logger, mock_stop_event, mock_live):
+    @patch("agent_cli.wake_word.AudioChunk")
+    async def test_reads_and_sends_audio_chunks(self, mock_audio_chunk, mock_to_thread, mock_logger, mock_stop_event, mock_live):
         """Test that audio chunks are read and sent."""
         mock_client = AsyncMock()
         mock_stream = MagicMock()
@@ -96,6 +97,11 @@ class TestSendAudioForWakeDetection:
         # Setup audio chunk data
         test_chunk = b"test_audio_data"
         mock_to_thread.return_value = test_chunk
+        
+        # Setup mock AudioChunk
+        mock_chunk_event = MagicMock()
+        mock_chunk_event.type = "audio-chunk"
+        mock_audio_chunk.return_value.event.return_value = mock_chunk_event
         
         # Setup stop event to run once then stop
         mock_stop_event.is_set.side_effect = [False, True]
@@ -109,11 +115,15 @@ class TestSendAudioForWakeDetection:
             quiet=True,
         )
         
-        # Verify audio chunk was sent
+        # Verify AudioChunk was created with correct audio data
+        mock_audio_chunk.assert_called_once()
+        call_kwargs = mock_audio_chunk.call_args.kwargs
+        assert call_kwargs['audio'] == test_chunk
+        
+        # Verify audio chunk event was sent
         call_args_list = [call[0][0] for call in mock_client.write_event.call_args_list]
         audio_chunk_events = [event for event in call_args_list if event.type == "audio-chunk"]
         assert len(audio_chunk_events) == 1
-        assert audio_chunk_events[0].audio == test_chunk
 
     @pytest.mark.asyncio
     async def test_updates_live_display_with_timing(self, mock_logger, mock_stop_event, mock_live):
@@ -248,12 +258,19 @@ class TestDetectWakeWord:
             patch("agent_cli.wake_word.send_audio_for_wake_detection") as mock_send,
             patch("agent_cli.wake_word.receive_wake_detection") as mock_receive,
             patch("asyncio.wait") as mock_wait,
+            patch("asyncio.create_task") as mock_create_task,
         ):
-            # Setup task mocks
-            mock_send_task = AsyncMock()
-            mock_receive_task = AsyncMock()
+            # Setup task mocks properly
+            mock_send_task = MagicMock()
+            mock_receive_task = MagicMock()
+            
+            # Mock asyncio.create_task to return our mocks
+            mock_create_task.side_effect = [mock_send_task, mock_receive_task]
+            
+            # Configure the receive task to return the detected word
             mock_receive_task.result.return_value = "detected_word"
             
+            # Mock asyncio.wait to return receive_task as done, send_task as pending
             mock_wait.return_value = ([mock_receive_task], [mock_send_task])
             
             result = await wake_word.detect_wake_word(
@@ -335,12 +352,13 @@ class TestDetectWakeWord:
             patch("agent_cli.wake_word.send_audio_for_wake_detection") as mock_send,
             patch("agent_cli.wake_word.receive_wake_detection") as mock_receive,
             patch("asyncio.wait") as mock_wait,
+            patch("asyncio.create_task") as mock_create_task,
         ):
             # Setup task mocks - send task completes first, receive is pending
             mock_send_task = AsyncMock()
             mock_receive_task = AsyncMock()
-            mock_receive_task.cancel = MagicMock()
             
+            mock_create_task.side_effect = [mock_send_task, mock_receive_task]
             mock_wait.return_value = ([mock_send_task], [mock_receive_task])
             
             result = await wake_word.detect_wake_word(

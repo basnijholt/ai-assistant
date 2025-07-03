@@ -224,7 +224,7 @@ class TestAsyncMain:
             file_config=sample_configs["file_config"],
         )
         
-        mock_list_devices.assert_called_once_with(mock_p, True)  # quiet=True
+        mock_list_devices.assert_called_once_with(mock_p, False)  # quiet=False because not general_cfg.quiet
 
     @pytest.mark.asyncio
     @patch("agent_cli.agents.wake_word_assistant.pyaudio_context")
@@ -247,7 +247,7 @@ class TestAsyncMain:
             file_config=sample_configs["file_config"],
         )
         
-        mock_list_devices.assert_called_once_with(mock_p, True)  # quiet=True
+        mock_list_devices.assert_called_once_with(mock_p, False)  # quiet=False because not general_cfg.quiet
 
     @pytest.mark.asyncio
     @patch("agent_cli.agents.wake_word_assistant.pyaudio_context")
@@ -310,10 +310,11 @@ class TestAsyncMain:
         mock_live.return_value.__enter__.return_value = mock_live_instance
         
         mock_stop_event = MagicMock(spec=InteractiveStopEvent)
-        mock_stop_event.is_set.side_effect = [False, True]  # Run once then stop
+        # Configure stop event to allow multiple iterations
+        mock_stop_event.is_set.side_effect = [False, False, False, True]  # Allow multiple wake word detections
         mock_signal_context.return_value.__enter__.return_value = mock_stop_event
         
-        # Mock wake word detection sequence: first detects start, then detects stop
+        # Mock wake word detection sequence: first detects start, then detects stop, then None to exit
         mock_detect.side_effect = ["wake_word", "wake_word", None]
         
         # Mock audio recording
