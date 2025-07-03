@@ -23,6 +23,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# Package managers
+uv.lock
+
 # Virtual Environment
 venv/
 env/
