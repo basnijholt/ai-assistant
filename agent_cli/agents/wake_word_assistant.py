@@ -35,9 +35,12 @@ from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import pyperclip
+from wyoming.asr import Transcribe, Transcript
+from wyoming.audio import AudioChunk, AudioStart, AudioStop
+from wyoming.client import AsyncClient
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager, wake_word
+from agent_cli import config, process_manager, wake_word
 from agent_cli.agents._config import (
     ASRConfig,
     FileConfig,
@@ -68,7 +71,6 @@ from agent_cli.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli import config
 
 if TYPE_CHECKING:
     import pyaudio
@@ -117,9 +119,10 @@ async def record_audio_to_buffer(
 
     Returns:
         Raw audio data as bytes
+
     """
     audio_buffer = io.BytesIO()
-    
+
     with open_pyaudio_stream(
         p,
         format=config.PYAUDIO_FORMAT,
@@ -131,7 +134,7 @@ async def record_audio_to_buffer(
     ) as stream:
         if not quiet:
             print_with_style("🎤 Recording... Say the wake word again to stop", style="green")
-        
+
         try:
             while not stop_event.is_set():
                 # Use the same async pattern as ASR module
@@ -142,9 +145,9 @@ async def record_audio_to_buffer(
                 )
                 audio_buffer.write(chunk)
                 logger.debug("Recorded %d bytes", len(chunk))
-        except Exception as e:
-            logger.error("Error reading audio: %s", e)
-    
+        except OSError:
+            logger.exception("Error reading audio")
+
     return audio_buffer.getvalue()
 
 
@@ -154,6 +157,7 @@ async def save_audio_as_wav(audio_data: bytes, filename: str) -> None:
     Args:
         audio_data: Raw audio bytes
         filename: Output filename
+
     """
     # Reuse the WAV creation logic from TTS module
     wav_data = _create_wav_data(
@@ -162,10 +166,79 @@ async def save_audio_as_wav(audio_data: bytes, filename: str) -> None:
         sample_width=2,  # 16-bit audio
         channels=config.PYAUDIO_CHANNELS,
     )
-    
-    # Write the WAV data to file
-    with open(filename, 'wb') as f:
-        f.write(wav_data)
+
+    # Write the WAV data to file asynchronously
+    await asyncio.to_thread(Path(filename).write_bytes, wav_data)
+
+
+async def _process_recorded_audio(
+    audio_data: bytes,
+    asr_server_ip: str,
+    asr_server_port: int,
+    logger: logging.Logger,
+) -> str:
+    """Process pre-recorded audio data with Wyoming ASR server.
+
+    Args:
+        audio_data: Raw audio bytes
+        asr_server_ip: Wyoming ASR server IP
+        asr_server_port: Wyoming ASR server port
+        logger: Logger instance
+
+    Returns:
+        Transcribed text
+
+    Raises:
+        Exception: If ASR processing fails
+
+    """
+    uri = f"tcp://{asr_server_ip}:{asr_server_port}"
+    logger.info("Connecting to Wyoming ASR server at %s", uri)
+
+    async with AsyncClient.from_uri(uri) as client:
+        logger.info("ASR connection established")
+
+        # Start transcription
+        await client.write_event(Transcribe().event())
+        await client.write_event(
+            AudioStart(
+                rate=config.PYAUDIO_RATE,
+                width=2,
+                channels=config.PYAUDIO_CHANNELS,
+            ).event(),
+        )
+
+        # Send audio data in chunks
+        chunk_size = config.PYAUDIO_CHUNK_SIZE * 2  # 2 bytes per sample for 16-bit
+        for i in range(0, len(audio_data), chunk_size):
+            chunk = audio_data[i:i + chunk_size]
+            await client.write_event(
+                AudioChunk(
+                    rate=config.PYAUDIO_RATE,
+                    width=2,
+                    channels=config.PYAUDIO_CHANNELS,
+                    audio=chunk,
+                ).event(),
+            )
+            logger.debug("Sent %d byte(s) of audio", len(chunk))
+
+        # Signal end of audio
+        await client.write_event(AudioStop().event())
+        logger.debug("Sent AudioStop")
+
+        # Receive transcript
+        while True:
+            event = await client.read_event()
+            if event is None:
+                logger.warning("Connection to ASR server lost.")
+                break
+
+            if Transcript.is_type(event.type):
+                transcript = Transcript.from_event(event)
+                logger.info("Final transcript: %s", transcript.text)
+                return transcript.text
+
+        return ""
 
 
 async def async_main(
@@ -190,9 +263,9 @@ async def async_main(
 
         # Setup input device
         input_device_index, input_device_name = input_device(
-            p, 
-            wake_word_config.input_device_name, 
-            wake_word_config.input_device_index
+            p,
+            wake_word_config.input_device_name,
+            wake_word_config.input_device_index,
         )
         if not general_cfg.quiet:
             print_device_index(input_device_index, input_device_name)
@@ -252,7 +325,7 @@ async def async_main(
                         recording_stop_event,
                         LOGGER,
                         quiet=general_cfg.quiet,
-                    )
+                    ),
                 )
 
                 # Listen for second wake word detection (stop recording)
@@ -289,22 +362,33 @@ async def async_main(
                     if not general_cfg.quiet:
                         print_with_style(f"💾 Audio saved to {file_config.save_file}", style="blue")
 
-                # TODO: Process recorded audio with ASR
-                # For now, we'll use a simulated transcript
+                # Process recorded audio with ASR
                 if not general_cfg.quiet:
                     print_with_style("🔄 Processing recorded audio...", style="blue")
 
-                # Simulate processing - in a real implementation, you would:
-                # 1. Send the audio_data to Wyoming ASR server
-                # 2. Get back the transcript
-                # 3. Process with LLM if enabled
-                # 4. Respond with TTS if enabled
-                
-                simulated_transcript = "Hello, this is a simulated transcript of what you said."
-                
+                try:
+                    # Send audio data to Wyoming ASR server for transcription
+                    transcript = await _process_recorded_audio(
+                        audio_data,
+                        asr_server_ip=asr_config.server_ip,
+                        asr_server_port=asr_config.server_port,
+                        logger=LOGGER,
+                    )
+
+                    if not transcript or not transcript.strip():
+                        if not general_cfg.quiet:
+                            print_with_style("No speech detected in recording", style="yellow")
+                        continue
+
+                except Exception as e:
+                    LOGGER.exception("Failed to process audio with ASR")
+                    if not general_cfg.quiet:
+                        print_with_style(f"ASR processing failed: {e}", style="red")
+                    continue
+
                 if not general_cfg.quiet:
                     print_input_panel(
-                        simulated_transcript,
+                        transcript,
                         title="🎯 Transcribed Speech",
                         style="bold yellow",
                     )
@@ -318,7 +402,7 @@ async def async_main(
                         ollama_host=llm_config.ollama_host,
                         logger=LOGGER,
                         original_text="",  # No original text for voice assistant
-                        instruction=simulated_transcript,
+                        instruction=transcript,
                         clipboard=general_cfg.clipboard,
                         quiet=general_cfg.quiet,
                         live=live,

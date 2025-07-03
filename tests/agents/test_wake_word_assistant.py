@@ -131,7 +131,7 @@ class TestRecordAudioToBuffer:
         mock_stream = MagicMock()
         mock_stream_context.return_value.__enter__.return_value = mock_stream
         
-        mock_to_thread.side_effect = Exception("Recording error")
+        mock_to_thread.side_effect = OSError("Recording error")
         mock_stop_event.is_set.side_effect = [False, True]
         
         result = await record_audio_to_buffer(
@@ -144,7 +144,7 @@ class TestRecordAudioToBuffer:
         
         # Should return empty bytes on error
         assert result == b""
-        mock_logger.error.assert_called_once()
+        mock_logger.exception.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("agent_cli.agents.wake_word_assistant.open_pyaudio_stream")
