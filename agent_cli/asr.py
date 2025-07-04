@@ -12,8 +12,9 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
 from agent_cli import config
-from agent_cli.audio import open_pyaudio_stream, read_audio_stream
+from agent_cli.audio import get_standard_audio_config, open_pyaudio_stream, read_audio_stream, setup_input_stream
 from agent_cli.utils import InteractiveStopEvent, print_error_message
+from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -43,20 +44,15 @@ async def send_audio(
         quiet: If True, suppress all console output
 
     """
+    audio_config = get_standard_audio_config()
+    
     await client.write_event(Transcribe().event())
-    await client.write_event(
-        AudioStart(rate=config.PYAUDIO_RATE, width=2, channels=config.PYAUDIO_CHANNELS).event(),
-    )
+    await client.write_event(AudioStart(**audio_config).event())
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to ASR server."""
         await client.write_event(
-            AudioChunk(
-                rate=config.PYAUDIO_RATE,
-                width=2,
-                channels=config.PYAUDIO_CHANNELS,
-                audio=chunk,
-            ).event(),
+            AudioChunk(audio=chunk, **audio_config).event(),
         )
 
     try:
@@ -188,7 +184,6 @@ async def transcribe_audio(
         stop_event: Event to stop recording
         live: Rich Live display for progress
         quiet: If True, suppress all console output
-        listening_message: Message to display when starting
         chunk_callback: Callback for transcript chunks
         final_callback: Callback for final transcript
 
@@ -196,58 +191,20 @@ async def transcribe_audio(
         Transcribed text or None if error
 
     """
-    uri = f"tcp://{asr_server_ip}:{asr_server_port}"
-    logger.info("Connecting to Wyoming server at %s", uri)
-
     try:
-        async with AsyncClient.from_uri(uri) as client:
-            logger.info("ASR connection established")
-            with open_pyaudio_stream(
-                p,
-                format=config.PYAUDIO_FORMAT,
-                channels=config.PYAUDIO_CHANNELS,
-                rate=config.PYAUDIO_RATE,
-                input=True,
-                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=input_device_index,
-            ) as stream:
-                send_task = asyncio.create_task(
-                    send_audio(
-                        client,
-                        stream,
-                        stop_event,
-                        logger,
-                        live=live,
-                        quiet=quiet,
-                    ),
+        async with wyoming_client_context(
+            asr_server_ip, 
+            asr_server_port, 
+            "ASR", 
+            logger, 
+            quiet=quiet
+        ) as client:
+            stream_config = setup_input_stream(p, input_device_index)
+            with open_pyaudio_stream(p, **stream_config) as stream:
+                send_task, recv_task = await manage_send_receive_tasks(
+                    send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
+                    receive_text(client, logger, chunk_callback=chunk_callback, final_callback=final_callback),
                 )
-                recv_task = asyncio.create_task(
-                    receive_text(
-                        client,
-                        logger,
-                        chunk_callback=chunk_callback,
-                        final_callback=final_callback,
-                    ),
-                )
-
-                done, pending = await asyncio.wait(
-                    [send_task, recv_task],
-                    return_when=asyncio.ALL_COMPLETED,
-                )
-                for task in pending:
-                    task.cancel()
-
                 return recv_task.result()
-
-    except ConnectionRefusedError:
-        if not quiet:
-            print_error_message(
-                "ASR Connection refused.",
-                f"Is the server at {uri} running?",
-            )
-        return None
-    except Exception as e:
-        logger.exception("An error occurred during transcription.")
-        if not quiet:
-            print_error_message(f"Transcription error: {e}")
+    except (ConnectionRefusedError, Exception):
         return None

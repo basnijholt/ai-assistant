@@ -11,8 +11,9 @@ from wyoming.client import AsyncClient
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config
-from agent_cli.audio import open_pyaudio_stream, read_audio_stream
-from agent_cli.utils import InteractiveStopEvent, print_error_message
+from agent_cli.audio import get_standard_audio_config, open_pyaudio_stream, read_audio_stream, setup_input_stream
+from agent_cli.utils import InteractiveStopEvent
+from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -42,19 +43,13 @@ async def send_audio_for_wake_detection(
         quiet: If True, suppress all console output
 
     """
-    await client.write_event(
-        AudioStart(rate=config.PYAUDIO_RATE, width=2, channels=config.PYAUDIO_CHANNELS).event(),
-    )
+    audio_config = get_standard_audio_config()
+    await client.write_event(AudioStart(**audio_config).event())
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to wake word server."""
         await client.write_event(
-            AudioChunk(
-                rate=config.PYAUDIO_RATE,
-                width=2,
-                channels=config.PYAUDIO_CHANNELS,
-                audio=chunk,
-            ).event(),
+            AudioChunk(audio=chunk, **audio_config).event(),
         )
 
     try:
@@ -144,67 +139,29 @@ async def detect_wake_word(
         Name of detected wake word or None if error/no detection
 
     """
-    uri = f"tcp://{wake_server_ip}:{wake_server_port}"
-    logger.info("Connecting to Wyoming wake word server at %s", uri)
-
     try:
-        async with AsyncClient.from_uri(uri) as client:
-            logger.info("Wake word connection established")
-            
+        async with wyoming_client_context(
+            wake_server_ip,
+            wake_server_port,
+            "wake word",
+            logger,
+            quiet=quiet
+        ) as client:
             # Send detect request with specific wake word
             await client.write_event(Detect(names=[wake_word_name]).event())
             
-            with open_pyaudio_stream(
-                p,
-                format=config.PYAUDIO_FORMAT,
-                channels=config.PYAUDIO_CHANNELS,
-                rate=config.PYAUDIO_RATE,
-                input=True,
-                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=input_device_index,
-            ) as stream:
-                send_task = asyncio.create_task(
-                    send_audio_for_wake_detection(
-                        client,
-                        stream,
-                        stop_event,
-                        logger,
-                        live=live,
-                        quiet=quiet,
-                    ),
-                )
-                recv_task = asyncio.create_task(
-                    receive_wake_detection(
-                        client,
-                        logger,
-                        detection_callback=detection_callback,
-                    ),
-                )
-
-                done, pending = await asyncio.wait(
-                    [send_task, recv_task],
-                    return_when=asyncio.FIRST_COMPLETED,
+            stream_config = setup_input_stream(p, input_device_index)
+            with open_pyaudio_stream(p, **stream_config) as stream:
+                send_task, recv_task = await manage_send_receive_tasks(
+                    send_audio_for_wake_detection(client, stream, stop_event, logger, live=live, quiet=quiet),
+                    receive_wake_detection(client, logger, detection_callback=detection_callback),
+                    return_when="FIRST_COMPLETED",
                 )
                 
-                # Cancel pending tasks
-                for task in pending:
-                    task.cancel()
-
                 # If recv_task completed first, it means we detected a wake word
-                if recv_task in done:
+                if not recv_task.cancelled():
                     return recv_task.result()
                 
                 return None
-
-    except ConnectionRefusedError:
-        if not quiet:
-            print_error_message(
-                "Wake word connection refused.",
-                f"Is the server at {uri} running?",
-            )
-        return None
-    except Exception as e:
-        logger.exception("An error occurred during wake word detection.")
-        if not quiet:
-            print_error_message(f"Wake word detection error: {e}")
+    except (ConnectionRefusedError, Exception):
         return None

@@ -15,6 +15,7 @@ from agent_cli.utils import console
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
     import logging
+    import pyaudio
     from rich.live import Live
     from agent_cli.utils import InteractiveStopEvent
 
@@ -100,6 +101,78 @@ async def read_audio_stream(
 
     except OSError:
         logger.exception("Error reading audio")
+
+
+def get_standard_audio_config() -> dict:
+    """Get standard audio configuration for Wyoming protocols.
+    
+    Returns:
+        Dictionary with rate, width, and channels for Wyoming audio events
+    """
+    from agent_cli import config
+    
+    return {
+        "rate": config.PYAUDIO_RATE,
+        "width": 2,  # 16-bit audio
+        "channels": config.PYAUDIO_CHANNELS,
+    }
+
+
+def setup_input_stream(
+    p: pyaudio.PyAudio,
+    input_device_index: int | None,
+) -> dict:
+    """Get standard PyAudio input stream configuration.
+    
+    Args:
+        p: PyAudio instance
+        input_device_index: Input device index
+        
+    Returns:
+        Dictionary of stream parameters
+    """
+    from agent_cli import config
+    
+    return {
+        "format": config.PYAUDIO_FORMAT,
+        "channels": config.PYAUDIO_CHANNELS,
+        "rate": config.PYAUDIO_RATE,
+        "input": True,
+        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "input_device_index": input_device_index,
+    }
+
+
+def setup_output_stream(
+    p: pyaudio.PyAudio,
+    output_device_index: int | None,
+    *,
+    sample_rate: int | None = None,
+    sample_width: int | None = None,
+    channels: int | None = None,
+) -> dict:
+    """Get standard PyAudio output stream configuration.
+    
+    Args:
+        p: PyAudio instance
+        output_device_index: Output device index
+        sample_rate: Custom sample rate (defaults to config)
+        sample_width: Custom sample width in bytes (defaults to config)
+        channels: Custom channel count (defaults to config)
+        
+    Returns:
+        Dictionary of stream parameters
+    """
+    from agent_cli import config
+    
+    return {
+        "format": p.get_format_from_width(sample_width or 2),
+        "channels": channels or config.PYAUDIO_CHANNELS,
+        "rate": sample_rate or config.PYAUDIO_RATE,
+        "output": True,
+        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "output_device_index": output_device_index,
+    }
 
 
 @functools.cache

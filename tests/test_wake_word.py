@@ -240,99 +240,86 @@ class TestDetectWakeWord:
     """Tests for detect_wake_word function."""
 
     @pytest.mark.asyncio
-    @patch("agent_cli.wake_word.AsyncClient.from_uri")
+    @patch("agent_cli.wake_word.wyoming_client_context")
     @patch("agent_cli.wake_word.open_pyaudio_stream")
+    @patch("agent_cli.wake_word.setup_input_stream")
+    @patch("agent_cli.wake_word.manage_send_receive_tasks")
     async def test_successful_wake_word_detection(
-        self, mock_stream_context, mock_client_from_uri, mock_pyaudio, mock_logger, mock_stop_event, mock_live
+        self, mock_manage_tasks, mock_setup_stream, mock_stream_context, mock_wyoming_context, 
+        mock_pyaudio, mock_logger, mock_stop_event, mock_live
     ):
         """Test successful wake word detection."""
         # Setup mocks
         mock_client = AsyncMock()
-        mock_client_from_uri.return_value.__aenter__.return_value = mock_client
-        
+        mock_wyoming_context.return_value.__aenter__.return_value = mock_client
+
         mock_stream = MagicMock()
         mock_stream_context.return_value.__enter__.return_value = mock_stream
         
-        # Mock the tasks to complete successfully
-        with (
-            patch("agent_cli.wake_word.send_audio_for_wake_detection") as mock_send,
-            patch("agent_cli.wake_word.receive_wake_detection") as mock_receive,
-            patch("asyncio.wait") as mock_wait,
-            patch("asyncio.create_task") as mock_create_task,
-        ):
-            # Setup task mocks properly
-            mock_send_task = MagicMock()
-            mock_receive_task = MagicMock()
-            
-            # Mock asyncio.create_task to return our mocks
-            mock_create_task.side_effect = [mock_send_task, mock_receive_task]
-            
-            # Configure the receive task to return the detected word
-            mock_receive_task.result.return_value = "detected_word"
-            
-            # Mock asyncio.wait to return receive_task as done, send_task as pending
-            mock_wait.return_value = ([mock_receive_task], [mock_send_task])
-            
-            result = await wake_word.detect_wake_word(
-                wake_server_ip="127.0.0.1",
-                wake_server_port=10400,
-                wake_word_name="test_word",
-                input_device_index=1,
-                logger=mock_logger,
-                p=mock_pyaudio,
-                stop_event=mock_stop_event,
-                live=mock_live,
-                quiet=True,
-            )
-            
-            assert result == "detected_word"
-            # Verify detect event was sent
-            mock_client.write_event.assert_called_once()
+        mock_setup_stream.return_value = {"format": 8, "channels": 1, "rate": 16000}
+
+        # Mock task management to return successful receive task
+        mock_send_task = MagicMock()
+        mock_receive_task = MagicMock()
+        mock_receive_task.cancelled.return_value = False
+        mock_receive_task.result.return_value = "detected_word"
+        mock_manage_tasks.return_value = (mock_send_task, mock_receive_task)
+
+        result = await wake_word.detect_wake_word(
+            wake_server_ip="127.0.0.1",
+            wake_server_port=10400,
+            wake_word_name="test_word",
+            input_device_index=1,
+            logger=mock_logger,
+            p=mock_pyaudio,
+            stop_event=mock_stop_event,
+            live=mock_live,
+            quiet=True,
+        )
+
+        assert result == "detected_word"
+        # Verify detect event was sent
+        mock_client.write_event.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent_cli.wake_word.AsyncClient.from_uri")
-    async def test_connection_refused_error(self, mock_client_from_uri, mock_pyaudio, mock_logger, mock_stop_event, mock_live):
+    @patch("agent_cli.wake_word.wyoming_client_context")
+    async def test_connection_refused_error(self, mock_wyoming_context, mock_pyaudio, mock_logger, mock_stop_event, mock_live):
         """Test handling of connection refused error."""
-        mock_client_from_uri.side_effect = ConnectionRefusedError()
+        mock_wyoming_context.side_effect = ConnectionRefusedError()
         
-        with patch("agent_cli.wake_word.print_error_message") as mock_print_error:
-            result = await wake_word.detect_wake_word(
-                wake_server_ip="127.0.0.1",
-                wake_server_port=10400,
-                wake_word_name="test_word",
-                input_device_index=1,
-                logger=mock_logger,
-                p=mock_pyaudio,
-                stop_event=mock_stop_event,
-                live=mock_live,
-                quiet=False,  # Not quiet to test error message
-            )
-            
-            assert result is None
-            mock_print_error.assert_called_once()
+        result = await wake_word.detect_wake_word(
+            wake_server_ip="127.0.0.1",
+            wake_server_port=10400,
+            wake_word_name="test_word",
+            input_device_index=1,
+            logger=mock_logger,
+            p=mock_pyaudio,
+            stop_event=mock_stop_event,
+            live=mock_live,
+            quiet=False,
+        )
+        
+        assert result is None
 
     @pytest.mark.asyncio
-    @patch("agent_cli.wake_word.AsyncClient.from_uri")
-    async def test_generic_exception_handling(self, mock_client_from_uri, mock_pyaudio, mock_logger, mock_stop_event, mock_live):
+    @patch("agent_cli.wake_word.wyoming_client_context")
+    async def test_generic_exception_handling(self, mock_wyoming_context, mock_pyaudio, mock_logger, mock_stop_event, mock_live):
         """Test handling of generic exceptions."""
-        mock_client_from_uri.side_effect = Exception("Test error")
+        mock_wyoming_context.side_effect = Exception("Test error")
         
-        with patch("agent_cli.wake_word.print_error_message") as mock_print_error:
-            result = await wake_word.detect_wake_word(
-                wake_server_ip="127.0.0.1",
-                wake_server_port=10400,
-                wake_word_name="test_word",
-                input_device_index=1,
-                logger=mock_logger,
-                p=mock_pyaudio,
-                stop_event=mock_stop_event,
-                live=mock_live,
-                quiet=False,
-            )
-            
-            assert result is None
-            mock_print_error.assert_called_once()
-            mock_logger.exception.assert_called_once()
+        result = await wake_word.detect_wake_word(
+            wake_server_ip="127.0.0.1",
+            wake_server_port=10400,
+            wake_word_name="test_word",
+            input_device_index=1,
+            logger=mock_logger,
+            p=mock_pyaudio,
+            stop_event=mock_stop_event,
+            live=mock_live,
+            quiet=False,
+        )
+        
+        assert result is None
 
     @pytest.mark.asyncio
     @patch("agent_cli.wake_word.AsyncClient.from_uri")
