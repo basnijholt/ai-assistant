@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 from typing import TYPE_CHECKING
 
 from rich.text import Text
@@ -79,6 +80,59 @@ async def send_audio(
     finally:
         await client.write_event(AudioStop().event())
         logger.debug("Sent AudioStop")
+
+
+async def record_audio_to_buffer(
+    stream: pyaudio.Stream,
+    stop_event: InteractiveStopEvent,
+    logger: logging.Logger,
+    *,
+    live: Live | None = None,
+    quiet: bool = False,
+    progress_message: str = "Recording",
+    progress_style: str = "blue",
+) -> bytes:
+    """Record audio from mic to buffer using the same pattern as send_audio.
+
+    Args:
+        stream: PyAudio stream
+        stop_event: Event to stop recording
+        logger: Logger instance
+        live: Rich Live display for progress (optional)
+        quiet: If True, suppress all console output
+        progress_message: Message to display during recording
+        progress_style: Rich style for progress messages
+
+    Returns:
+        Raw audio data as bytes
+    """
+    audio_buffer = io.BytesIO()
+
+    try:
+        seconds_streamed = 0.0
+        while not stop_event.is_set():
+            chunk = await asyncio.to_thread(
+                stream.read,
+                num_frames=config.PYAUDIO_CHUNK_SIZE,
+                exception_on_overflow=False,
+            )
+            audio_buffer.write(chunk)
+            logger.debug("Recorded %d byte(s) of audio", len(chunk))
+
+            # Update display timing (same pattern as send_audio)
+            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+            if live and not quiet:
+                # Check if Ctrl+C was pressed
+                if stop_event.ctrl_c_pressed:
+                    msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
+                    live.update(Text(msg, style="yellow"))
+                else:
+                    live.update(Text(f"{progress_message}... ({seconds_streamed:.1f}s)", style=progress_style))
+
+    except OSError:
+        logger.exception("Error reading audio")
+
+    return audio_buffer.getvalue()
 
 
 async def receive_text(

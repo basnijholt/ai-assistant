@@ -39,7 +39,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import config, process_manager, wake_word
+from agent_cli import asr, config, process_manager, wake_word
 from agent_cli.agents._config import (
     ASRConfig,
     FileConfig,
@@ -50,13 +50,12 @@ from agent_cli.agents._config import (
 )
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import (
-    create_audio_buffer_handler,
     input_device,
     list_input_devices,
     list_output_devices,
+    open_pyaudio_stream,
     output_device,
     pyaudio_context,
-    record_audio_stream,
 )
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
@@ -74,6 +73,7 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
+    from rich.live import Live
 
 LOGGER = logging.getLogger()
 
@@ -104,10 +104,9 @@ async def record_audio_to_buffer(
     logger: logging.Logger,
     *,
     quiet: bool = False,
+    live: Live | None = None,
 ) -> bytes:
-    """Record audio to a buffer until stop event is set.
-
-    Uses the common audio recording utility to avoid code duplication.
+    """Record audio to a buffer using ASR module pattern.
 
     Args:
         p: PyAudio instance
@@ -115,6 +114,7 @@ async def record_audio_to_buffer(
         stop_event: Event to stop recording
         logger: Logger instance
         quiet: If True, suppress console output
+        live: Rich Live display for progress
 
     Returns:
         Raw audio data as bytes
@@ -123,22 +123,25 @@ async def record_audio_to_buffer(
     if not quiet:
         print_with_style("🎤 Recording... Say the wake word again to stop", style="green")
 
-    # Create buffer handler using common utility
-    chunk_handler, get_buffer = create_audio_buffer_handler()
-    
-    # Use common audio recording function
-    await record_audio_stream(
-        p=p,
+    # Use ASR module's audio recording functionality
+    with open_pyaudio_stream(
+        p,
+        format=config.PYAUDIO_FORMAT,
+        channels=config.PYAUDIO_CHANNELS,
+        rate=config.PYAUDIO_RATE,
+        input=True,
+        frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
         input_device_index=input_device_index,
-        stop_event=stop_event,
-        logger=logger,
-        chunk_handler=chunk_handler,
-        quiet=True,  # We handle our own status message above
-        status_message="Recording audio",
-        progress_style="green",
-    )
-    
-    return get_buffer()
+    ) as stream:
+        return await asr.record_audio_to_buffer(
+            stream=stream,
+            stop_event=stop_event,
+            logger=logger,
+            live=live,
+            quiet=quiet,
+            progress_message="Recording",
+            progress_style="green",
+        )
 
 
 async def save_audio_as_wav(audio_data: bytes, filename: str) -> None:
@@ -315,6 +318,7 @@ async def async_main(
                         recording_stop_event,
                         LOGGER,
                         quiet=general_cfg.quiet,
+                        live=live,
                     ),
                 )
 
