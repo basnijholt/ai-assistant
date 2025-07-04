@@ -6,3 +6,5 @@
 - Prefer functional style Python instead of classes with inheritance
 - Keep it DRY - reuse code as much as possible
 - Always run pre-commit hooks before committing
+- Implement the simplest solution possible and don't generalize when not yet needed
+- Only implement the feature that is asked for, not anything extra
