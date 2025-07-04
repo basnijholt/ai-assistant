@@ -26,6 +26,12 @@ wheels/
 # Package managers
 uv.lock
 
+# Audio files
+*.wav
+*.mp3
+*.ogg
+*.flac
+
 # Virtual Environment
 venv/
 env/
