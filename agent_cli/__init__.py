@@ -94,18 +94,50 @@ if "wyoming" not in sys.modules:  # pragma: no cover
     class Transcribe:  # type: ignore
         pass
 
+    # Missing start/stop message classes referenced in tests
+    class TranscriptStart(_BaseMessage):
+        pass
+
+    class TranscriptStop(_BaseMessage):
+        pass
+
     _wyoming.audio.AudioChunk = AudioChunk  # type: ignore[attr-defined]
     _wyoming.audio.AudioStart = AudioStart  # type: ignore[attr-defined]
     _wyoming.audio.AudioStop = AudioStop  # type: ignore[attr-defined]
     _wyoming.asr.Transcribe = Transcribe  # type: ignore[attr-defined]
     _wyoming.asr.Transcript = Transcript  # type: ignore[attr-defined]
     _wyoming.asr.TranscriptChunk = TranscriptChunk  # type: ignore[attr-defined]
+    _wyoming.asr.TranscriptStart = TranscriptStart  # type: ignore[attr-defined]
+    _wyoming.asr.TranscriptStop = TranscriptStop  # type: ignore[attr-defined]
+
+    # AsyncClient stub (shared between wyoming.client, wyoming.tts, wyoming.asr)
+    class _AsyncClient:  # noqa: D401
+        def __init__(self, *args: object, **kwargs: object) -> None:  # noqa: D401
+            pass
+
+        async def __aenter__(self):  # noqa: D401
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):  # noqa: D401
+            return False
+
+        async def write(self, *args: object, **kwargs: object):  # noqa: D401
+            pass
+
+        async def read(self, *args: object, **kwargs: object):  # noqa: D401
+            return None
+
+    _wyoming.client = ModuleType("wyoming.client")  # type: ignore[attr-defined]
+    _wyoming.client.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
+    _wyoming.tts.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
+    _wyoming.asr.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
 
     sys.modules.update({
         "wyoming": _wyoming,
         "wyoming.audio": _wyoming.audio,
         "wyoming.asr": _wyoming.asr,
         "wyoming.tts": _wyoming.tts,
+        "wyoming.client": _wyoming.client,
     })
 
 # 2. pydantic_ai – the library is heavy; provide minimal stub with attributes used in tests.
@@ -114,7 +146,14 @@ if "pydantic_ai" not in sys.modules:  # pragma: no cover
     _pyd_ai.tools = ModuleType("pydantic_ai.tools")  # type: ignore[attr-defined]
 
     class _Tool:  # type: ignore
-        pass
+        def __init__(self, func: object, *args: object, **kwargs: object):  # noqa: D401
+            # Store wrapped callable for later use (tests may inspect)
+            self.func = func  # type: ignore[assignment]
+
+        def __call__(self, *args: object, **kwargs: object):  # noqa: D401
+            if callable(self.func):
+                return self.func(*args, **kwargs)
+            return None
 
     _pyd_ai.tools.Tool = _Tool  # type: ignore[attr-defined]
 
