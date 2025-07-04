@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import pyaudio
+from rich.text import Text
 
 from agent_cli.utils import console
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
+    import logging
+    from rich.live import Live
+    from agent_cli.utils import InteractiveStopEvent
 
 
 @contextmanager
@@ -38,6 +43,63 @@ def open_pyaudio_stream(
         stream.stop_stream()
         stream.close()
 
+
+async def read_audio_stream(
+    stream: pyaudio.Stream,
+    stop_event: InteractiveStopEvent,
+    chunk_handler: Callable[[bytes], None] | Callable[[bytes], asyncio.Awaitable[None]],
+    logger: logging.Logger,
+    *,
+    live: Live | None = None,
+    quiet: bool = False,
+    progress_message: str = "Processing audio",
+    progress_style: str = "blue",
+) -> None:
+    """Core audio reading function - reads chunks and calls handler.
+    
+    This is the single source of truth for audio reading logic.
+    All other audio functions should use this to avoid duplication.
+    
+    Args:
+        stream: PyAudio stream
+        stop_event: Event to stop reading
+        chunk_handler: Function to handle each chunk (sync or async)
+        logger: Logger instance
+        live: Rich Live display for progress
+        quiet: If True, suppress console output
+        progress_message: Message to display
+        progress_style: Rich style for progress
+    """
+    from agent_cli import config
+    
+    try:
+        seconds_streamed = 0.0
+        while not stop_event.is_set():
+            chunk = await asyncio.to_thread(
+                stream.read,
+                num_frames=config.PYAUDIO_CHUNK_SIZE,
+                exception_on_overflow=False,
+            )
+            
+            # Handle chunk (sync or async)
+            if asyncio.iscoroutinefunction(chunk_handler):
+                await chunk_handler(chunk)
+            else:
+                chunk_handler(chunk)
+            
+            logger.debug("Processed %d byte(s) of audio", len(chunk))
+
+            # Update progress display
+            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+            if live and not quiet:
+                if stop_event.ctrl_c_pressed:
+                    msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
+                    live.update(Text(msg, style="yellow"))
+                else:
+                    live.update(Text(f"{progress_message}... ({seconds_streamed:.1f}s)", style=progress_style))
+
+    except OSError:
+        logger.exception("Error reading audio")
 
 
 @functools.cache

@@ -11,7 +11,7 @@ from wyoming.client import AsyncClient
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config
-from agent_cli.audio import open_pyaudio_stream
+from agent_cli.audio import open_pyaudio_stream, read_audio_stream
 from agent_cli.utils import InteractiveStopEvent, print_error_message
 
 if TYPE_CHECKING:
@@ -46,33 +46,29 @@ async def send_audio_for_wake_detection(
         AudioStart(rate=config.PYAUDIO_RATE, width=2, channels=config.PYAUDIO_CHANNELS).event(),
     )
 
+    async def send_chunk(chunk: bytes) -> None:
+        """Send audio chunk to wake word server."""
+        await client.write_event(
+            AudioChunk(
+                rate=config.PYAUDIO_RATE,
+                width=2,
+                channels=config.PYAUDIO_CHANNELS,
+                audio=chunk,
+            ).event(),
+        )
+
     try:
-        seconds_streamed = 0.0
-        while not stop_event.is_set():
-            chunk = await asyncio.to_thread(
-                stream.read,
-                num_frames=config.PYAUDIO_CHUNK_SIZE,
-                exception_on_overflow=False,
-            )
-            await client.write_event(
-                AudioChunk(
-                    rate=config.PYAUDIO_RATE,
-                    width=2,
-                    channels=config.PYAUDIO_CHANNELS,
-                    audio=chunk,
-                ).event(),
-            )
-            logger.debug("Sent %d byte(s) of audio for wake detection", len(chunk))
-
-            # Update display timing
-            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
-            if live and not quiet:
-                if stop_event.ctrl_c_pressed:
-                    msg = "Ctrl+C pressed. Stopping wake word detection..."
-                    live.update(Text(msg, style="yellow"))
-                else:
-                    live.update(Text(f"Listening for wake word... ({seconds_streamed:.1f}s)", style="blue"))
-
+        # Use common audio reading function
+        await read_audio_stream(
+            stream=stream,
+            stop_event=stop_event,
+            chunk_handler=send_chunk,
+            logger=logger,
+            live=live,
+            quiet=quiet,
+            progress_message="Listening for wake word",
+            progress_style="blue",
+        )
     finally:
         await client.write_event(AudioStop().event())
         logger.debug("Sent AudioStop for wake detection")

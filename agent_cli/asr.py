@@ -12,7 +12,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
 from agent_cli import config
-from agent_cli.audio import open_pyaudio_stream
+from agent_cli.audio import open_pyaudio_stream, read_audio_stream
 from agent_cli.utils import InteractiveStopEvent, print_error_message
 
 if TYPE_CHECKING:
@@ -44,39 +44,33 @@ async def send_audio(
 
     """
     await client.write_event(Transcribe().event())
-
     await client.write_event(
         AudioStart(rate=config.PYAUDIO_RATE, width=2, channels=config.PYAUDIO_CHANNELS).event(),
     )
 
+    async def send_chunk(chunk: bytes) -> None:
+        """Send audio chunk to ASR server."""
+        await client.write_event(
+            AudioChunk(
+                rate=config.PYAUDIO_RATE,
+                width=2,
+                channels=config.PYAUDIO_CHANNELS,
+                audio=chunk,
+            ).event(),
+        )
+
     try:
-        seconds_streamed = 0.0
-        while not stop_event.is_set():
-            chunk = await asyncio.to_thread(
-                stream.read,
-                num_frames=config.PYAUDIO_CHUNK_SIZE,
-                exception_on_overflow=False,
-            )
-            await client.write_event(
-                AudioChunk(
-                    rate=config.PYAUDIO_RATE,
-                    width=2,
-                    channels=config.PYAUDIO_CHANNELS,
-                    audio=chunk,
-                ).event(),
-            )
-            logger.debug("Sent %d byte(s) of audio", len(chunk))
-
-            # Update display timing
-            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
-            if live and not quiet:
-                # Check if Ctrl+C was pressed
-                if stop_event.ctrl_c_pressed:
-                    msg = "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)"
-                    live.update(Text(msg, style="yellow"))
-                else:
-                    live.update(Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"))
-
+        # Use common audio reading function
+        await read_audio_stream(
+            stream=stream,
+            stop_event=stop_event,
+            chunk_handler=send_chunk,
+            logger=logger,
+            live=live,
+            quiet=quiet,
+            progress_message="Listening",
+            progress_style="blue",
+        )
     finally:
         await client.write_event(AudioStop().event())
         logger.debug("Sent AudioStop")
@@ -92,7 +86,7 @@ async def record_audio_to_buffer(
     progress_message: str = "Recording",
     progress_style: str = "blue",
 ) -> bytes:
-    """Record audio from mic to buffer using the same pattern as send_audio.
+    """Record audio from mic to buffer.
 
     Args:
         stream: PyAudio stream
@@ -108,29 +102,21 @@ async def record_audio_to_buffer(
     """
     audio_buffer = io.BytesIO()
 
-    try:
-        seconds_streamed = 0.0
-        while not stop_event.is_set():
-            chunk = await asyncio.to_thread(
-                stream.read,
-                num_frames=config.PYAUDIO_CHUNK_SIZE,
-                exception_on_overflow=False,
-            )
-            audio_buffer.write(chunk)
-            logger.debug("Recorded %d byte(s) of audio", len(chunk))
+    def buffer_chunk(chunk: bytes) -> None:
+        """Buffer audio chunk."""
+        audio_buffer.write(chunk)
 
-            # Update display timing (same pattern as send_audio)
-            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
-            if live and not quiet:
-                # Check if Ctrl+C was pressed
-                if stop_event.ctrl_c_pressed:
-                    msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
-                    live.update(Text(msg, style="yellow"))
-                else:
-                    live.update(Text(f"{progress_message}... ({seconds_streamed:.1f}s)", style=progress_style))
-
-    except OSError:
-        logger.exception("Error reading audio")
+    # Use common audio reading function
+    await read_audio_stream(
+        stream=stream,
+        stop_event=stop_event,
+        chunk_handler=buffer_chunk,
+        logger=logger,
+        live=live,
+        quiet=quiet,
+        progress_message=progress_message,
+        progress_style=progress_style,
+    )
 
     return audio_buffer.getvalue()
 
