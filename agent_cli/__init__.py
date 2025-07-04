@@ -172,6 +172,133 @@ if "wyoming" not in sys.modules:  # pragma: no cover
         if not hasattr(_cls, "from_event"):
             _cls.from_event = classmethod(_default_from_event)  # type: ignore[attr-defined]
 
+    # Provide simple Event base and ensure message classes have .type / .event
+    _wyoming.event = ModuleType("wyoming.event")  # type: ignore[attr-defined]
+
+    class Event:  # type: ignore
+        def __init__(self, payload: object | None = None):
+            self.payload = payload
+
+    _wyoming.event.Event = Event  # type: ignore[attr-defined]
+    sys.modules["wyoming.event"] = _wyoming.event
+
+    def _attach_event(cls):  # helper to attach .event and .type
+        if not hasattr(cls, "event"):
+            def _event(self):  # noqa: D401
+                self.type = cls.__name__  # type: ignore[attr-defined]
+                return self
+            cls.event = _event  # type: ignore[attr-defined]
+        return cls
+
+    # Redefine/extend message classes with constructors and event helpers
+    @_attach_event
+    class AudioStart(_wyoming.audio.AudioStart):  # type: ignore
+        def __init__(self, *, rate: int, width: int, channels: int):
+            self.rate = rate
+            self.width = width
+            self.channels = channels
+
+    @_attach_event
+    class AudioStop(_wyoming.audio.AudioStop):  # type: ignore
+        def __init__(self):
+            pass
+
+    @_attach_event
+    class AudioChunk(_wyoming.audio.AudioChunk):  # type: ignore
+        def __init__(self, *, rate: int, width: int, channels: int, audio: bytes):
+            self.rate = rate
+            self.width = width
+            self.channels = channels
+            self.audio = audio
+
+    @_attach_event
+    class Transcribe(_wyoming.asr.Transcribe):  # type: ignore
+        def __init__(self):
+            pass
+
+    @_attach_event
+    class TranscriptChunk(_wyoming.asr.TranscriptChunk):  # type: ignore
+        def __init__(self, *, text: str):
+            self.text = text
+
+    @_attach_event
+    class Transcript(_wyoming.asr.Transcript):  # type: ignore
+        def __init__(self, *, text: str):
+            self.text = text
+
+    # Reassign classes back into modules
+    _wyoming.audio.AudioStart = AudioStart  # type: ignore[attr-defined]
+    _wyoming.audio.AudioStop = AudioStop  # type: ignore[attr-defined]
+    _wyoming.audio.AudioChunk = AudioChunk  # type: ignore[attr-defined]
+    _wyoming.asr.Transcribe = Transcribe  # type: ignore[attr-defined]
+    _wyoming.asr.TranscriptChunk = TranscriptChunk  # type: ignore[attr-defined]
+    _wyoming.asr.Transcript = Transcript  # type: ignore[attr-defined]
+
+    # Enhance _AsyncClient with from_uri and in-memory queue
+    class _AsyncClient(_wyoming.client.AsyncClient):  # type: ignore
+        def __init__(self, *args: object, **kwargs: object):
+            super().__init__()
+            self._events: list[Event] = []
+
+        @classmethod
+        def from_uri(cls, uri: str):  # type: ignore
+            return cls()
+
+        async def write_event(self, event):  # type: ignore
+            self._events.append(event)
+
+        async def read_event(self):  # type: ignore
+            if self._events:
+                return self._events.pop(0)
+            await asyncio.sleep(0)  # ensure awaitable
+            return None
+
+    _wyoming.client.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
+    _wyoming.tts.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
+    _wyoming.asr.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
+
+    # ------------------------------------------------------------
+    # audiostretchy stub (no-op)
+    # ------------------------------------------------------------
+
+    if "audiostretchy" not in sys.modules:  # pragma: no cover
+        _as_mod = ModuleType("audiostretchy")
+        _as_mod.stretch = ModuleType("audiostretchy.stretch")  # type: ignore[attr-defined]
+
+        class AudioStretch:  # type: ignore
+            def open(self, *args: object, **kwargs: object):
+                pass
+
+            def stretch(self, ratio: float):  # noqa: D401
+                pass
+
+            def save_wav(self, out, close=False):  # type: ignore
+                out.write(b"\x00\x00")
+
+        _as_mod.stretch.AudioStretch = AudioStretch  # type: ignore[attr-defined]
+        sys.modules.update({
+            "audiostretchy": _as_mod,
+            "audiostretchy.stretch": _as_mod.stretch,
+        })
+
+    # ---------------------------------------------------------------------------
+    # pydantic_ai stub Agent
+    # ---------------------------------------------------------------------------
+
+    if not hasattr(_pyd_ai, "Agent"):
+        class _StubAgent:  # type: ignore
+            def __init__(self, *args: object, **kwargs: object):
+                self.call_history: list = []
+
+            async def run(self, user_input: str):  # noqa: D401
+                class _Result:  # type: ignore
+                    def __init__(self, out: str):
+                        self.output = out
+
+                return _Result(out=user_input)
+
+        _pyd_ai.Agent = _StubAgent  # type: ignore[attr-defined]
+
     sys.modules.update({
         "wyoming": _wyoming,
         "wyoming.audio": _wyoming.audio,
