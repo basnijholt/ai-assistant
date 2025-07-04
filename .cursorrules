@@ -1,0 +1,11 @@
+# Development Rules
+
+## Core Rules
+- Always use `uv --all-extras` to install packages
+- Commit frequently but always make sure tests pass first
+- Prefer functional style Python instead of classes with inheritance
+- Keep it DRY - reuse code as much as possible
+- Always run pre-commit hooks before committing
+- Implement the simplest solution possible and don't generalize when not yet needed
+- Only implement the feature that is asked for, not anything extra
+- Never run `git add .` - only use `git add filename` to avoid committing unrelated files
