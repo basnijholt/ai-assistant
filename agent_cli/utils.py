@@ -207,11 +207,31 @@ def stop_or_status_or_toggle(
 ) -> bool:
     """Handle process control for a given process name."""
     if stop:
-        if process_manager.kill_process(process_name):
-            if not quiet:
-                print_with_style(f"✅ {which.capitalize()} stopped.")
-        elif not quiet:
-            print_with_style(f"⚠️  No {which} is running.", style="yellow")
+        # For interactive agent, send SIGINT (like Ctrl+C) instead of SIGTERM
+        # This allows it to handle stop signals gracefully with double-stop logic
+        if process_name == "interactive":
+            pid = process_manager.get_running_pid(process_name)
+            if pid:
+                try:
+                    import os
+                    import signal
+                    os.kill(pid, signal.SIGINT)
+                    if not quiet:
+                        print_with_style(f"✅ Sent stop signal to {which}.")
+                except (ProcessLookupError, PermissionError):
+                    # Process already dead or no permission, clean up PID file
+                    process_manager.kill_process(process_name)
+                    if not quiet:
+                        print_with_style(f"✅ {which.capitalize()} stopped.")
+            elif not quiet:
+                print_with_style(f"⚠️  No {which} is running.", style="yellow")
+        else:
+            # For other agents, kill immediately as before
+            if process_manager.kill_process(process_name):
+                if not quiet:
+                    print_with_style(f"✅ {which.capitalize()} stopped.")
+            elif not quiet:
+                print_with_style(f"⚠️  No {which} is running.", style="yellow")
         return True
 
     if status:
@@ -225,8 +245,23 @@ def stop_or_status_or_toggle(
 
     if toggle:
         if process_manager.is_process_running(process_name):
-            if process_manager.kill_process(process_name) and not quiet:
-                print_with_style(f"✅ {which.capitalize()} stopped.")
+            # Use the same logic as stop for consistency
+            if process_name == "interactive":
+                pid = process_manager.get_running_pid(process_name)
+                if pid:
+                    try:
+                        import os
+                        import signal
+                        os.kill(pid, signal.SIGINT)
+                        if not quiet:
+                            print_with_style(f"✅ Sent stop signal to {which}.")
+                    except (ProcessLookupError, PermissionError):
+                        process_manager.kill_process(process_name)
+                        if not quiet:
+                            print_with_style(f"✅ {which.capitalize()} stopped.")
+            else:
+                if process_manager.kill_process(process_name) and not quiet:
+                    print_with_style(f"✅ {which.capitalize()} stopped.")
             return True
         if not quiet:
             print_with_style(f"⚠️ {which.capitalize()} is not running.", style="yellow")

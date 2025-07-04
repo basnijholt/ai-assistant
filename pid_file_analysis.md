@@ -56,6 +56,32 @@ To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
 2. **Process termination** (`--stop`) to stop the background listener
 3. **Single hotkey toggle behavior** - same key starts/stops the agent
 
+## Interactive Agent Special Case
+
+The **interactive** agent has different `--stop` behavior than other agents:
+
+### Problem
+- **Other agents**: `--stop` should kill the entire process (one-shot tasks)
+- **Interactive agent**: `--stop` should behave like Ctrl+C with double-stop logic:
+  - First `--stop`: Stop current recording, continue conversation loop
+  - Second `--stop`: Exit the entire program
+
+### Solution
+Modified `stop_or_status_or_toggle()` to handle interactive agent differently:
+
+```python
+if process_name == "interactive":
+    # Send SIGINT (like Ctrl+C) instead of SIGTERM
+    os.kill(pid, signal.SIGINT)
+else:
+    # Kill immediately as before
+    process_manager.kill_process(process_name)
+```
+
+This allows the interactive agent to use its existing signal handling logic:
+- First SIGINT: Set stop event, process current turn, continue loop
+- Second SIGINT: Force exit with code 130
+
 ## The "Recording" Context
 
 Based on the code analysis, "recording" refers to:
@@ -95,6 +121,11 @@ The `--stop` command doesn't just "stop recording and start processing" - it **t
 - Separates process control from application logic
 - Enables background operation with foreground control
 - Provides reliable cleanup on exit
+
+#### 5. **Interactive Agent Support**
+- Allows external control of long-running conversations
+- Double-stop logic matches double Ctrl+C behavior
+- Preserves conversation state between stop signals
 
 ### ❌ **Minor Arguments Against PID Files**
 
@@ -137,7 +168,7 @@ class VoiceAssistant:
 ## Recommendations
 
 ### ✅ **Keep PID Files** (Strongly Recommended)
-The PID file mechanism is **perfectly designed** for your Keyboard Maestro workflow:
+The PID file mechanism is **perfectly designed** for your workflow:
 
 1. **Maintain current architecture** - it's working as intended
 2. **Clarify documentation** to explain the KM integration context
@@ -171,6 +202,7 @@ Your Keyboard Maestro workflow depends on:
 - ✅ **Background process management** for the listening phase  
 - ✅ **Reliable termination** to complete the clipboard workflow
 - ✅ **Single hotkey toggle** behavior
+- ✅ **Interactive agent double-stop support** (like double Ctrl+C)
 
 **DO NOT remove PID files** - they are the foundation that makes your automation workflow possible.
 
