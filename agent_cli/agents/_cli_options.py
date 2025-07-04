@@ -130,7 +130,11 @@ TOGGLE: bool = typer.Option(
 # --- General Options ---
 
 
-def _conf_callback(ctx: typer.Context, param: typer.CallbackParam, value: str) -> str:  # noqa: ARG001
+def _conf_callback(
+    ctx: typer.Context,
+    _param: typer.CallbackParam,
+    value: str,
+) -> str:
     from agent_cli.cli import set_config_defaults
 
     set_config_defaults(ctx, value)

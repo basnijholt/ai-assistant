@@ -12,6 +12,15 @@ repos:
       - id: ruff
         args: ["--fix"]
       - id: ruff-format
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        args: ["--line-length=100"]
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: "0.7.19"
+    hooks:
+      - id: uv-lock
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.15.0"
     hooks:
