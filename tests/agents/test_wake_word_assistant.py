@@ -174,16 +174,18 @@ class TestSaveAudioAsWav:
 
     @pytest.mark.asyncio
     @patch("agent_cli.agents.wake_word_assistant._create_wav_data")
-    @patch("builtins.open", create=True)
-    async def test_saves_audio_as_wav(self, mock_open, mock_create_wav):
+    @patch("agent_cli.agents.wake_word_assistant.asyncio.to_thread")
+    @patch("agent_cli.agents.wake_word_assistant.Path")
+    async def test_saves_audio_as_wav(self, mock_path, mock_to_thread, mock_create_wav):
         """Test that audio is saved as WAV file."""
         # Setup mocks
         test_audio_data = b"raw_audio_data"
         test_wav_data = b"wav_file_data"
         mock_create_wav.return_value = test_wav_data
         
-        mock_file = MagicMock()
-        mock_open.return_value.__enter__.return_value = mock_file
+        mock_path_instance = MagicMock()
+        mock_path.return_value = mock_path_instance
+        mock_to_thread.return_value = None
         
         await save_audio_as_wav(test_audio_data, "test.wav")
         
@@ -195,9 +197,9 @@ class TestSaveAudioAsWav:
             channels=1,  # Default PYAUDIO_CHANNELS
         )
         
-        # Verify file writing
-        mock_open.assert_called_once_with("test.wav", "wb")
-        mock_file.write.assert_called_once_with(test_wav_data)
+        # Verify file writing through asyncio.to_thread and Path.write_bytes
+        mock_path.assert_called_once_with("test.wav")
+        mock_to_thread.assert_called_once_with(mock_path_instance.write_bytes, test_wav_data)
 
 
 class TestAsyncMain:
