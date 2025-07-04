@@ -103,20 +103,6 @@ async def read_audio_stream(
         logger.exception("Error reading audio")
 
 
-def get_standard_audio_config() -> dict:
-    """Get standard audio configuration for Wyoming protocols.
-    
-    Returns:
-        Dictionary with rate, width, and channels for Wyoming audio events
-    """
-    from agent_cli import config
-    
-    return {
-        "rate": config.PYAUDIO_RATE,
-        "width": 2,  # 16-bit audio
-        "channels": config.PYAUDIO_CHANNELS,
-    }
-
 
 def setup_input_stream(
     p: pyaudio.PyAudio,

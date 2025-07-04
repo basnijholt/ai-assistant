@@ -14,7 +14,6 @@ from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import config
 from agent_cli.audio import (
-    get_standard_audio_config,
     open_pyaudio_stream,
     pyaudio_context,
     setup_output_stream,

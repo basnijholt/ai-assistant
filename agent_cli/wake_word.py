@@ -11,7 +11,7 @@ from wyoming.client import AsyncClient
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config
-from agent_cli.audio import get_standard_audio_config, open_pyaudio_stream, read_audio_stream, setup_input_stream
+from agent_cli.audio import open_pyaudio_stream, read_audio_stream, setup_input_stream
 from agent_cli.utils import InteractiveStopEvent
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
@@ -43,13 +43,12 @@ async def send_audio_for_wake_detection(
         quiet: If True, suppress all console output
 
     """
-    audio_config = get_standard_audio_config()
-    await client.write_event(AudioStart(**audio_config).event())
+    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to wake word server."""
         await client.write_event(
-            AudioChunk(audio=chunk, **audio_config).event(),
+            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
         )
 
     try:

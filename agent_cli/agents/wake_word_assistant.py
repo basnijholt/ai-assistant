@@ -185,22 +185,19 @@ async def _process_recorded_audio(
         Exception: If ASR processing fails
 
     """
-    from agent_cli.audio import get_standard_audio_config
     from agent_cli.wyoming_utils import wyoming_client_context
     
     async with wyoming_client_context(asr_server_ip, asr_server_port, "ASR", logger) as client:
-        audio_config = get_standard_audio_config()
-        
         # Start transcription
         await client.write_event(Transcribe().event())
-        await client.write_event(AudioStart(**audio_config).event())
+        await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
 
         # Send audio data in chunks
         chunk_size = config.PYAUDIO_CHUNK_SIZE * 2  # 2 bytes per sample for 16-bit
         for i in range(0, len(audio_data), chunk_size):
             chunk = audio_data[i:i + chunk_size]
             await client.write_event(
-                AudioChunk(audio=chunk, **audio_config).event(),
+                AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
             )
             logger.debug("Sent %d byte(s) of audio", len(chunk))
 
