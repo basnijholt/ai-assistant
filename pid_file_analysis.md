@@ -67,15 +67,31 @@ The **interactive** agent has different `--stop` behavior than other agents:
   - Second `--stop`: Exit the entire program
 
 ### Solution
-Modified `stop_or_status_or_toggle()` to handle interactive agent differently:
+Added a `stop_signal` parameter to `stop_or_status_or_toggle()` for configurable behavior:
 
 ```python
-if process_name == "interactive":
-    # Send SIGINT (like Ctrl+C) instead of SIGTERM
-    os.kill(pid, signal.SIGINT)
-else:
-    # Kill immediately as before
-    process_manager.kill_process(process_name)
+def stop_or_status_or_toggle(
+    process_name: str,
+    which: str,
+    stop: bool,
+    status: bool,
+    toggle: bool,
+    *,
+    quiet: bool = False,
+    stop_signal: int = signal.SIGTERM,  # Default to force kill
+) -> bool:
+```
+
+Interactive agent now calls it with `stop_signal=signal.SIGINT`:
+
+```python
+stop_or_status_or_toggle(
+    "interactive",
+    "interactive agent", 
+    stop, status, toggle,
+    quiet=quiet,
+    stop_signal=signal.SIGINT,  # Graceful double-stop behavior
+)
 ```
 
 This allows the interactive agent to use its existing signal handling logic:
@@ -174,7 +190,14 @@ The PID file mechanism is **perfectly designed** for your workflow:
 2. **Clarify documentation** to explain the KM integration context
 3. **Update terminology** - `--stop` means "complete the task and exit" not "pause recording"
 
-### Possible Improvements
+### Implemented Improvements
+
+1. **Clean parameterized signal handling**:
+   - No special casing based on process names
+   - Configurable stop behavior via `stop_signal` parameter
+   - Maintains single responsibility principle
+
+### Possible Future Improvements
 
 1. **Better naming**:
    ```bash
