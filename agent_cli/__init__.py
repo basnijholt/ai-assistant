@@ -8,6 +8,7 @@
 from types import ModuleType
 import sys
 import asyncio
+import importlib.machinery
 
 
 try:
@@ -277,6 +278,9 @@ if "wyoming" not in sys.modules:  # pragma: no cover
                 out.write(b"\x00\x00")
 
         _as_mod.stretch.AudioStretch = AudioStretch  # type: ignore[attr-defined]
+        # Provide a ModuleSpec so importlib.find_spec works without ValueError
+        _as_mod.__spec__ = importlib.machinery.ModuleSpec("audiostretchy", loader=None)  # type: ignore[attr-defined]
+        _as_mod.stretch.__spec__ = importlib.machinery.ModuleSpec("audiostretchy.stretch", loader=None)  # type: ignore[attr-defined]
         sys.modules.update({
             "audiostretchy": _as_mod,
             "audiostretchy.stretch": _as_mod.stretch,
@@ -291,6 +295,22 @@ if "wyoming" not in sys.modules:  # pragma: no cover
     if _pyd_ai_ref is None:
         _pyd_ai_ref = ModuleType("pydantic_ai")
         sys.modules["pydantic_ai"] = _pyd_ai_ref
+
+    # Ensure a tools submodule with Tool class
+    if not hasattr(_pyd_ai_ref, "tools"):
+        _pyd_ai_ref.tools = ModuleType("pydantic_ai.tools")  # type: ignore[attr-defined]
+        sys.modules["pydantic_ai.tools"] = _pyd_ai_ref.tools  # type: ignore[attr-defined]
+
+    if not hasattr(_pyd_ai_ref.tools, "Tool"):
+        class _StubTool:  # type: ignore
+            def __init__(self, func, *args, **kwargs):
+                self.func = func
+
+            def __call__(self, *args, **kwargs):
+                if callable(self.func):
+                    return self.func(*args, **kwargs)
+
+        _pyd_ai_ref.tools.Tool = _StubTool  # type: ignore[attr-defined]
 
     if not hasattr(_pyd_ai_ref, "Agent"):
         class _StubAgent:  # type: ignore
