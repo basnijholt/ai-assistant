@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
+import io
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import pyaudio
+from rich.text import Text
 
 from agent_cli.utils import console
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
+    import logging
+    from rich.live import Live
+    from agent_cli.utils import InteractiveStopEvent
+    from agent_cli import config
 
 
 @contextmanager
@@ -37,6 +44,90 @@ def open_pyaudio_stream(
     finally:
         stream.stop_stream()
         stream.close()
+
+
+async def record_audio_stream(
+    p: pyaudio.PyAudio,
+    input_device_index: int | None,
+    stop_event: InteractiveStopEvent,
+    logger: logging.Logger,
+    chunk_handler: Callable[[bytes], None] | Callable[[bytes], asyncio.Awaitable[None]],
+    *,
+    live: Live | None = None,
+    quiet: bool = False,
+    status_message: str = "Recording audio",
+    progress_style: str = "blue",
+) -> None:
+    """Generic audio recording function that can be reused across modules.
+
+    Args:
+        p: PyAudio instance
+        input_device_index: Audio input device index
+        stop_event: Event to stop recording
+        logger: Logger instance
+        chunk_handler: Function to handle each audio chunk (sync or async)
+        live: Optional Rich Live display for progress
+        quiet: If True, suppress all console output
+        status_message: Message to display during recording
+        progress_style: Rich style for progress messages
+
+    """
+    from agent_cli import config
+
+    with open_pyaudio_stream(
+        p,
+        format=config.PYAUDIO_FORMAT,
+        channels=config.PYAUDIO_CHANNELS,
+        rate=config.PYAUDIO_RATE,
+        input=True,
+        frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
+        input_device_index=input_device_index,
+    ) as stream:
+        try:
+            seconds_streamed = 0.0
+            while not stop_event.is_set():
+                chunk = await asyncio.to_thread(
+                    stream.read,
+                    num_frames=config.PYAUDIO_CHUNK_SIZE,
+                    exception_on_overflow=False,
+                )
+                
+                # Handle the chunk (could be sync or async)
+                if asyncio.iscoroutinefunction(chunk_handler):
+                    await chunk_handler(chunk)
+                else:
+                    chunk_handler(chunk)
+                
+                logger.debug("Processed %d byte(s) of audio", len(chunk))
+
+                # Update display timing
+                seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+                if live and not quiet:
+                    if stop_event.ctrl_c_pressed:
+                        msg = f"Ctrl+C pressed. Stopping {status_message.lower()}..."
+                        live.update(Text(msg, style="yellow"))
+                    else:
+                        live.update(Text(f"{status_message}... ({seconds_streamed:.1f}s)", style=progress_style))
+
+        except OSError:
+            logger.exception("Error reading audio")
+
+
+def create_audio_buffer_handler() -> tuple[Callable[[bytes], None], Callable[[], bytes]]:
+    """Create a chunk handler that buffers audio data and returns getter function.
+    
+    Returns:
+        Tuple of (chunk_handler_function, get_buffer_function)
+    """
+    buffer = io.BytesIO()
+    
+    def handle_chunk(chunk: bytes) -> None:
+        buffer.write(chunk)
+    
+    def get_buffer() -> bytes:
+        return buffer.getvalue()
+    
+    return handle_chunk, get_buffer
 
 
 @functools.cache

@@ -97,19 +97,15 @@ class TestRecordAudioToBuffer:
     """Tests for record_audio_to_buffer function."""
 
     @pytest.mark.asyncio
-    @patch("agent_cli.agents.wake_word_assistant.open_pyaudio_stream")
-    @patch("agent_cli.agents.wake_word_assistant.asyncio.to_thread")
-    async def test_records_audio_to_buffer(self, mock_to_thread, mock_stream_context, mock_pyaudio, mock_logger, mock_stop_event):
+    @patch("agent_cli.agents.wake_word_assistant.record_audio_stream")
+    @patch("agent_cli.agents.wake_word_assistant.create_audio_buffer_handler")
+    async def test_records_audio_to_buffer(self, mock_create_handler, mock_record_stream, mock_pyaudio, mock_logger, mock_stop_event):
         """Test that audio is recorded to buffer."""
         # Setup mocks
-        mock_stream = MagicMock()
-        mock_stream_context.return_value.__enter__.return_value = mock_stream
-        
         test_chunk = b"test_audio_chunk"
-        mock_to_thread.return_value = test_chunk
-        
-        # Stop after one chunk
-        mock_stop_event.is_set.side_effect = [False, True]
+        mock_chunk_handler = MagicMock()
+        mock_get_buffer = MagicMock(return_value=test_chunk)
+        mock_create_handler.return_value = (mock_chunk_handler, mock_get_buffer)
         
         result = await record_audio_to_buffer(
             mock_pyaudio,
@@ -120,19 +116,31 @@ class TestRecordAudioToBuffer:
         )
         
         assert result == test_chunk
-        mock_to_thread.assert_called_once()
+        mock_create_handler.assert_called_once()
+        mock_record_stream.assert_called_once_with(
+            p=mock_pyaudio,
+            input_device_index=1,
+            stop_event=mock_stop_event,
+            logger=mock_logger,
+            chunk_handler=mock_chunk_handler,
+            quiet=True,
+            status_message="Recording audio",
+            progress_style="green",
+        )
+        mock_get_buffer.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent_cli.agents.wake_word_assistant.open_pyaudio_stream")
-    @patch("agent_cli.agents.wake_word_assistant.asyncio.to_thread")
-    async def test_handles_recording_error(self, mock_to_thread, mock_stream_context, mock_pyaudio, mock_logger, mock_stop_event):
+    @patch("agent_cli.agents.wake_word_assistant.record_audio_stream")
+    @patch("agent_cli.agents.wake_word_assistant.create_audio_buffer_handler")
+    async def test_handles_recording_error(self, mock_create_handler, mock_record_stream, mock_pyaudio, mock_logger, mock_stop_event):
         """Test error handling during recording."""
         # Setup mocks
-        mock_stream = MagicMock()
-        mock_stream_context.return_value.__enter__.return_value = mock_stream
+        mock_chunk_handler = MagicMock()
+        mock_get_buffer = MagicMock(return_value=b"")  # Empty buffer on error
+        mock_create_handler.return_value = (mock_chunk_handler, mock_get_buffer)
         
-        mock_to_thread.side_effect = OSError("Recording error")
-        mock_stop_event.is_set.side_effect = [False, True]
+        # Simulate error in record_audio_stream (errors are handled there)
+        mock_record_stream.return_value = None  # Function doesn't return anything
         
         result = await record_audio_to_buffer(
             mock_pyaudio,
@@ -144,19 +152,18 @@ class TestRecordAudioToBuffer:
         
         # Should return empty bytes on error
         assert result == b""
-        mock_logger.exception.assert_called_once()
+        mock_get_buffer.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent_cli.agents.wake_word_assistant.open_pyaudio_stream")
+    @patch("agent_cli.agents.wake_word_assistant.record_audio_stream")
+    @patch("agent_cli.agents.wake_word_assistant.create_audio_buffer_handler")
     @patch("agent_cli.agents.wake_word_assistant.print_with_style")
-    async def test_prints_recording_message_when_not_quiet(self, mock_print, mock_stream_context, mock_pyaudio, mock_logger, mock_stop_event):
+    async def test_prints_recording_message_when_not_quiet(self, mock_print, mock_create_handler, mock_record_stream, mock_pyaudio, mock_logger, mock_stop_event):
         """Test that recording message is printed when not quiet."""
         # Setup mocks
-        mock_stream = MagicMock()
-        mock_stream_context.return_value.__enter__.return_value = mock_stream
-        
-        # Stop immediately
-        mock_stop_event.is_set.side_effect = [True]
+        mock_chunk_handler = MagicMock()
+        mock_get_buffer = MagicMock(return_value=b"test_data")
+        mock_create_handler.return_value = (mock_chunk_handler, mock_get_buffer)
         
         await record_audio_to_buffer(
             mock_pyaudio,

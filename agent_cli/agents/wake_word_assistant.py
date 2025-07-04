@@ -28,7 +28,6 @@ REQUIREMENTS:
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
@@ -51,12 +50,13 @@ from agent_cli.agents._config import (
 )
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import (
+    create_audio_buffer_handler,
     input_device,
     list_input_devices,
     list_output_devices,
-    open_pyaudio_stream,
     output_device,
     pyaudio_context,
+    record_audio_stream,
 )
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
@@ -107,8 +107,7 @@ async def record_audio_to_buffer(
 ) -> bytes:
     """Record audio to a buffer until stop event is set.
 
-    This function follows the same pattern as the ASR send_audio function
-    but captures audio to a buffer instead of sending to a server.
+    Uses the common audio recording utility to avoid code duplication.
 
     Args:
         p: PyAudio instance
@@ -121,34 +120,25 @@ async def record_audio_to_buffer(
         Raw audio data as bytes
 
     """
-    audio_buffer = io.BytesIO()
+    if not quiet:
+        print_with_style("🎤 Recording... Say the wake word again to stop", style="green")
 
-    with open_pyaudio_stream(
-        p,
-        format=config.PYAUDIO_FORMAT,
-        channels=config.PYAUDIO_CHANNELS,
-        rate=config.PYAUDIO_RATE,
-        input=True,
-        frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
+    # Create buffer handler using common utility
+    chunk_handler, get_buffer = create_audio_buffer_handler()
+    
+    # Use common audio recording function
+    await record_audio_stream(
+        p=p,
         input_device_index=input_device_index,
-    ) as stream:
-        if not quiet:
-            print_with_style("🎤 Recording... Say the wake word again to stop", style="green")
-
-        try:
-            while not stop_event.is_set():
-                # Use the same async pattern as ASR module
-                chunk = await asyncio.to_thread(
-                    stream.read,
-                    num_frames=config.PYAUDIO_CHUNK_SIZE,
-                    exception_on_overflow=False,
-                )
-                audio_buffer.write(chunk)
-                logger.debug("Recorded %d bytes", len(chunk))
-        except OSError:
-            logger.exception("Error reading audio")
-
-    return audio_buffer.getvalue()
+        stop_event=stop_event,
+        logger=logger,
+        chunk_handler=chunk_handler,
+        quiet=True,  # We handle our own status message above
+        status_message="Recording audio",
+        progress_style="green",
+    )
+    
+    return get_buffer()
 
 
 async def save_audio_as_wav(audio_data: bytes, filename: str) -> None:
