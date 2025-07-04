@@ -7,6 +7,7 @@
 
 from types import ModuleType
 import sys
+import asyncio
 
 
 try:
@@ -235,7 +236,7 @@ if "wyoming" not in sys.modules:  # pragma: no cover
     _wyoming.asr.Transcript = Transcript  # type: ignore[attr-defined]
 
     # Enhance _AsyncClient with from_uri and in-memory queue
-    class _AsyncClient(_wyoming.client.AsyncClient):  # type: ignore
+    class _StubAsyncClient(_wyoming.client.AsyncClient):  # type: ignore
         def __init__(self, *args: object, **kwargs: object):
             super().__init__()
             self._events: list[Event] = []
@@ -253,9 +254,9 @@ if "wyoming" not in sys.modules:  # pragma: no cover
             await asyncio.sleep(0)  # ensure awaitable
             return None
 
-    _wyoming.client.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
-    _wyoming.tts.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
-    _wyoming.asr.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
+    _wyoming.client.AsyncClient = _StubAsyncClient  # type: ignore[attr-defined]
+    _wyoming.tts.AsyncClient = _StubAsyncClient  # type: ignore[attr-defined]
+    _wyoming.asr.AsyncClient = _StubAsyncClient  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------
     # audiostretchy stub (no-op)
@@ -285,7 +286,13 @@ if "wyoming" not in sys.modules:  # pragma: no cover
     # pydantic_ai stub Agent
     # ---------------------------------------------------------------------------
 
-    if not hasattr(_pyd_ai, "Agent"):
+    # Retrieve the previously stubbed module or the real one.
+    _pyd_ai_ref = sys.modules.get("pydantic_ai")
+    if _pyd_ai_ref is None:
+        _pyd_ai_ref = ModuleType("pydantic_ai")
+        sys.modules["pydantic_ai"] = _pyd_ai_ref
+
+    if not hasattr(_pyd_ai_ref, "Agent"):
         class _StubAgent:  # type: ignore
             def __init__(self, *args: object, **kwargs: object):
                 self.call_history: list = []
@@ -297,7 +304,7 @@ if "wyoming" not in sys.modules:  # pragma: no cover
 
                 return _Result(out=user_input)
 
-        _pyd_ai.Agent = _StubAgent  # type: ignore[attr-defined]
+        _pyd_ai_ref.Agent = _StubAgent  # type: ignore[attr-defined]
 
     sys.modules.update({
         "wyoming": _wyoming,
