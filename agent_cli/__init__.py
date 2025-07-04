@@ -132,6 +132,46 @@ if "wyoming" not in sys.modules:  # pragma: no cover
     _wyoming.tts.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
     _wyoming.asr.AsyncClient = _AsyncClient  # type: ignore[attr-defined]
 
+    # ------------------------------------------------------------
+    # Minimal TTS message stubs used by agent_cli.tts
+    # ------------------------------------------------------------
+
+    class Synthesize:  # type: ignore
+        def __init__(self, text: str):
+            self.text = text
+            self.voice: 'SynthesizeVoice | None' = None  # noqa: F821
+
+        def event(self):  # Return self as a stand-in for a proper protobuf event
+            return self
+
+        @staticmethod
+        def is_type(_type: str) -> bool:  # noqa: D401
+            return True
+
+    class SynthesizeVoice:  # type: ignore
+        def __init__(self, *, name: str | None = None, language: str | None = None, speaker: str | None = None):
+            self.name = name
+            self.language = language
+            self.speaker = speaker
+
+    _wyoming.tts.Synthesize = Synthesize  # type: ignore[attr-defined]
+    _wyoming.tts.SynthesizeVoice = SynthesizeVoice  # type: ignore[attr-defined]
+
+    # ------------------------------------------------------------------
+    # Ensure Audio* helper classes expose is_type and from_event utilities
+    # ------------------------------------------------------------------
+    def _default_is_type(event_type: str) -> bool:  # noqa: D401
+        return True
+
+    def _default_from_event(cls, event):  # noqa: D401
+        return event
+
+    for _cls in (AudioStart, AudioStop, AudioChunk):
+        if not hasattr(_cls, "is_type"):
+            _cls.is_type = staticmethod(_default_is_type)  # type: ignore[attr-defined]
+        if not hasattr(_cls, "from_event"):
+            _cls.from_event = classmethod(_default_from_event)  # type: ignore[attr-defined]
+
     sys.modules.update({
         "wyoming": _wyoming,
         "wyoming.audio": _wyoming.audio,
