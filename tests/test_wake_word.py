@@ -348,7 +348,7 @@ class TestDetectWakeWord:
         assert result is None
 
     @pytest.mark.asyncio
-    @patch("agent_cli.wake_word.AsyncClient.from_uri")
+    @patch("agent_cli.wyoming_utils.AsyncClient.from_uri")
     @patch("agent_cli.wake_word.open_pyaudio_stream")
     async def test_task_cancellation(
         self,

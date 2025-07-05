@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.client import AsyncClient
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config
@@ -18,6 +17,7 @@ if TYPE_CHECKING:
 
     import pyaudio
     from rich.live import Live
+    from wyoming.client import AsyncClient
 
     from agent_cli.utils import InteractiveStopEvent
 
