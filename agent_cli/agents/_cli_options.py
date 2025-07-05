@@ -57,7 +57,7 @@ ASR_SERVER_PORT: int = typer.Option(
 # --- Wake Word Options ---
 WAKE_WORD_SERVER_IP: str = typer.Option(
     config.ASR_SERVER_IP,  # Default to same as ASR for now
-    "--wake-server-ip", 
+    "--wake-server-ip",
     help="Wyoming wake word server IP address.",
 )
 WAKE_WORD_SERVER_PORT: int = typer.Option(

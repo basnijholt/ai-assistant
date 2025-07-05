@@ -4,20 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import logging
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
 
 import pyaudio
+from rich.live import Live
 from rich.text import Text
 
-from agent_cli.utils import console
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
-    import logging
-    import pyaudio
-    from rich.live import Live
-    from agent_cli.utils import InteractiveStopEvent
+from agent_cli.utils import InteractiveStopEvent, console
 
 
 @contextmanager
@@ -57,10 +52,10 @@ async def read_audio_stream(
     progress_style: str = "blue",
 ) -> None:
     """Core audio reading function - reads chunks and calls handler.
-    
+
     This is the single source of truth for audio reading logic.
     All other audio functions should use this to avoid duplication.
-    
+
     Args:
         stream: PyAudio stream
         stop_event: Event to stop reading
@@ -70,9 +65,10 @@ async def read_audio_stream(
         quiet: If True, suppress console output
         progress_message: Message to display
         progress_style: Rich style for progress
+
     """
     from agent_cli import config
-    
+
     try:
         seconds_streamed = 0.0
         while not stop_event.is_set():
@@ -81,13 +77,13 @@ async def read_audio_stream(
                 num_frames=config.PYAUDIO_CHUNK_SIZE,
                 exception_on_overflow=False,
             )
-            
+
             # Handle chunk (sync or async)
             if asyncio.iscoroutinefunction(chunk_handler):
                 await chunk_handler(chunk)
             else:
                 chunk_handler(chunk)
-            
+
             logger.debug("Processed %d byte(s) of audio", len(chunk))
 
             # Update progress display
@@ -97,28 +93,32 @@ async def read_audio_stream(
                     msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
                     live.update(Text(msg, style="yellow"))
                 else:
-                    live.update(Text(f"{progress_message}... ({seconds_streamed:.1f}s)", style=progress_style))
+                    live.update(
+                        Text(
+                            f"{progress_message}... ({seconds_streamed:.1f}s)",
+                            style=progress_style,
+                        ),
+                    )
 
     except OSError:
         logger.exception("Error reading audio")
 
 
-
 def setup_input_stream(
-    p: pyaudio.PyAudio,
     input_device_index: int | None,
 ) -> dict:
     """Get standard PyAudio input stream configuration.
-    
+
     Args:
         p: PyAudio instance
         input_device_index: Input device index
-        
+
     Returns:
         Dictionary of stream parameters
+
     """
     from agent_cli import config
-    
+
     return {
         "format": config.PYAUDIO_FORMAT,
         "channels": config.PYAUDIO_CHANNELS,
@@ -138,19 +138,20 @@ def setup_output_stream(
     channels: int | None = None,
 ) -> dict:
     """Get standard PyAudio output stream configuration.
-    
+
     Args:
         p: PyAudio instance
         output_device_index: Output device index
         sample_rate: Custom sample rate (defaults to config)
         sample_width: Custom sample width in bytes (defaults to config)
         channels: Custom channel count (defaults to config)
-        
+
     Returns:
         Dictionary of stream parameters
+
     """
     from agent_cli import config
-    
+
     return {
         "format": p.get_format_from_width(sample_width or 2),
         "channels": channels or config.PYAUDIO_CHANNELS,

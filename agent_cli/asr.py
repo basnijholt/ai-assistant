@@ -2,26 +2,25 @@
 
 from __future__ import annotations
 
-import asyncio
 import io
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from rich.text import Text
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 
 from agent_cli import config
 from agent_cli.audio import open_pyaudio_stream, read_audio_stream, setup_input_stream
-from agent_cli.utils import InteractiveStopEvent, print_error_message
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Callable
 
     import pyaudio
     from rich.live import Live
+
+    from agent_cli.utils import InteractiveStopEvent
 
 
 async def send_audio(
@@ -93,6 +92,7 @@ async def record_audio_to_buffer(
 
     Returns:
         Raw audio data as bytes
+
     """
     audio_buffer = io.BytesIO()
 
@@ -191,17 +191,22 @@ async def transcribe_audio(
     """
     try:
         async with wyoming_client_context(
-            asr_server_ip, 
-            asr_server_port, 
-            "ASR", 
-            logger, 
-            quiet=quiet
+            asr_server_ip,
+            asr_server_port,
+            "ASR",
+            logger,
+            quiet=quiet,
         ) as client:
-            stream_config = setup_input_stream(p, input_device_index)
+            stream_config = setup_input_stream(input_device_index)
             with open_pyaudio_stream(p, **stream_config) as stream:
                 send_task, recv_task = await manage_send_receive_tasks(
                     send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
-                    receive_text(client, logger, chunk_callback=chunk_callback, final_callback=final_callback),
+                    receive_text(
+                        client,
+                        logger,
+                        chunk_callback=chunk_callback,
+                        final_callback=final_callback,
+                    ),
                 )
                 return recv_task.result()
     except (ConnectionRefusedError, Exception):

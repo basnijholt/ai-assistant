@@ -15,7 +15,11 @@ runner = CliRunner()
 @patch("agent_cli.agents.voice_assistant.process_and_update_clipboard", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_assistant.pyaudio_context")
 @patch("agent_cli.agents.voice_assistant.get_clipboard_text")
+@patch("agent_cli.agents.voice_assistant.signal_handling_context")
+@patch("agent_cli.agents.voice_assistant.maybe_live")
 def test_voice_assistant_agent(
+    mock_maybe_live: MagicMock,
+    mock_signal_handling: MagicMock,
     mock_get_clipboard_text: MagicMock,
     mock_pyaudio_context: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
@@ -24,8 +28,10 @@ def test_voice_assistant_agent(
     """Test the voice assistant agent."""
     mock_get_clipboard_text.return_value = "hello"
     mock_transcribe_audio.return_value = "world"
+    mock_signal_handling.return_value.__aenter__.return_value = MagicMock()
+    mock_maybe_live.return_value.__enter__.return_value = MagicMock()
     result = runner.invoke(app, ["voice-assistant", "--config", "missing.toml"])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     mock_pyaudio_context.assert_called_once()
     mock_process_and_update_clipboard.assert_called_once()
     mock_transcribe_audio.assert_called_once()

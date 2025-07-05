@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 
-from rich.text import Text
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config
 from agent_cli.audio import open_pyaudio_stream, read_audio_stream, setup_input_stream
-from agent_cli.utils import InteractiveStopEvent
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
@@ -21,6 +18,8 @@ if TYPE_CHECKING:
 
     import pyaudio
     from rich.live import Live
+
+    from agent_cli.utils import InteractiveStopEvent
 
 
 async def send_audio_for_wake_detection(
@@ -98,11 +97,10 @@ async def receive_wake_detection(
             if detection_callback:
                 detection_callback(wake_word_name)
             return wake_word_name
-        elif NotDetected.is_type(event.type):
+        if NotDetected.is_type(event.type):
             logger.debug("No wake word detected")
             break
-        else:
-            logger.debug("Ignoring event type: %s", event.type)
+        logger.debug("Ignoring event type: %s", event.type)
 
     return None
 
@@ -144,23 +142,30 @@ async def detect_wake_word(
             wake_server_port,
             "wake word",
             logger,
-            quiet=quiet
+            quiet=quiet,
         ) as client:
             # Send detect request with specific wake word
             await client.write_event(Detect(names=[wake_word_name]).event())
-            
-            stream_config = setup_input_stream(p, input_device_index)
+
+            stream_config = setup_input_stream(input_device_index)
             with open_pyaudio_stream(p, **stream_config) as stream:
                 send_task, recv_task = await manage_send_receive_tasks(
-                    send_audio_for_wake_detection(client, stream, stop_event, logger, live=live, quiet=quiet),
+                    send_audio_for_wake_detection(
+                        client,
+                        stream,
+                        stop_event,
+                        logger,
+                        live=live,
+                        quiet=quiet,
+                    ),
                     receive_wake_detection(client, logger, detection_callback=detection_callback),
                     return_when="FIRST_COMPLETED",
                 )
-                
+
                 # If recv_task completed first, it means we detected a wake word
                 if not recv_task.cancelled():
                     return recv_task.result()
-                
+
                 return None
     except (ConnectionRefusedError, Exception):
         return None

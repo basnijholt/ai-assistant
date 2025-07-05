@@ -148,7 +148,7 @@ async def synthesize_speech(
             tts_server_port,
             "TTS",
             logger,
-            quiet=quiet
+            quiet=quiet,
         ) as client:
             # Use live_timer with the provided Live instance
             async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
@@ -262,7 +262,7 @@ async def play_audio(
         async with live_timer(live, base_msg, style="blue", quiet=quiet):
             with pyaudio_context() as p:
                 stream_config = setup_output_stream(
-                    p, 
+                    p,
                     output_device_index,
                     sample_rate=sample_rate,
                     sample_width=sample_width,

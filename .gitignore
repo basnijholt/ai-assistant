@@ -35,6 +35,7 @@ uv.lock
 # Virtual Environment
 venv/
 env/
+.direnv/
 ENV/
 
 # IDE

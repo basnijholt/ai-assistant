@@ -30,13 +30,12 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pyperclip
 from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.client import AsyncClient
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, config, process_manager, wake_word
@@ -186,7 +185,7 @@ async def _process_recorded_audio(
 
     """
     from agent_cli.wyoming_utils import wyoming_client_context
-    
+
     async with wyoming_client_context(asr_server_ip, asr_server_port, "ASR", logger) as client:
         # Start transcription
         await client.write_event(Transcribe().event())
@@ -195,7 +194,7 @@ async def _process_recorded_audio(
         # Send audio data in chunks
         chunk_size = config.PYAUDIO_CHUNK_SIZE * 2  # 2 bytes per sample for 16-bit
         for i in range(0, len(audio_data), chunk_size):
-            chunk = audio_data[i:i + chunk_size]
+            chunk = audio_data[i : i + chunk_size]
             await client.write_event(
                 AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
             )
@@ -220,7 +219,7 @@ async def _process_recorded_audio(
         return ""
 
 
-async def async_main(
+async def async_main(  # noqa: C901, PLR0912, PLR0915
     *,
     general_cfg: GeneralConfig,
     wake_word_config: WakeWordConfig,
@@ -264,7 +263,10 @@ async def async_main(
         if not general_cfg.quiet:
             wake_word_msg = f"👂 Listening for wake word: [bold yellow]{wake_word_config.wake_word_name}[/bold yellow]"
             print_with_style(wake_word_msg)
-            print_with_style("Say the wake word to start recording, then say it again to stop and process.", style="dim")
+            print_with_style(
+                "Say the wake word to start recording, then say it again to stop and process.",
+                style="dim",
+            )
 
         with (
             maybe_live(not general_cfg.quiet) as live,
@@ -291,7 +293,10 @@ async def async_main(
                     break
 
                 if not general_cfg.quiet:
-                    print_with_style(f"✅ Wake word '{detected_word}' detected! Starting recording...", style="green")
+                    print_with_style(
+                        f"✅ Wake word '{detected_word}' detected! Starting recording...",
+                        style="green",
+                    )
 
                 # Create a new stop event for recording
                 recording_stop_event = InteractiveStopEvent()
@@ -329,7 +334,10 @@ async def async_main(
                     break
 
                 if not general_cfg.quiet:
-                    print_with_style(f"🛑 Wake word '{stop_detected_word}' detected! Stopping recording...", style="yellow")
+                    print_with_style(
+                        f"🛑 Wake word '{stop_detected_word}' detected! Stopping recording...",
+                        style="yellow",
+                    )
 
                 if not audio_data:
                     if not general_cfg.quiet:
