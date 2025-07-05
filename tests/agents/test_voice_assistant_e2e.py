@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -31,11 +31,16 @@ class MockSignalContext:
         """Initialize the mock signal context."""
         self.ctrl_c_pressed = False
 
-    async def __aenter__(self) -> MockSignalContext:
+    async def __aenter__(self) -> Self:
         """Enter the context manager."""
         return self
 
-    async def __aexit__(self, exc_type: type, exc_val: Exception, exc_tb: object) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object | None,
+    ) -> None:
         """Exit the context manager."""
 
 
@@ -97,9 +102,9 @@ def get_configs(
 @patch("agent_cli.llm.pyperclip.copy")
 @patch("agent_cli.agents.voice_assistant.pyperclip.paste", return_value="mocked paste")
 async def test_voice_assistant_e2e(
-    mock_paste: MagicMock,
+    _mock_paste: MagicMock,
     mock_copy: MagicMock,
-    mock_get_clipboard: MagicMock,
+    _mock_get_clipboard: MagicMock,
     mock_signal_context: MagicMock,
     mock_tts_pyaudio: MagicMock,
     mock_va_pyaudio: MagicMock,
