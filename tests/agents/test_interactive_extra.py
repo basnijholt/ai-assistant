@@ -64,7 +64,6 @@ async def test_handle_conversation_turn_no_instruction():
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=None)
@@ -119,21 +118,21 @@ def test_interactive_command_stop_and_status():
         )
 
 
-def test_interactive_command_list_output_devices():
-    """Test the list-output-devices flag."""
+def test_interactive_command_list_devices():
+    """Test the list-devices flag."""
     runner = CliRunner()
     with (
         patch(
-            "agent_cli.agents.interactive.list_output_devices",
-        ) as mock_list_output_devices,
+            "agent_cli.agents.interactive.list_all_devices",
+        ) as mock_list_all_devices,
         patch(
             "agent_cli.agents.interactive.pyaudio_context",
         ) as mock_pyaudio_context,
     ):
-        result = runner.invoke(app, ["interactive", "--list-output-devices"])
+        result = runner.invoke(app, ["interactive", "--list-devices"])
         assert result.exit_code == 0
         mock_pyaudio_context.assert_called_once()
-        mock_list_output_devices.assert_called_once()
+        mock_list_all_devices.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -157,7 +156,6 @@ async def test_async_main_exception_handling():
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=None)

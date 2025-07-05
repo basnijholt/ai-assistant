@@ -52,7 +52,6 @@ async def test_speak_e2e(
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None)
@@ -62,6 +61,7 @@ async def test_speak_e2e(
         text="Hello, world!",
         tts_config=tts_config,
         file_config=file_config,
+        list_devices=False,
     )
 
     # Verify that the audio was "played"

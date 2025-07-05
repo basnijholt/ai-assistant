@@ -38,8 +38,10 @@ DEVICE_NAME: str | None = typer.Option(
 )
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
-    "--list-input-devices",
-    help="List available audio input devices and exit.",
+    "--list-devices",
+    "--list-input-devices",  # alias for backward compatibility
+    "--list-output-devices",  # alias for backward compatibility
+    help="List available audio input and output devices and exit.",
     is_eager=True,
 )
 ASR_SERVER_IP: str = typer.Option(
@@ -90,12 +92,7 @@ OUTPUT_DEVICE_NAME: str | None = typer.Option(
     "--output-device-name",
     help="Output device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
 )
-LIST_OUTPUT_DEVICES: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--list-output-devices",
-    help="List available audio output devices and exit.",
-    is_eager=True,
-)
+LIST_OUTPUT_DEVICES = LIST_DEVICES  # type: ignore
 ENABLE_TTS: bool = typer.Option(
     False,  # noqa: FBT003
     "--tts/--no-tts",

@@ -36,8 +36,7 @@ from agent_cli.agents._config import (
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import (
     input_device,
-    list_input_devices,
-    list_output_devices,
+    list_all_devices,
     output_device,
     pyaudio_context,
 )
@@ -352,13 +351,11 @@ async def async_main(
     """Main async function, consumes parsed arguments."""
     try:
         with pyaudio_context() as p:
-            # Handle device listing
+            # Handle device listing (combined flag)
             if asr_config.list_input_devices:
-                list_input_devices(p, general_cfg.quiet)
-                return
-
-            if tts_config.list_output_devices:
-                list_output_devices(p, general_cfg.quiet)
+                # The unified flag populates ASRConfig.list_input_devices
+                # for backward compatibility. List all devices and exit.
+                list_all_devices(p, general_cfg.quiet)
                 return
 
             # Setup devices
@@ -420,7 +417,7 @@ def interactive(
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
-    list_input_devices: bool = opts.LIST_DEVICES,
+    list_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
     # LLM
@@ -440,7 +437,6 @@ def interactive(
     tts_speed: float = opts.TTS_SPEED,
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
-    list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
     # Output
     save_file: Path | None = opts.SAVE_FILE,
     # History
@@ -487,7 +483,7 @@ def interactive(
             server_port=asr_server_port,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            list_input_devices=list_input_devices,
+            list_input_devices=list_devices,
         )
         llm_config = LLMConfig(model=model, ollama_host=ollama_host)
         tts_config = TTSConfig(
@@ -499,7 +495,6 @@ def interactive(
             speaker=speaker,
             output_device_index=output_device_index,
             output_device_name=output_device_name,
-            list_output_devices=list_output_devices_flag,
             speed=tts_speed,
         )
         file_config = FileConfig(

@@ -79,7 +79,7 @@ def test_format_conversation_for_llm() -> None:
 
 @pytest.mark.asyncio
 async def test_async_main_list_devices(tmp_path: Path) -> None:
-    """Test the async_main function with list_input_devices=True."""
+    """Test the async_main function with list_devices=True."""
     general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
@@ -104,7 +104,6 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
@@ -112,8 +111,8 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
         patch(
-            "agent_cli.agents.interactive.list_input_devices",
-        ) as mock_list_input_devices,
+            "agent_cli.agents.interactive.list_all_devices",
+        ) as mock_list_all_devices,
     ):
         await async_main(
             general_cfg=general_cfg,
@@ -122,12 +121,12 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             tts_config=tts_config,
             file_config=file_config,
         )
-        mock_list_input_devices.assert_called_once()
+        mock_list_all_devices.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_async_main_list_output_devices(tmp_path: Path) -> None:
-    """Test the async_main function with list_output_devices_flag=True."""
+    """Test the async_main function with list_devices=True (output path)."""
     general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
@@ -151,7 +150,6 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=True,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
@@ -159,8 +157,8 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
         patch(
-            "agent_cli.agents.interactive.list_output_devices",
-        ) as mock_list_output_devices,
+            "agent_cli.agents.interactive.list_all_devices",
+        ) as mock_list_all_devices,
     ):
         await async_main(
             general_cfg=general_cfg,
@@ -169,7 +167,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             tts_config=tts_config,
             file_config=file_config,
         )
-        mock_list_output_devices.assert_called_once()
+        mock_list_all_devices.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -201,7 +199,6 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         speaker=None,
         output_device_index=1,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=history_dir)

@@ -278,65 +278,68 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
  --stop
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --input-device-index                        INTEGER  Index of the PyAudio    │
-│                                                      input device to use.    │
-│                                                      [default: None]         │
-│ --input-device-name                         TEXT     Device name keywords    │
-│                                                      for partial matching.   │
-│                                                      Supports                │
-│                                                      comma-separated list    │
-│                                                      where each term can     │
-│                                                      partially match device  │
-│                                                      names                   │
-│                                                      (case-insensitive).     │
-│                                                      First matching device   │
-│                                                      is selected.            │
-│                                                      [default: None]         │
-│ --list-input-devices                                 List available audio    │
-│                                                      input devices and exit. │
-│ --asr-server-ip                             TEXT     Wyoming ASR server IP   │
-│                                                      address.                │
-│                                                      [default: localhost]    │
-│ --asr-server-port                           INTEGER  Wyoming ASR server      │
-│                                                      port.                   │
-│                                                      [default: 10300]        │
-│ --model               -m                    TEXT     The Ollama model to     │
-│                                                      use. Default is         │
-│                                                      devstral:24b.           │
-│                                                      [default: devstral:24b] │
-│ --ollama-host                               TEXT     The Ollama server host. │
-│                                                      Default is              │
-│                                                      http://localhost:11434. │
-│                                                      [default:               │
-│                                                      http://localhost:11434] │
-│ --llm                     --no-llm                   Use an LLM to process   │
-│                                                      the transcript.         │
-│                                                      [default: no-llm]       │
-│ --stop                                               Stop any running        │
-│                                                      background process.     │
-│ --status                                             Check if a background   │
-│                                                      process is running.     │
-│ --toggle                                             Toggle the background   │
-│                                                      process on/off. If the  │
-│                                                      process is running, it  │
-│                                                      will be stopped. If the │
-│                                                      process is not running, │
-│                                                      it will be started.     │
-│ --clipboard               --no-clipboard             Copy result to          │
-│                                                      clipboard.              │
-│                                                      [default: clipboard]    │
-│ --log-level                                 TEXT     Set logging level.      │
-│                                                      [default: WARNING]      │
-│ --log-file                                  TEXT     Path to a file to write │
-│                                                      logs to.                │
-│                                                      [default: None]         │
-│ --quiet               -q                             Suppress console output │
-│                                                      from rich.              │
-│ --config                                    TEXT     Path to a TOML          │
-│                                                      configuration file.     │
-│                                                      [default: None]         │
-│ --help                                               Show this message and   │
-│                                                      exit.                   │
+│ --input-device-index                         INTEGER  Index of the PyAudio   │
+│                                                       input device to use.   │
+│                                                       [default: None]        │
+│ --input-device-name                          TEXT     Device name keywords   │
+│                                                       for partial matching.  │
+│                                                       Supports               │
+│                                                       comma-separated list   │
+│                                                       where each term can    │
+│                                                       partially match device │
+│                                                       names                  │
+│                                                       (case-insensitive).    │
+│                                                       First matching device  │
+│                                                       is selected.           │
+│                                                       [default: None]        │
+│ --list-devices,--lis…                                 List available audio   │
+│                                                       input and output       │
+│                                                       devices and exit.      │
+│ --asr-server-ip                              TEXT     Wyoming ASR server IP  │
+│                                                       address.               │
+│                                                       [default: localhost]   │
+│ --asr-server-port                            INTEGER  Wyoming ASR server     │
+│                                                       port.                  │
+│                                                       [default: 10300]       │
+│ --model                -m                    TEXT     The Ollama model to    │
+│                                                       use. Default is        │
+│                                                       devstral:24b.          │
+│                                                       [default:              │
+│                                                       devstral:24b]          │
+│ --ollama-host                                TEXT     The Ollama server      │
+│                                                       host. Default is       │
+│                                                       http://localhost:1143… │
+│                                                       [default:              │
+│                                                       http://localhost:1143… │
+│ --llm                      --no-llm                   Use an LLM to process  │
+│                                                       the transcript.        │
+│                                                       [default: no-llm]      │
+│ --stop                                                Stop any running       │
+│                                                       background process.    │
+│ --status                                              Check if a background  │
+│                                                       process is running.    │
+│ --toggle                                              Toggle the background  │
+│                                                       process on/off. If the │
+│                                                       process is running, it │
+│                                                       will be stopped. If    │
+│                                                       the process is not     │
+│                                                       running, it will be    │
+│                                                       started.               │
+│ --clipboard                --no-clipboard             Copy result to         │
+│                                                       clipboard.             │
+│                                                       [default: clipboard]   │
+│ --log-level                                  TEXT     Set logging level.     │
+│                                                       [default: WARNING]     │
+│ --log-file                                   TEXT     Path to a file to      │
+│                                                       write logs to.         │
+│                                                       [default: None]        │
+│ --quiet                -q                             Suppress console       │
+│                                                       output from rich.      │
+│ --config                                     TEXT     Path to a TOML         │
+│                                                       configuration file.    │
+│                                                       [default: None]        │
+│ --help                                                Show this message and  │
+│                                                       exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -391,51 +394,61 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                     [default: None]                                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --tts-server-ip                TEXT     Wyoming TTS server IP address.       │
-│                                         [default: localhost]                 │
-│ --tts-server-port              INTEGER  Wyoming TTS server port.             │
-│                                         [default: 10200]                     │
-│ --voice                        TEXT     Voice name to use for TTS (e.g.,     │
-│                                         'en_US-lessac-medium').              │
-│                                         [default: None]                      │
-│ --tts-language                 TEXT     Language for TTS (e.g., 'en_US').    │
-│                                         [default: None]                      │
-│ --speaker                      TEXT     Speaker name for TTS voice.          │
-│                                         [default: None]                      │
-│ --tts-speed                    FLOAT    Speech speed multiplier (1.0 =       │
-│                                         normal, 2.0 = twice as fast, 0.5 =   │
-│                                         half speed).                         │
-│                                         [default: 1.0]                       │
-│ --output-device-index          INTEGER  Index of the PyAudio output device   │
-│                                         to use for TTS.                      │
-│                                         [default: None]                      │
-│ --output-device-name           TEXT     Output device name keywords for      │
-│                                         partial matching. Supports           │
-│                                         comma-separated list where each term │
-│                                         can partially match device names     │
-│                                         (case-insensitive). First matching   │
-│                                         device is selected.                  │
-│                                         [default: None]                      │
-│ --list-output-devices                   List available audio output devices  │
-│                                         and exit.                            │
-│ --save-file                    PATH     Save audio to WAV file instead of    │
-│                                         playing it.                          │
-│                                         [default: None]                      │
-│ --stop                                  Stop any running background process. │
-│ --status                                Check if a background process is     │
-│                                         running.                             │
-│ --toggle                                Toggle the background process        │
-│                                         on/off. If the process is running,   │
-│                                         it will be stopped. If the process   │
-│                                         is not running, it will be started.  │
-│ --log-level                    TEXT     Set logging level.                   │
-│                                         [default: WARNING]                   │
-│ --log-file                     TEXT     Path to a file to write logs to.     │
-│                                         [default: None]                      │
-│ --quiet                -q               Suppress console output from rich.   │
-│ --config                       TEXT     Path to a TOML configuration file.   │
-│                                         [default: None]                      │
-│ --help                                  Show this message and exit.          │
+│ --tts-server-ip                        TEXT     Wyoming TTS server IP        │
+│                                                 address.                     │
+│                                                 [default: localhost]         │
+│ --tts-server-port                      INTEGER  Wyoming TTS server port.     │
+│                                                 [default: 10200]             │
+│ --voice                                TEXT     Voice name to use for TTS    │
+│                                                 (e.g.,                       │
+│                                                 'en_US-lessac-medium').      │
+│                                                 [default: None]              │
+│ --tts-language                         TEXT     Language for TTS (e.g.,      │
+│                                                 'en_US').                    │
+│                                                 [default: None]              │
+│ --speaker                              TEXT     Speaker name for TTS voice.  │
+│                                                 [default: None]              │
+│ --tts-speed                            FLOAT    Speech speed multiplier (1.0 │
+│                                                 = normal, 2.0 = twice as     │
+│                                                 fast, 0.5 = half speed).     │
+│                                                 [default: 1.0]               │
+│ --output-device-index                  INTEGER  Index of the PyAudio output  │
+│                                                 device to use for TTS.       │
+│                                                 [default: None]              │
+│ --output-device-name                   TEXT     Output device name keywords  │
+│                                                 for partial matching.        │
+│                                                 Supports comma-separated     │
+│                                                 list where each term can     │
+│                                                 partially match device names │
+│                                                 (case-insensitive). First    │
+│                                                 matching device is selected. │
+│                                                 [default: None]              │
+│ --list-devices,--list-input-…                   List available audio input   │
+│                                                 and output devices and exit. │
+│ --save-file                            PATH     Save audio to WAV file       │
+│                                                 instead of playing it.       │
+│                                                 [default: None]              │
+│ --stop                                          Stop any running background  │
+│                                                 process.                     │
+│ --status                                        Check if a background        │
+│                                                 process is running.          │
+│ --toggle                                        Toggle the background        │
+│                                                 process on/off. If the       │
+│                                                 process is running, it will  │
+│                                                 be stopped. If the process   │
+│                                                 is not running, it will be   │
+│                                                 started.                     │
+│ --log-level                            TEXT     Set logging level.           │
+│                                                 [default: WARNING]           │
+│ --log-file                             TEXT     Path to a file to write logs │
+│                                                 to.                          │
+│                                                 [default: None]              │
+│ --quiet                        -q               Suppress console output from │
+│                                                 rich.                        │
+│ --config                               TEXT     Path to a TOML configuration │
+│                                                 file.                        │
+│                                                 [default: None]              │
+│ --help                                          Show this message and exit.  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -501,9 +514,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       First matching device  │
 │                                                       is selected.           │
 │                                                       [default: None]        │
-│ --list-input-devices                                  List available audio   │
-│                                                       input devices and      │
-│                                                       exit.                  │
+│ --list-devices,--lis…                                 List available audio   │
+│                                                       input and output       │
+│                                                       devices and exit.      │
 │ --asr-server-ip                              TEXT     Wyoming ASR server IP  │
 │                                                       address.               │
 │                                                       [default: localhost]   │
@@ -571,9 +584,6 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       First matching device  │
 │                                                       is selected.           │
 │                                                       [default: None]        │
-│ --list-output-devices                                 List available audio   │
-│                                                       output devices and     │
-│                                                       exit.                  │
 │ --save-file                                  PATH     Save TTS response      │
 │                                                       audio to WAV file.     │
 │                                                       [default: None]        │
@@ -646,99 +656,108 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --input-device-index                   INTEGER  Index of the PyAudio input   │
-│                                                 device to use.               │
-│                                                 [default: None]              │
-│ --input-device-name                    TEXT     Device name keywords for     │
-│                                                 partial matching. Supports   │
-│                                                 comma-separated list where   │
-│                                                 each term can partially      │
-│                                                 match device names           │
-│                                                 (case-insensitive). First    │
-│                                                 matching device is selected. │
-│                                                 [default: None]              │
-│ --list-input-devices                            List available audio input   │
-│                                                 devices and exit.            │
-│ --asr-server-ip                        TEXT     Wyoming ASR server IP        │
-│                                                 address.                     │
-│                                                 [default: localhost]         │
-│ --asr-server-port                      INTEGER  Wyoming ASR server port.     │
-│                                                 [default: 10300]             │
-│ --model                -m              TEXT     The Ollama model to use.     │
-│                                                 Default is devstral:24b.     │
-│                                                 [default: devstral:24b]      │
-│ --ollama-host                          TEXT     The Ollama server host.      │
-│                                                 Default is                   │
-│                                                 http://localhost:11434.      │
-│                                                 [default:                    │
-│                                                 http://localhost:11434]      │
-│ --stop                                          Stop any running background  │
-│                                                 process.                     │
-│ --status                                        Check if a background        │
-│                                                 process is running.          │
-│ --toggle                                        Toggle the background        │
-│                                                 process on/off. If the       │
-│                                                 process is running, it will  │
-│                                                 be stopped. If the process   │
-│                                                 is not running, it will be   │
-│                                                 started.                     │
-│ --tts                      --no-tts             Enable text-to-speech for    │
-│                                                 responses.                   │
-│                                                 [default: no-tts]            │
-│ --tts-server-ip                        TEXT     Wyoming TTS server IP        │
-│                                                 address.                     │
-│                                                 [default: localhost]         │
-│ --tts-server-port                      INTEGER  Wyoming TTS server port.     │
-│                                                 [default: 10200]             │
-│ --voice                                TEXT     Voice name to use for TTS    │
-│                                                 (e.g.,                       │
-│                                                 'en_US-lessac-medium').      │
-│                                                 [default: None]              │
-│ --tts-language                         TEXT     Language for TTS (e.g.,      │
-│                                                 'en_US').                    │
-│                                                 [default: None]              │
-│ --speaker                              TEXT     Speaker name for TTS voice.  │
-│                                                 [default: None]              │
-│ --tts-speed                            FLOAT    Speech speed multiplier (1.0 │
-│                                                 = normal, 2.0 = twice as     │
-│                                                 fast, 0.5 = half speed).     │
-│                                                 [default: 1.0]               │
-│ --output-device-index                  INTEGER  Index of the PyAudio output  │
-│                                                 device to use for TTS.       │
-│                                                 [default: None]              │
-│ --output-device-name                   TEXT     Output device name keywords  │
-│                                                 for partial matching.        │
-│                                                 Supports comma-separated     │
-│                                                 list where each term can     │
-│                                                 partially match device names │
-│                                                 (case-insensitive). First    │
-│                                                 matching device is selected. │
-│                                                 [default: None]              │
-│ --list-output-devices                           List available audio output  │
-│                                                 devices and exit.            │
-│ --save-file                            PATH     Save TTS response audio to   │
-│                                                 WAV file.                    │
-│                                                 [default: None]              │
-│ --history-dir                          PATH     Directory to store           │
-│                                                 conversation history.        │
-│                                                 [default:                    │
-│                                                 ~/.config/agent-cli/history] │
-│ --last-n-messages                      INTEGER  Number of messages to        │
-│                                                 include in the conversation  │
-│                                                 history. Set to 0 to disable │
-│                                                 history.                     │
-│                                                 [default: 50]                │
-│ --log-level                            TEXT     Set logging level.           │
-│                                                 [default: WARNING]           │
-│ --log-file                             TEXT     Path to a file to write logs │
-│                                                 to.                          │
-│                                                 [default: None]              │
-│ --quiet                -q                       Suppress console output from │
-│                                                 rich.                        │
-│ --config                               TEXT     Path to a TOML configuration │
-│                                                 file.                        │
-│                                                 [default: None]              │
-│ --help                                          Show this message and exit.  │
+│ --input-device-index                       INTEGER  Index of the PyAudio     │
+│                                                     input device to use.     │
+│                                                     [default: None]          │
+│ --input-device-name                        TEXT     Device name keywords for │
+│                                                     partial matching.        │
+│                                                     Supports comma-separated │
+│                                                     list where each term can │
+│                                                     partially match device   │
+│                                                     names                    │
+│                                                     (case-insensitive).      │
+│                                                     First matching device is │
+│                                                     selected.                │
+│                                                     [default: None]          │
+│ --list-devices,--list-in…                           List available audio     │
+│                                                     input and output devices │
+│                                                     and exit.                │
+│ --asr-server-ip                            TEXT     Wyoming ASR server IP    │
+│                                                     address.                 │
+│                                                     [default: localhost]     │
+│ --asr-server-port                          INTEGER  Wyoming ASR server port. │
+│                                                     [default: 10300]         │
+│ --model                    -m              TEXT     The Ollama model to use. │
+│                                                     Default is devstral:24b. │
+│                                                     [default: devstral:24b]  │
+│ --ollama-host                              TEXT     The Ollama server host.  │
+│                                                     Default is               │
+│                                                     http://localhost:11434.  │
+│                                                     [default:                │
+│                                                     http://localhost:11434]  │
+│ --stop                                              Stop any running         │
+│                                                     background process.      │
+│ --status                                            Check if a background    │
+│                                                     process is running.      │
+│ --toggle                                            Toggle the background    │
+│                                                     process on/off. If the   │
+│                                                     process is running, it   │
+│                                                     will be stopped. If the  │
+│                                                     process is not running,  │
+│                                                     it will be started.      │
+│ --tts                          --no-tts             Enable text-to-speech    │
+│                                                     for responses.           │
+│                                                     [default: no-tts]        │
+│ --tts-server-ip                            TEXT     Wyoming TTS server IP    │
+│                                                     address.                 │
+│                                                     [default: localhost]     │
+│ --tts-server-port                          INTEGER  Wyoming TTS server port. │
+│                                                     [default: 10200]         │
+│ --voice                                    TEXT     Voice name to use for    │
+│                                                     TTS (e.g.,               │
+│                                                     'en_US-lessac-medium').  │
+│                                                     [default: None]          │
+│ --tts-language                             TEXT     Language for TTS (e.g.,  │
+│                                                     'en_US').                │
+│                                                     [default: None]          │
+│ --speaker                                  TEXT     Speaker name for TTS     │
+│                                                     voice.                   │
+│                                                     [default: None]          │
+│ --tts-speed                                FLOAT    Speech speed multiplier  │
+│                                                     (1.0 = normal, 2.0 =     │
+│                                                     twice as fast, 0.5 =     │
+│                                                     half speed).             │
+│                                                     [default: 1.0]           │
+│ --output-device-index                      INTEGER  Index of the PyAudio     │
+│                                                     output device to use for │
+│                                                     TTS.                     │
+│                                                     [default: None]          │
+│ --output-device-name                       TEXT     Output device name       │
+│                                                     keywords for partial     │
+│                                                     matching. Supports       │
+│                                                     comma-separated list     │
+│                                                     where each term can      │
+│                                                     partially match device   │
+│                                                     names                    │
+│                                                     (case-insensitive).      │
+│                                                     First matching device is │
+│                                                     selected.                │
+│                                                     [default: None]          │
+│ --save-file                                PATH     Save TTS response audio  │
+│                                                     to WAV file.             │
+│                                                     [default: None]          │
+│ --history-dir                              PATH     Directory to store       │
+│                                                     conversation history.    │
+│                                                     [default:                │
+│                                                     ~/.config/agent-cli/his… │
+│ --last-n-messages                          INTEGER  Number of messages to    │
+│                                                     include in the           │
+│                                                     conversation history.    │
+│                                                     Set to 0 to disable      │
+│                                                     history.                 │
+│                                                     [default: 50]            │
+│ --log-level                                TEXT     Set logging level.       │
+│                                                     [default: WARNING]       │
+│ --log-file                                 TEXT     Path to a file to write  │
+│                                                     logs to.                 │
+│                                                     [default: None]          │
+│ --quiet                    -q                       Suppress console output  │
+│                                                     from rich.               │
+│ --config                                   TEXT     Path to a TOML           │
+│                                                     configuration file.      │
+│                                                     [default: None]          │
+│ --help                                              Show this message and    │
+│                                                     exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```

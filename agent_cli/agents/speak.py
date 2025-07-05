@@ -13,7 +13,7 @@ import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager
 from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
 from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.audio import list_output_devices, output_device, pyaudio_context
+from agent_cli.audio import list_all_devices, output_device, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
@@ -32,12 +32,13 @@ async def async_main(
     text: str | None,
     tts_config: TTSConfig,
     file_config: FileConfig,
+    list_devices: bool,
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
         # Handle device listing
-        if tts_config.list_output_devices:
-            list_output_devices(p, general_cfg.quiet)
+        if list_devices:
+            list_all_devices(p, general_cfg.quiet)
             return
 
         # Setup output device
@@ -98,7 +99,7 @@ def speak(
     # Output device
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
-    list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
+    list_devices: bool = opts.LIST_DEVICES,
     # Output file
     save_file: Path | None = typer.Option(  # noqa: B008
         None,
@@ -150,7 +151,6 @@ def speak(
             speaker=speaker,
             output_device_index=output_device_index,
             output_device_name=output_device_name,
-            list_output_devices=list_output_devices_flag,
             speed=tts_speed,
         )
         file_config = FileConfig(save_file=save_file)
@@ -161,5 +161,6 @@ def speak(
                 text=text,
                 tts_config=tts_config,
                 file_config=file_config,
+                list_devices=list_devices,
             ),
         )
