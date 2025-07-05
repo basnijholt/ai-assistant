@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from rich.live import Live
 
 
-
 @contextmanager
 def pyaudio_context() -> Generator[pyaudio.PyAudio, None, None]:
     """Context manager for PyAudio lifecycle."""
