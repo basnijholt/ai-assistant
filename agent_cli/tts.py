@@ -9,7 +9,6 @@ import wave
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.client import AsyncClient
 from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import config
@@ -30,6 +29,7 @@ if TYPE_CHECKING:
     import logging
 
     from rich.live import Live
+    from wyoming.client import AsyncClient
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
