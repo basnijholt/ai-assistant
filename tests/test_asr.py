@@ -80,7 +80,7 @@ async def test_transcribe_audio() -> None:
     """Test the main transcribe_audio function."""
     # Arrange
     with (
-        patch("agent_cli.asr.AsyncClient.from_uri") as mock_from_uri,
+        patch("agent_cli.wyoming_utils.AsyncClient.from_uri") as mock_from_uri,
         patch(
             "agent_cli.audio.pyaudio_context",
         ) as mock_pyaudio_context,
@@ -130,7 +130,7 @@ async def test_transcribe_audio_connection_error() -> None:
     # Arrange
     with (
         patch(
-            "agent_cli.asr.AsyncClient.from_uri",
+            "agent_cli.wyoming_utils.AsyncClient.from_uri",
             side_effect=ConnectionRefusedError,
         ),
         patch("agent_cli.audio.pyaudio_context") as mock_pyaudio_context,

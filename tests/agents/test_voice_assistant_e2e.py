@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,96 +24,123 @@ if TYPE_CHECKING:
     from rich.console import Console
 
 
-@pytest.mark.asyncio
-@patch("agent_cli.tts.pyaudio_context")
-@patch("agent_cli.llm.pyperclip.copy")
-@patch("agent_cli.agents.voice_assistant.pyperclip")
-@patch("agent_cli.agents.voice_assistant.pyaudio_context")
-@patch("agent_cli.agents.voice_assistant.signal_handling_context")
-@patch("agent_cli.tts.AsyncClient")
-@patch("agent_cli.asr.AsyncClient")
-@patch("agent_cli.llm.build_agent")
-async def test_voice_assistant_e2e(
+class MockSignalContext:
+    """A mock signal context for testing."""
+
+    def __init__(self) -> None:
+        """Initialize the mock signal context."""
+        self.ctrl_c_pressed = False
+
+    async def __aenter__(self) -> Self:
+        """Enter the context manager."""
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object | None,
+    ) -> None:
+        """Exit the context manager."""
+
+
+def setup_mocks(
     mock_build_agent: MagicMock,
-    mock_asr_client_class: MagicMock,
-    mock_tts_client_class: MagicMock,
-    mock_signal_handling_context: MagicMock,
-    mock_pyaudio_context_asr: MagicMock,
-    mock_pyperclip: MagicMock,
-    mock_llm_pyperclip_copy: MagicMock,
-    mock_pyaudio_context_tts: MagicMock,
-    mock_pyaudio_device_info: list[dict],
+    mock_tts_wyoming_client_context: MagicMock,
+    mock_asr_wyoming_client_context: MagicMock,
     llm_responses: dict[str, str],
+    mock_pyaudio_device_info: list[dict],
+) -> tuple[MockLLMAgent, MockPyAudio]:
+    """Set up all the necessary mocks for the e2e test."""
+    mock_llm_agent = MockLLMAgent(llm_responses)
+    mock_build_agent.return_value = mock_llm_agent
+    mock_asr_client = MockASRClient("this is a test")
+    mock_tts_client = MockTTSClient(b"fake audio data")
+    mock_asr_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
+    mock_tts_wyoming_client_context.return_value.__aenter__.return_value = mock_tts_client
+    return mock_llm_agent, MockPyAudio(mock_pyaudio_device_info)
+
+
+def get_configs(
+    mock_console: Console,
+) -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileConfig]:
+    """Get all the necessary configs for the e2e test."""
+    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=False, clipboard=True)
+    general_cfg.__dict__["console"] = mock_console
+    asr_config = ASRConfig(
+        server_ip="mock-asr-host",
+        server_port=10300,
+        input_device_index=0,
+        input_device_name=None,
+        list_input_devices=False,
+    )
+    llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
+    tts_config = TTSConfig(
+        enabled=True,
+        server_ip="mock-tts-host",
+        server_port=10200,
+        voice_name=None,
+        language=None,
+        speaker=None,
+        output_device_index=None,
+        output_device_name=None,
+        list_output_devices=False,
+        speed=1.0,
+    )
+    file_config = FileConfig(save_file=None)
+    return general_cfg, asr_config, llm_config, tts_config, file_config
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.llm.build_agent")
+@patch("agent_cli.tts.wyoming_client_context")
+@patch("agent_cli.asr.wyoming_client_context")
+@patch("agent_cli.agents.voice_assistant.pyaudio_context")
+@patch("agent_cli.tts.pyaudio_context")
+@patch("agent_cli.agents.voice_assistant.signal_handling_context")
+@patch("agent_cli.agents.voice_assistant.get_clipboard_text", return_value="test clipboard text")
+@patch("agent_cli.llm.pyperclip.copy")
+@patch("agent_cli.agents.voice_assistant.pyperclip.paste", return_value="mocked paste")
+async def test_voice_assistant_e2e(
+    _mock_paste: MagicMock,
+    mock_copy: MagicMock,
+    _mock_get_clipboard: MagicMock,
+    mock_signal_context: MagicMock,
+    mock_tts_pyaudio: MagicMock,
+    mock_va_pyaudio: MagicMock,
+    mock_asr_wyoming: MagicMock,
+    mock_tts_wyoming: MagicMock,
+    mock_build_agent: MagicMock,
+    llm_responses: dict[str, str],
+    mock_pyaudio_device_info: list[dict],
     mock_console: Console,
 ) -> None:
     """Test end-to-end voice assistant functionality with simplified mocks."""
-    # Setup mock PyAudio
-    mock_pyaudio_instance = MockPyAudio(mock_pyaudio_device_info)
-    mock_pyaudio_context_asr.return_value.__enter__.return_value = mock_pyaudio_instance
-    mock_pyaudio_context_tts.return_value.__enter__.return_value = mock_pyaudio_instance
+    mock_signal_context.return_value = MockSignalContext()
+    mock_llm_agent, mock_pyaudio_instance = setup_mocks(
+        mock_build_agent,
+        mock_tts_wyoming,
+        mock_asr_wyoming,
+        llm_responses,
+        mock_pyaudio_device_info,
+    )
+    general_cfg, asr_config, llm_config, tts_config, file_config = get_configs(mock_console)
+    mock_va_pyaudio.return_value.__enter__.return_value = mock_pyaudio_instance
+    mock_tts_pyaudio.return_value.__enter__.return_value = mock_pyaudio_instance
 
-    # Setup mock LLM agent
-    mock_llm_agent = MockLLMAgent(llm_responses)
-    mock_build_agent.return_value = mock_llm_agent
-
-    # Setup mock Wyoming clients
-    mock_asr_client = MockASRClient("this is a test")
-    mock_tts_client = MockTTSClient(b"fake audio data")
-    mock_asr_client_class.from_uri.return_value = mock_asr_client
-    mock_tts_client_class.from_uri.return_value.__aenter__.return_value = mock_tts_client
-
-    # Setup stop event
     stop_event = asyncio.Event()
-    mock_signal_handling_context.return_value.__enter__.return_value = stop_event
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
-    mock_pyperclip.paste.return_value = "this is the llm response"
 
-    with patch(
-        "agent_cli.agents.voice_assistant.get_clipboard_text",
-        return_value="test clipboard text",
-    ):
-        general_cfg = GeneralConfig(
-            log_level="INFO",
-            log_file=None,
-            quiet=False,
-            clipboard=True,
-        )
-        general_cfg.__dict__["console"] = mock_console
-        asr_config = ASRConfig(
-            server_ip="mock-asr-host",
-            server_port=10300,
-            input_device_index=0,
-            input_device_name=None,
-            list_input_devices=False,
-        )
-        llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
-        tts_config = TTSConfig(
-            enabled=True,
-            server_ip="mock-tts-host",
-            server_port=10200,
-            voice_name=None,
-            language=None,
-            speaker=None,
-            output_device_index=None,
-            output_device_name=None,
-            list_output_devices=False,
-            speed=1.0,
-        )
-        file_config = FileConfig(save_file=None)
-
-        await async_main(
-            general_cfg=general_cfg,
-            asr_config=asr_config,
-            llm_config=llm_config,
-            tts_config=tts_config,
-            file_config=file_config,
-        )
+    await async_main(
+        general_cfg=general_cfg,
+        asr_config=asr_config,
+        llm_config=llm_config,
+        tts_config=tts_config,
+        file_config=file_config,
+    )
 
     # Assertions
     mock_build_agent.assert_called_once()
-    mock_asr_client_class.from_uri.assert_called_once_with("tcp://mock-asr-host:10300")
-    mock_tts_client_class.from_uri.assert_called_once_with("tcp://mock-tts-host:10200")
     assert mock_llm_agent.call_history
     assert mock_pyaudio_instance.streams[1].get_written_data()
-    mock_pyperclip.paste.assert_called_once()
-    mock_llm_pyperclip_copy.assert_called_once()
+    mock_copy.assert_called_once()

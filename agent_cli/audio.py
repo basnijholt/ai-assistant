@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import pyaudio
+from rich.text import Text
 
-from agent_cli.utils import console
+from agent_cli.utils import InteractiveStopEvent, console
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    import logging
+    from collections.abc import Callable, Generator
+
+    from rich.live import Live
 
 
 @contextmanager
@@ -37,6 +42,128 @@ def open_pyaudio_stream(
     finally:
         stream.stop_stream()
         stream.close()
+
+
+async def read_audio_stream(
+    stream: pyaudio.Stream,
+    stop_event: InteractiveStopEvent,
+    chunk_handler: Callable[[bytes], None] | Callable[[bytes], asyncio.Awaitable[None]],
+    logger: logging.Logger,
+    *,
+    live: Live | None = None,
+    quiet: bool = False,
+    progress_message: str = "Processing audio",
+    progress_style: str = "blue",
+) -> None:
+    """Core audio reading function - reads chunks and calls handler.
+
+    This is the single source of truth for audio reading logic.
+    All other audio functions should use this to avoid duplication.
+
+    Args:
+        stream: PyAudio stream
+        stop_event: Event to stop reading
+        chunk_handler: Function to handle each chunk (sync or async)
+        logger: Logger instance
+        live: Rich Live display for progress
+        quiet: If True, suppress console output
+        progress_message: Message to display
+        progress_style: Rich style for progress
+
+    """
+    from agent_cli import config
+
+    try:
+        seconds_streamed = 0.0
+        while not stop_event.is_set():
+            chunk = await asyncio.to_thread(
+                stream.read,
+                num_frames=config.PYAUDIO_CHUNK_SIZE,
+                exception_on_overflow=False,
+            )
+
+            # Handle chunk (sync or async)
+            if asyncio.iscoroutinefunction(chunk_handler):
+                await chunk_handler(chunk)
+            else:
+                chunk_handler(chunk)
+
+            logger.debug("Processed %d byte(s) of audio", len(chunk))
+
+            # Update progress display
+            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+            if live and not quiet:
+                if stop_event.ctrl_c_pressed:
+                    msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
+                    live.update(Text(msg, style="yellow"))
+                else:
+                    live.update(
+                        Text(
+                            f"{progress_message}... ({seconds_streamed:.1f}s)",
+                            style=progress_style,
+                        ),
+                    )
+
+    except OSError:
+        logger.exception("Error reading audio")
+
+
+def setup_input_stream(
+    input_device_index: int | None,
+) -> dict:
+    """Get standard PyAudio input stream configuration.
+
+    Args:
+        p: PyAudio instance
+        input_device_index: Input device index
+
+    Returns:
+        Dictionary of stream parameters
+
+    """
+    from agent_cli import config
+
+    return {
+        "format": config.PYAUDIO_FORMAT,
+        "channels": config.PYAUDIO_CHANNELS,
+        "rate": config.PYAUDIO_RATE,
+        "input": True,
+        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "input_device_index": input_device_index,
+    }
+
+
+def setup_output_stream(
+    p: pyaudio.PyAudio,
+    output_device_index: int | None,
+    *,
+    sample_rate: int | None = None,
+    sample_width: int | None = None,
+    channels: int | None = None,
+) -> dict:
+    """Get standard PyAudio output stream configuration.
+
+    Args:
+        p: PyAudio instance
+        output_device_index: Output device index
+        sample_rate: Custom sample rate (defaults to config)
+        sample_width: Custom sample width in bytes (defaults to config)
+        channels: Custom channel count (defaults to config)
+
+    Returns:
+        Dictionary of stream parameters
+
+    """
+    from agent_cli import config
+
+    return {
+        "format": p.get_format_from_width(sample_width or 2),
+        "channels": channels or config.PYAUDIO_CHANNELS,
+        "rate": sample_rate or config.PYAUDIO_RATE,
+        "output": True,
+        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "output_device_index": output_device_index,
+    }
 
 
 @functools.cache
