@@ -37,7 +37,6 @@ class MockSignalContext:
 
     async def __aexit__(self, exc_type: type, exc_val: Exception, exc_tb: object) -> None:
         """Exit the context manager."""
-        pass
 
 
 def setup_mocks(

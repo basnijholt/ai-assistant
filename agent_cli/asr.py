@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import io
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.client import AsyncClient
 
 from agent_cli import config
 from agent_cli.audio import open_pyaudio_stream, read_audio_stream, setup_input_stream
@@ -16,9 +14,11 @@ from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_co
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Callable
 
     import pyaudio
     from rich.live import Live
+    from wyoming.client import AsyncClient
 
     from agent_cli.utils import InteractiveStopEvent
 

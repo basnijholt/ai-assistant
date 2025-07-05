@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import logging
-from collections.abc import Callable, Generator
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 import pyaudio
-from rich.live import Live
 from rich.text import Text
 
 from agent_cli.utils import InteractiveStopEvent, console
+
+if TYPE_CHECKING:
+    import logging
+    from collections.abc import Callable, Generator
+
+    from rich.live import Live
+
 
 
 @contextmanager
